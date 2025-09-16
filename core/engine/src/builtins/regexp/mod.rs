@@ -160,6 +160,9 @@ impl IntrinsicObject for RegExp {
         #[cfg(feature = "annex-b")]
         let regexp = regexp.method(Self::compile, js_string!("compile"), 2);
 
+        // Chrome 136: RegExp.escape static method
+        let regexp = regexp.static_method(Self::escape, js_string!("escape"), 1);
+
         regexp.build();
     }
 
@@ -1923,6 +1926,37 @@ impl RegExp {
         this.set(js_string!("lastIndex"), 0, true, context)?;
 
         Ok(this.into())
+    }
+
+    /// `RegExp.escape ( S )`
+    ///
+    /// Escapes special regex characters in a string to make them literal.
+    /// This is a Chrome 136 feature proposal.
+    ///
+    /// More information:
+    ///  - [Chrome Platform Status][chrome]
+    ///
+    /// [chrome]: https://chromestatus.com/feature/6465170639945728
+    pub(crate) fn escape(
+        _: &JsValue,
+        args: &[JsValue],
+        context: &mut Context,
+    ) -> JsResult<JsValue> {
+        // 1. Let string be ? ToString(S).
+        let input = args.get_or_undefined(0);
+        let input_str = input.to_string(context)?;
+
+        // 2. Escape special regex characters to make them literal
+        // Characters to escape: . * + ? ^ $ { } ( ) | [ ] \
+        let escaped = input_str.to_std_string_escaped()
+            .chars()
+            .map(|c| match c {
+                '.' | '*' | '+' | '?' | '^' | '$' | '{' | '}' | '(' | ')' | '|' | '[' | ']' | '\\' => format!("\\{}", c),
+                _ => c.to_string(),
+            })
+            .collect::<String>();
+
+        Ok(JsValue::from(js_string!(escaped)))
     }
 }
 

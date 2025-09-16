@@ -225,3 +225,30 @@ fn regular_expression_construction_independant_of_global_reg_exp() {
         TestAction::run(regex),
     ]);
 }
+
+#[test]
+fn regexp_escape() {
+    run_test_actions([
+        // Basic functionality
+        TestAction::assert_eq("RegExp.escape('hello')", js_str!("hello")),
+        TestAction::assert_eq("RegExp.escape('hello.world')", js_str!("hello\\.world")),
+
+        // Test all special characters
+        TestAction::assert_eq("RegExp.escape('.*+?^${}()|[]')", js_str!("\\.\\*\\+\\?\\^\\$\\{\\}\\(\\)\\|\\[\\]")),
+        TestAction::assert_eq("RegExp.escape('\\\\')", js_str!("\\\\\\\\")),
+
+        // Edge cases
+        TestAction::assert_eq("RegExp.escape('')", js_str!("")),
+        TestAction::assert_eq("RegExp.escape('normal_text123')", js_str!("normal_text123")),
+
+        // Test that escaped strings work in RegExp
+        TestAction::run("var input = 'hello.world'; var escaped = RegExp.escape(input);"),
+        TestAction::assert("new RegExp(escaped).test(input)"),
+        TestAction::assert("!new RegExp(escaped).test('helloXworld')"),
+
+        // Real-world example
+        TestAction::run("var userInput = '$.price + (tax)'; var safe = RegExp.escape(userInput);"),
+        TestAction::assert("new RegExp(safe).test('$.price + (tax)')"),
+        TestAction::assert("!new RegExp(safe).test('$Xprice + (tax)')"),
+    ]);
+}
