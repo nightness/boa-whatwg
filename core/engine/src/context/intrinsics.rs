@@ -167,6 +167,8 @@ pub struct StandardConstructors {
     data_view: StandardConstructor,
     date_time_format: StandardConstructor,
     promise: StandardConstructor,
+    readable_stream: StandardConstructor,
+    websocket: StandardConstructor,
     weak_ref: StandardConstructor,
     weak_map: StandardConstructor,
     weak_set: StandardConstructor,
@@ -261,6 +263,8 @@ impl Default for StandardConstructors {
             data_view: StandardConstructor::default(),
             date_time_format: StandardConstructor::default(),
             promise: StandardConstructor::default(),
+            readable_stream: StandardConstructor::default(),
+            websocket: StandardConstructor::default(),
             weak_ref: StandardConstructor::default(),
             weak_map: StandardConstructor::default(),
             weak_set: StandardConstructor::default(),
@@ -804,6 +808,30 @@ impl StandardConstructors {
     #[must_use]
     pub const fn promise(&self) -> &StandardConstructor {
         &self.promise
+    }
+
+    /// Returns the `ReadableStream` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Streams reference][spec]
+    ///
+    /// [spec]: https://streams.spec.whatwg.org/
+    #[inline]
+    #[must_use]
+    pub const fn readable_stream(&self) -> &StandardConstructor {
+        &self.readable_stream
+    }
+
+    /// Returns the `WebSocket` constructor.
+    ///
+    /// More information:
+    ///  - [WebSocket API reference][spec]
+    ///
+    /// [spec]: https://websockets.spec.whatwg.org/
+    #[inline]
+    #[must_use]
+    pub const fn websocket(&self) -> &StandardConstructor {
+        &self.websocket
     }
 
     /// Returns the `WeakRef` constructor.
