@@ -60,6 +60,11 @@ This document catalogs all the features and Web APIs we've added to the Boa Java
 - Async iterator support with `Symbol.asyncIterator`
 - Full streaming data processing capabilities
 
+**Full Inheritance Support**:
+- Symbol.asyncIterator properly inherits from prototype to instances
+- Fixed inheritance issues through proper BuiltInBuilder configuration
+- Complete standards compliance for async iteration support
+
 ## Enhanced Regular Expression Support
 
 ### RegExp Improvements (`core/engine/src/builtins/regexp/`)
