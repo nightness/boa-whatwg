@@ -169,6 +169,8 @@ pub struct StandardConstructors {
     promise: StandardConstructor,
     readable_stream: StandardConstructor,
     websocket: StandardConstructor,
+    console: StandardConstructor,
+    blob: StandardConstructor,
     weak_ref: StandardConstructor,
     weak_map: StandardConstructor,
     weak_set: StandardConstructor,
@@ -265,6 +267,8 @@ impl Default for StandardConstructors {
             promise: StandardConstructor::default(),
             readable_stream: StandardConstructor::default(),
             websocket: StandardConstructor::default(),
+            console: StandardConstructor::default(),
+            blob: StandardConstructor::default(),
             weak_ref: StandardConstructor::default(),
             weak_map: StandardConstructor::default(),
             weak_set: StandardConstructor::default(),
@@ -820,6 +824,30 @@ impl StandardConstructors {
     #[must_use]
     pub const fn readable_stream(&self) -> &StandardConstructor {
         &self.readable_stream
+    }
+
+    /// Returns the `Console` constructor.
+    ///
+    /// More information:
+    ///  - [Console API reference][spec]
+    ///
+    /// [spec]: https://console.spec.whatwg.org/
+    #[inline]
+    #[must_use]
+    pub const fn console(&self) -> &StandardConstructor {
+        &self.console
+    }
+
+    /// Returns the `Blob` constructor.
+    ///
+    /// More information:
+    ///  - [File API reference][spec]
+    ///
+    /// [spec]: https://w3c.github.io/FileAPI/#blob-section
+    #[inline]
+    #[must_use]
+    pub const fn blob(&self) -> &StandardConstructor {
+        &self.blob
     }
 
     /// Returns the `WebSocket` constructor.

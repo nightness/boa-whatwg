@@ -6,6 +6,9 @@ pub mod async_function;
 pub mod readable_stream;
 pub mod websocket;
 pub mod fetch;
+pub mod console;
+pub mod timers;
+pub mod blob;
 pub mod async_generator;
 pub mod async_generator_function;
 pub mod atomics;
@@ -76,6 +79,8 @@ pub(crate) use self::{
     proxy::Proxy,
     readable_stream::ReadableStream,
     websocket::WebSocket,
+    console::Console,
+    blob::Blob,
     reflect::Reflect,
     regexp::RegExp,
     set::Set,
@@ -97,6 +102,7 @@ use crate::{
         atomics::Atomics,
         error::r#type::ThrowTypeError,
         fetch::Fetch,
+        timers::{SetTimeout, SetInterval, ClearTimeout, ClearInterval},
         generator::Generator,
         generator_function::GeneratorFunction,
         iterable::{AsyncFromSyncIterator, AsyncIterator, Iterator},
@@ -267,6 +273,12 @@ impl Realm {
         ReadableStream::init(self);
         WebSocket::init(self);
         Fetch::init(self);
+        Console::init(self);
+        Blob::init(self);
+        SetTimeout::init(self);
+        SetInterval::init(self);
+        ClearTimeout::init(self);
+        ClearInterval::init(self);
         AsyncFunction::init(self);
         AsyncGenerator::init(self);
         AsyncGeneratorFunction::init(self);
@@ -399,6 +411,12 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<Promise>(context)?;
     global_binding::<ReadableStream>(context)?;
     global_binding::<WebSocket>(context)?;
+    global_binding::<Console>(context)?;
+    global_binding::<Blob>(context)?;
+    global_binding::<SetTimeout>(context)?;
+    global_binding::<SetInterval>(context)?;
+    global_binding::<ClearTimeout>(context)?;
+    global_binding::<ClearInterval>(context)?;
     global_binding::<EncodeUri>(context)?;
     global_binding::<EncodeUriComponent>(context)?;
     global_binding::<DecodeUri>(context)?;
