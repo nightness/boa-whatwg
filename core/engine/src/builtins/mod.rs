@@ -1,10 +1,12 @@
 //! Boa's ECMAScript built-in object implementations, e.g. Object, String, Math, Array, etc.
 
+pub mod abort_controller;
 pub mod array;
 pub mod array_buffer;
 pub mod async_function;
 pub mod readable_stream;
 pub mod websocket;
+pub mod websocket_stream;
 pub mod fetch;
 pub mod console;
 pub mod timers;
@@ -59,6 +61,7 @@ pub(crate) mod options;
 pub mod temporal;
 
 pub(crate) use self::{
+    abort_controller::AbortController,
     array::Array,
     async_function::AsyncFunction,
     bigint::BigInt,
@@ -79,6 +82,7 @@ pub(crate) use self::{
     proxy::Proxy,
     readable_stream::ReadableStream,
     websocket::WebSocket,
+    websocket_stream::WebSocketStream,
     console::Console,
     blob::Blob,
     reflect::Reflect,
@@ -272,6 +276,8 @@ impl Realm {
         Promise::init(self);
         ReadableStream::init(self);
         WebSocket::init(self);
+        WebSocketStream::init(self);
+        AbortController::init(self);
         Fetch::init(self);
         Console::init(self);
         Blob::init(self);

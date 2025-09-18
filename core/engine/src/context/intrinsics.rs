@@ -169,6 +169,8 @@ pub struct StandardConstructors {
     promise: StandardConstructor,
     readable_stream: StandardConstructor,
     websocket: StandardConstructor,
+    websocket_stream: StandardConstructor,
+    abort_controller: StandardConstructor,
     console: StandardConstructor,
     blob: StandardConstructor,
     weak_ref: StandardConstructor,
@@ -267,6 +269,8 @@ impl Default for StandardConstructors {
             promise: StandardConstructor::default(),
             readable_stream: StandardConstructor::default(),
             websocket: StandardConstructor::default(),
+            websocket_stream: StandardConstructor::default(),
+            abort_controller: StandardConstructor::default(),
             console: StandardConstructor::default(),
             blob: StandardConstructor::default(),
             weak_ref: StandardConstructor::default(),
@@ -860,6 +864,30 @@ impl StandardConstructors {
     #[must_use]
     pub const fn websocket(&self) -> &StandardConstructor {
         &self.websocket
+    }
+
+    /// Returns the `WebSocketStream` constructor.
+    ///
+    /// More information:
+    ///  - [WebSocketStream API reference][spec]
+    ///
+    /// [spec]: https://websockets.spec.whatwg.org/#websocketstream
+    #[inline]
+    #[must_use]
+    pub const fn websocket_stream(&self) -> &StandardConstructor {
+        &self.websocket_stream
+    }
+
+    /// Returns the `AbortController` constructor.
+    ///
+    /// More information:
+    ///  - [AbortController API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-abortcontroller
+    #[inline]
+    #[must_use]
+    pub const fn abort_controller(&self) -> &StandardConstructor {
+        &self.abort_controller
     }
 
     /// Returns the `WeakRef` constructor.
