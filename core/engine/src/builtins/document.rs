@@ -1,0 +1,574 @@
+//! Document Web API implementation for Boa
+//!
+//! Native implementation of Document standard
+//! https://dom.spec.whatwg.org/#interface-document
+
+use crate::{
+    builtins::{BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder},
+    context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
+    object::{internal_methods::get_prototype_from_constructor, JsObject},
+    string::StaticJsStrings,
+    value::JsValue,
+    Context, JsArgs, JsData, JsNativeError, JsResult, js_string,
+    JsString, realm::Realm, property::{Attribute, PropertyDescriptorBuilder}
+};
+use boa_gc::{Finalize, Trace};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
+/// JavaScript `Document` builtin implementation.
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct Document;
+
+impl IntrinsicObject for Document {
+    fn init(realm: &Realm) {
+        let ready_state_func = BuiltInBuilder::callable(realm, get_ready_state)
+            .name(js_string!("get readyState"))
+            .build();
+
+        let url_func = BuiltInBuilder::callable(realm, get_url)
+            .name(js_string!("get URL"))
+            .build();
+
+        let title_func = BuiltInBuilder::callable(realm, get_title)
+            .name(js_string!("get title"))
+            .build();
+
+        let title_setter_func = BuiltInBuilder::callable(realm, set_title)
+            .name(js_string!("set title"))
+            .build();
+
+        let body_func = BuiltInBuilder::callable(realm, get_body)
+            .name(js_string!("get body"))
+            .build();
+
+        let head_func = BuiltInBuilder::callable(realm, get_head)
+            .name(js_string!("get head"))
+            .build();
+
+        BuiltInBuilder::from_standard_constructor::<Self>(realm)
+            .accessor(
+                js_string!("readyState"),
+                Some(ready_state_func),
+                None,
+                Attribute::CONFIGURABLE,
+            )
+            .accessor(
+                js_string!("URL"),
+                Some(url_func),
+                None,
+                Attribute::CONFIGURABLE,
+            )
+            .accessor(
+                js_string!("title"),
+                Some(title_func),
+                Some(title_setter_func),
+                Attribute::CONFIGURABLE,
+            )
+            .accessor(
+                js_string!("body"),
+                Some(body_func),
+                None,
+                Attribute::CONFIGURABLE,
+            )
+            .accessor(
+                js_string!("head"),
+                Some(head_func),
+                None,
+                Attribute::CONFIGURABLE,
+            )
+            .method(create_element, js_string!("createElement"), 1)
+            .method(get_element_by_id, js_string!("getElementById"), 1)
+            .method(query_selector, js_string!("querySelector"), 1)
+            .method(query_selector_all, js_string!("querySelectorAll"), 1)
+            .method(add_event_listener, js_string!("addEventListener"), 2)
+            .method(remove_event_listener, js_string!("removeEventListener"), 2)
+            .method(start_view_transition, js_string!("startViewTransition"), 0)
+            .build();
+    }
+
+    fn get(intrinsics: &Intrinsics) -> JsObject {
+        Self::STANDARD_CONSTRUCTOR(intrinsics.constructors()).constructor()
+    }
+}
+
+impl BuiltInObject for Document {
+    const NAME: JsString = StaticJsStrings::DOCUMENT;
+}
+
+impl BuiltInConstructor for Document {
+    const LENGTH: usize = 0;
+    const P: usize = 0;
+    const SP: usize = 0;
+
+    const STANDARD_CONSTRUCTOR: fn(&StandardConstructors) -> &StandardConstructor =
+        StandardConstructors::document;
+
+    fn constructor(
+        new_target: &JsValue,
+        _args: &[JsValue],
+        context: &mut Context,
+    ) -> JsResult<JsValue> {
+        let prototype = get_prototype_from_constructor(
+            new_target,
+            StandardConstructors::document,
+            context,
+        )?;
+
+        let document_data = DocumentData::new();
+
+        let document = JsObject::from_proto_and_data_with_shared_shape(
+            context.root_shape(),
+            prototype,
+            document_data,
+        );
+
+        Ok(document.into())
+    }
+}
+
+/// Internal data for Document objects
+#[derive(Debug, Trace, Finalize, JsData)]
+pub struct DocumentData {
+    #[unsafe_ignore_trace]
+    ready_state: Arc<Mutex<String>>,
+    #[unsafe_ignore_trace]
+    url: Arc<Mutex<String>>,
+    #[unsafe_ignore_trace]
+    title: Arc<Mutex<String>>,
+    #[unsafe_ignore_trace]
+    elements: Arc<Mutex<HashMap<String, JsObject>>>,
+    #[unsafe_ignore_trace]
+    event_listeners: Arc<Mutex<HashMap<String, Vec<JsValue>>>>,
+}
+
+impl DocumentData {
+    fn new() -> Self {
+        Self {
+            ready_state: Arc::new(Mutex::new("loading".to_string())),
+            url: Arc::new(Mutex::new("about:blank".to_string())),
+            title: Arc::new(Mutex::new("".to_string())),
+            elements: Arc::new(Mutex::new(HashMap::new())),
+            event_listeners: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    pub fn set_ready_state(&self, state: &str) {
+        *self.ready_state.lock().unwrap() = state.to_string();
+    }
+
+    pub fn set_url(&self, url: &str) {
+        *self.url.lock().unwrap() = url.to_string();
+    }
+
+    pub fn set_title(&self, title: &str) {
+        *self.title.lock().unwrap() = title.to_string();
+    }
+
+    pub fn get_ready_state(&self) -> String {
+        self.ready_state.lock().unwrap().clone()
+    }
+
+    pub fn get_url(&self) -> String {
+        self.url.lock().unwrap().clone()
+    }
+
+    pub fn get_title(&self) -> String {
+        self.title.lock().unwrap().clone()
+    }
+
+    pub fn add_element(&self, id: String, element: JsObject) {
+        self.elements.lock().unwrap().insert(id, element);
+    }
+
+    pub fn get_element(&self, id: &str) -> Option<JsObject> {
+        self.elements.lock().unwrap().get(id).cloned()
+    }
+
+    pub fn add_event_listener(&self, event_type: String, listener: JsValue) {
+        self.event_listeners.lock().unwrap()
+            .entry(event_type)
+            .or_insert_with(Vec::new)
+            .push(listener);
+    }
+
+    pub fn remove_event_listener(&self, event_type: &str, listener: &JsValue) {
+        if let Some(listeners) = self.event_listeners.lock().unwrap().get_mut(event_type) {
+            listeners.retain(|l| !JsValue::same_value(l, listener));
+        }
+    }
+}
+
+/// `Document.prototype.readyState` getter
+fn get_ready_state(this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Document.prototype.readyState called on non-object")
+    })?;
+
+    if let Some(document) = this_obj.downcast_ref::<DocumentData>() {
+        Ok(JsString::from(document.get_ready_state()).into())
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Document.prototype.readyState called on non-Document object")
+            .into())
+    }
+}
+
+/// `Document.prototype.URL` getter
+fn get_url(this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Document.prototype.URL called on non-object")
+    })?;
+
+    if let Some(document) = this_obj.downcast_ref::<DocumentData>() {
+        Ok(JsString::from(document.get_url()).into())
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Document.prototype.URL called on non-Document object")
+            .into())
+    }
+}
+
+/// `Document.prototype.title` getter
+fn get_title(this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Document.prototype.title called on non-object")
+    })?;
+
+    if let Some(document) = this_obj.downcast_ref::<DocumentData>() {
+        Ok(JsString::from(document.get_title()).into())
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Document.prototype.title called on non-Document object")
+            .into())
+    }
+}
+
+/// `Document.prototype.title` setter
+fn set_title(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Document.prototype.title setter called on non-object")
+    })?;
+
+    if let Some(document) = this_obj.downcast_ref::<DocumentData>() {
+        let title = args.get_or_undefined(0).to_string(context)?;
+        document.set_title(&title.to_std_string_escaped());
+        Ok(JsValue::undefined())
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Document.prototype.title setter called on non-Document object")
+            .into())
+    }
+}
+
+/// `Document.prototype.body` getter
+fn get_body(this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Document.prototype.body called on non-object")
+    })?;
+
+    if let Some(document) = this_obj.downcast_ref::<DocumentData>() {
+        // Create body element if it doesn't exist
+        if let Some(body) = document.get_element("body") {
+            Ok(body.into())
+        } else {
+            // Create a new body element
+            let body_element = JsObject::default();
+
+            // Add tagName property
+            body_element.define_property_or_throw(
+                js_string!("tagName"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(false)
+                    .enumerable(true)
+                    .writable(false)
+                    .value(JsString::from("BODY"))
+                    .build(),
+                context,
+            )?;
+
+            document.add_element("body".to_string(), body_element.clone());
+            Ok(body_element.into())
+        }
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Document.prototype.body called on non-Document object")
+            .into())
+    }
+}
+
+/// `Document.prototype.head` getter
+fn get_head(this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Document.prototype.head called on non-object")
+    })?;
+
+    if let Some(document) = this_obj.downcast_ref::<DocumentData>() {
+        // Create head element if it doesn't exist
+        if let Some(head) = document.get_element("head") {
+            Ok(head.into())
+        } else {
+            // Create a new head element
+            let head_element = JsObject::default();
+
+            // Add tagName property
+            head_element.define_property_or_throw(
+                js_string!("tagName"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(false)
+                    .enumerable(true)
+                    .writable(false)
+                    .value(JsString::from("HEAD"))
+                    .build(),
+                context,
+            )?;
+
+            document.add_element("head".to_string(), head_element.clone());
+            Ok(head_element.into())
+        }
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Document.prototype.head called on non-Document object")
+            .into())
+    }
+}
+
+/// `Document.prototype.createElement(tagName)`
+fn create_element(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Document.prototype.createElement called on non-object")
+    })?;
+
+    if let Some(_document) = this_obj.downcast_ref::<DocumentData>() {
+        let tag_name = args.get_or_undefined(0).to_string(context)?;
+        let tag_name_upper = tag_name.to_std_string_escaped().to_uppercase();
+
+        // Create a new element
+        let element = JsObject::default();
+
+        // Add tagName property
+        element.define_property_or_throw(
+            js_string!("tagName"),
+            PropertyDescriptorBuilder::new()
+                .configurable(false)
+                .enumerable(true)
+                .writable(false)
+                .value(JsString::from(tag_name_upper.as_str()))
+                .build(),
+            context,
+        )?;
+
+        // Add style property as empty object
+        let style_obj = JsObject::default();
+        element.define_property_or_throw(
+            js_string!("style"),
+            PropertyDescriptorBuilder::new()
+                .configurable(true)
+                .enumerable(true)
+                .writable(true)
+                .value(style_obj)
+                .build(),
+            context,
+        )?;
+
+        Ok(element.into())
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Document.prototype.createElement called on non-Document object")
+            .into())
+    }
+}
+
+/// `Document.prototype.getElementById(id)`
+fn get_element_by_id(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Document.prototype.getElementById called on non-object")
+    })?;
+
+    if let Some(document) = this_obj.downcast_ref::<DocumentData>() {
+        let id = args.get_or_undefined(0).to_string(context)?;
+
+        if let Some(element) = document.get_element(&id.to_std_string_escaped()) {
+            Ok(element.into())
+        } else {
+            Ok(JsValue::null())
+        }
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Document.prototype.getElementById called on non-Document object")
+            .into())
+    }
+}
+
+/// `Document.prototype.querySelector(selector)`
+fn query_selector(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Document.prototype.querySelector called on non-object")
+    })?;
+
+    if let Some(_document) = this_obj.downcast_ref::<DocumentData>() {
+        let _selector = args.get_or_undefined(0).to_string(context)?;
+
+        // Simple implementation - return null for now
+        // Real implementation would parse CSS selectors and search DOM tree
+        Ok(JsValue::null())
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Document.prototype.querySelector called on non-Document object")
+            .into())
+    }
+}
+
+/// `Document.prototype.querySelectorAll(selector)`
+fn query_selector_all(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Document.prototype.querySelectorAll called on non-object")
+    })?;
+
+    if let Some(_document) = this_obj.downcast_ref::<DocumentData>() {
+        let _selector = args.get_or_undefined(0).to_string(context)?;
+
+        // Simple implementation - return empty array for now
+        // Real implementation would parse CSS selectors and search DOM tree
+        use crate::builtins::Array;
+        let array = Array::create_array_from_list(vec![], context);
+        Ok(array.into())
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Document.prototype.querySelectorAll called on non-Document object")
+            .into())
+    }
+}
+
+/// `Document.prototype.addEventListener(type, listener)`
+fn add_event_listener(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Document.prototype.addEventListener called on non-object")
+    })?;
+
+    if let Some(document) = this_obj.downcast_ref::<DocumentData>() {
+        let event_type = args.get_or_undefined(0).to_string(context)?;
+        let listener = args.get_or_undefined(1).clone();
+
+        document.add_event_listener(event_type.to_std_string_escaped(), listener);
+        Ok(JsValue::undefined())
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Document.prototype.addEventListener called on non-Document object")
+            .into())
+    }
+}
+
+/// `Document.prototype.removeEventListener(type, listener)`
+fn remove_event_listener(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Document.prototype.removeEventListener called on non-object")
+    })?;
+
+    if let Some(document) = this_obj.downcast_ref::<DocumentData>() {
+        let event_type = args.get_or_undefined(0).to_string(context)?;
+        let listener = args.get_or_undefined(1);
+
+        document.remove_event_listener(&event_type.to_std_string_escaped(), listener);
+        Ok(JsValue::undefined())
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Document.prototype.removeEventListener called on non-Document object")
+            .into())
+    }
+}
+
+/// `Document.prototype.startViewTransition(callback)`
+fn start_view_transition(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Document.prototype.startViewTransition called on non-object")
+    })?;
+
+    if let Some(_document) = this_obj.downcast_ref::<DocumentData>() {
+        let callback = args.get_or_undefined(0);
+
+        // Create transition object
+        let transition = JsObject::default();
+
+        // Add finished property as resolved Promise
+        let finished_promise = context.eval(boa_engine::Source::from_bytes("Promise.resolve()"))?;
+        transition.define_property_or_throw(
+            js_string!("finished"),
+            PropertyDescriptorBuilder::new()
+                .configurable(true)
+                .enumerable(true)
+                .writable(false)
+                .value(finished_promise)
+                .build(),
+            context,
+        )?;
+
+        // Add ready property as resolved Promise
+        let ready_promise = context.eval(boa_engine::Source::from_bytes("Promise.resolve()"))?;
+        transition.define_property_or_throw(
+            js_string!("ready"),
+            PropertyDescriptorBuilder::new()
+                .configurable(true)
+                .enumerable(true)
+                .writable(false)
+                .value(ready_promise)
+                .build(),
+            context,
+        )?;
+
+        // Handle callback if provided
+        let mut callback_promise = context.eval(boa_engine::Source::from_bytes("Promise.resolve()"))?;
+        if !callback.is_undefined() && callback.is_callable() {
+            // Call the callback function
+            if let Ok(result) = callback.as_callable()
+                .unwrap()
+                .call(&JsValue::undefined(), &[], context) {
+
+                // Check if result is a promise
+                if result.is_object() {
+                    if let Some(obj) = result.as_object() {
+                        if obj.has_property(js_string!("then"), context)? {
+                            callback_promise = result;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Add updateCallbackDone property
+        transition.define_property_or_throw(
+            js_string!("updateCallbackDone"),
+            PropertyDescriptorBuilder::new()
+                .configurable(true)
+                .enumerable(true)
+                .writable(false)
+                .value(callback_promise)
+                .build(),
+            context,
+        )?;
+
+        // Add skipTransition method
+        let skip_function = BuiltInBuilder::callable(context.realm(), |_this, _args, _context| {
+            Ok(JsValue::undefined())
+        })
+        .name(js_string!("skipTransition"))
+        .build();
+
+        transition.define_property_or_throw(
+            js_string!("skipTransition"),
+            PropertyDescriptorBuilder::new()
+                .configurable(true)
+                .enumerable(true)
+                .writable(false)
+                .value(skip_function)
+                .build(),
+            context,
+        )?;
+
+        Ok(transition.into())
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Document.prototype.startViewTransition called on non-Document object")
+            .into())
+    }
+}

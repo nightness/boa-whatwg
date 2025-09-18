@@ -7,6 +7,12 @@ pub mod async_function;
 pub mod readable_stream;
 pub mod websocket;
 pub mod websocket_stream;
+pub mod document;
+pub mod window;
+pub mod history;
+pub mod pageswap_event;
+pub mod element;
+pub mod selection;
 pub mod fetch;
 pub mod console;
 pub mod timers;
@@ -83,6 +89,12 @@ pub(crate) use self::{
     readable_stream::ReadableStream,
     websocket::WebSocket,
     websocket_stream::WebSocketStream,
+    document::Document,
+    window::Window,
+    history::History,
+    pageswap_event::PageSwapEvent,
+    element::Element,
+    selection::Selection,
     console::Console,
     blob::Blob,
     reflect::Reflect,
@@ -278,6 +290,12 @@ impl Realm {
         WebSocket::init(self);
         WebSocketStream::init(self);
         AbortController::init(self);
+        Document::init(self);
+        Window::init(self);
+        History::init(self);
+        PageSwapEvent::init(self);
+        Element::init(self);
+        Selection::init(self);
         Fetch::init(self);
         Console::init(self);
         Blob::init(self);

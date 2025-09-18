@@ -171,6 +171,12 @@ pub struct StandardConstructors {
     websocket: StandardConstructor,
     websocket_stream: StandardConstructor,
     abort_controller: StandardConstructor,
+    document: StandardConstructor,
+    window: StandardConstructor,
+    history: StandardConstructor,
+    pageswap_event: StandardConstructor,
+    element: StandardConstructor,
+    selection: StandardConstructor,
     console: StandardConstructor,
     blob: StandardConstructor,
     weak_ref: StandardConstructor,
@@ -271,6 +277,12 @@ impl Default for StandardConstructors {
             websocket: StandardConstructor::default(),
             websocket_stream: StandardConstructor::default(),
             abort_controller: StandardConstructor::default(),
+            document: StandardConstructor::default(),
+            window: StandardConstructor::default(),
+            history: StandardConstructor::default(),
+            pageswap_event: StandardConstructor::default(),
+            element: StandardConstructor::default(),
+            selection: StandardConstructor::default(),
             console: StandardConstructor::default(),
             blob: StandardConstructor::default(),
             weak_ref: StandardConstructor::default(),
@@ -888,6 +900,70 @@ impl StandardConstructors {
     #[must_use]
     pub const fn abort_controller(&self) -> &StandardConstructor {
         &self.abort_controller
+    }
+
+    /// Returns the `Document` constructor.
+    ///
+    /// More information:
+    ///  - [Document API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-document
+    #[inline]
+    #[must_use]
+    pub const fn document(&self) -> &StandardConstructor {
+        &self.document
+    }
+
+    /// Returns the `Window` constructor.
+    ///
+    /// More information:
+    ///  - [Window API reference][spec]
+    ///
+    /// [spec]: https://html.spec.whatwg.org/#the-window-object
+    #[inline]
+    #[must_use]
+    pub const fn window(&self) -> &StandardConstructor {
+        &self.window
+    }
+
+    /// Returns the `History` constructor.
+    ///
+    /// More information:
+    ///  - [History API reference][spec]
+    ///
+    /// [spec]: https://html.spec.whatwg.org/#the-history-interface
+    #[inline]
+    #[must_use]
+    pub const fn history(&self) -> &StandardConstructor {
+        &self.history
+    }
+
+    /// Returns the `PageSwapEvent` constructor.
+    ///
+    /// More information:
+    ///  - [PageSwapEvent API reference][spec]
+    ///
+    /// [spec]: https://wicg.github.io/navigation-api/#pageswapevent
+    #[inline]
+    #[must_use]
+    pub const fn pageswap_event(&self) -> &StandardConstructor {
+        &self.pageswap_event
+    }
+
+    /// Returns the `Element` constructor.
+    ///
+    /// More information:
+    ///  - [Element API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-element
+    #[inline]
+    #[must_use]
+    pub const fn element(&self) -> &StandardConstructor {
+        &self.element
+    }
+
+    pub const fn selection(&self) -> &StandardConstructor {
+        &self.selection
     }
 
     /// Returns the `WeakRef` constructor.
