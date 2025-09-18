@@ -177,6 +177,7 @@ pub struct StandardConstructors {
     pageswap_event: StandardConstructor,
     element: StandardConstructor,
     selection: StandardConstructor,
+    range: StandardConstructor,
     console: StandardConstructor,
     blob: StandardConstructor,
     weak_ref: StandardConstructor,
@@ -283,6 +284,7 @@ impl Default for StandardConstructors {
             pageswap_event: StandardConstructor::default(),
             element: StandardConstructor::default(),
             selection: StandardConstructor::default(),
+            range: StandardConstructor::default(),
             console: StandardConstructor::default(),
             blob: StandardConstructor::default(),
             weak_ref: StandardConstructor::default(),
@@ -964,6 +966,9 @@ impl StandardConstructors {
 
     pub const fn selection(&self) -> &StandardConstructor {
         &self.selection
+    }
+    pub const fn range(&self) -> &StandardConstructor {
+        &self.range
     }
 
     /// Returns the `WeakRef` constructor.

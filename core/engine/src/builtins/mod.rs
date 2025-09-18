@@ -13,6 +13,8 @@ pub mod history;
 pub mod pageswap_event;
 pub mod element;
 pub mod selection;
+pub mod frame_selection;
+pub mod range;
 pub mod fetch;
 pub mod console;
 pub mod timers;
@@ -95,6 +97,7 @@ pub(crate) use self::{
     pageswap_event::PageSwapEvent,
     element::Element,
     selection::Selection,
+    range::Range,
     console::Console,
     blob::Blob,
     reflect::Reflect,
@@ -296,6 +299,7 @@ impl Realm {
         PageSwapEvent::init(self);
         Element::init(self);
         Selection::init(self);
+        Range::init(self);
         Fetch::init(self);
         Console::init(self);
         Blob::init(self);
