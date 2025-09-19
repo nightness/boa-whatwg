@@ -1267,6 +1267,18 @@ pub struct IntrinsicObjects {
     /// [`%parseInt%`](https://tc39.es/ecma262/#sec-parseint-string-radix)
     parse_int: JsFunction,
 
+    /// [`%setTimeout%`](https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-settimeout)
+    set_timeout: JsFunction,
+
+    /// [`%setInterval%`](https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-setinterval)
+    set_interval: JsFunction,
+
+    /// [`%clearTimeout%`](https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-cleartimeout)
+    clear_timeout: JsFunction,
+
+    /// [`%clearInterval%`](https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-clearinterval)
+    clear_interval: JsFunction,
+
     /// [`%escape%`](https://tc39.es/ecma262/#sec-escape-string)
     #[cfg(feature = "annex-b")]
     escape: JsFunction,
@@ -1322,6 +1334,10 @@ impl IntrinsicObjects {
             is_nan: JsFunction::empty_intrinsic_function(false),
             parse_float: JsFunction::empty_intrinsic_function(false),
             parse_int: JsFunction::empty_intrinsic_function(false),
+            set_timeout: JsFunction::empty_intrinsic_function(false),
+            set_interval: JsFunction::empty_intrinsic_function(false),
+            clear_timeout: JsFunction::empty_intrinsic_function(false),
+            clear_interval: JsFunction::empty_intrinsic_function(false),
             #[cfg(feature = "annex-b")]
             escape: JsFunction::empty_intrinsic_function(false),
             #[cfg(feature = "annex-b")]
@@ -1485,6 +1501,42 @@ impl IntrinsicObjects {
     #[must_use]
     pub fn parse_int(&self) -> JsFunction {
         self.parse_int.clone()
+    }
+
+    /// Gets the [`%setTimeout%`][spec] intrinsic function.
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-settimeout
+    #[inline]
+    #[must_use]
+    pub fn set_timeout(&self) -> JsFunction {
+        self.set_timeout.clone()
+    }
+
+    /// Gets the [`%setInterval%`][spec] intrinsic function.
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-setinterval
+    #[inline]
+    #[must_use]
+    pub fn set_interval(&self) -> JsFunction {
+        self.set_interval.clone()
+    }
+
+    /// Gets the [`%clearTimeout%`][spec] intrinsic function.
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-cleartimeout
+    #[inline]
+    #[must_use]
+    pub fn clear_timeout(&self) -> JsFunction {
+        self.clear_timeout.clone()
+    }
+
+    /// Gets the [`%clearInterval%`][spec] intrinsic function.
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-clearinterval
+    #[inline]
+    #[must_use]
+    pub fn clear_interval(&self) -> JsFunction {
+        self.clear_interval.clone()
     }
 
     /// Gets the [`%escape%`][spec] intrinsic function.

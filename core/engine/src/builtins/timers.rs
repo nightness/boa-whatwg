@@ -9,11 +9,12 @@
 mod tests;
 
 use crate::{
-    builtins::{IntrinsicObject, BuiltInBuilder, BuiltInObject},
+    builtins::{BuiltInBuilder, BuiltInObject, IntrinsicObject},
     object::JsObject,
     value::JsValue,
     Context, JsResult, js_string,
-    realm::Realm, JsString,
+    JsString,
+    realm::Realm,
     context::intrinsics::Intrinsics
 };
 use std::sync::{Arc, Mutex};
@@ -68,7 +69,7 @@ impl IntrinsicObject for SetTimeout {
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
-        intrinsics.constructors().function().constructor()
+        intrinsics.objects().set_timeout().into()
     }
 }
 
@@ -85,7 +86,7 @@ impl IntrinsicObject for SetInterval {
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
-        intrinsics.constructors().function().constructor()
+        intrinsics.objects().set_interval().into()
     }
 }
 
@@ -102,7 +103,7 @@ impl IntrinsicObject for ClearTimeout {
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
-        intrinsics.constructors().function().constructor()
+        intrinsics.objects().clear_timeout().into()
     }
 }
 
@@ -119,7 +120,7 @@ impl IntrinsicObject for ClearInterval {
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
-        intrinsics.constructors().function().constructor()
+        intrinsics.objects().clear_interval().into()
     }
 }
 
@@ -203,14 +204,8 @@ fn schedule_timer(
         timers.insert(timer_id, timer_info);
     }
 
-    // For now, just log that timer was scheduled
-    // In a real implementation, this would integrate with an event loop
-    if repeating {
-        println!("Scheduled interval timer {} with delay {}ms", timer_id, delay);
-    } else {
-        println!("Scheduled timeout timer {} with delay {}ms", timer_id, delay);
-    }
-
+    // Timer scheduled successfully - return the ID
+    eprintln!("Timer returning ID: {} as JsValue::Number", timer_id);
     Ok(JsValue::from(timer_id))
 }
 

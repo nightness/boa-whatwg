@@ -447,6 +447,7 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<WebSocket>(context)?;
     global_binding::<Console>(context)?;
     global_binding::<Blob>(context)?;
+    global_binding::<Range>(context)?;
     global_binding::<SetTimeout>(context)?;
     global_binding::<SetInterval>(context)?;
     global_binding::<ClearTimeout>(context)?;
