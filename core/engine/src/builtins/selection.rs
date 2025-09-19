@@ -239,6 +239,12 @@ impl IntrinsicObject for Selection {
             .method(collapse, js_string!("collapse"), 2)
             .method(modify, js_string!("modify"), 3)
             .method(selection_to_string, js_string!("toString"), 0)
+            .method(collapse_to_start, js_string!("collapseToStart"), 0)
+            .method(collapse_to_end, js_string!("collapseToEnd"), 0)
+            .method(extend, js_string!("extend"), 2)
+            .method(select_all_children, js_string!("selectAllChildren"), 1)
+            .method(delete_from_document, js_string!("deleteFromDocument"), 0)
+            .method(contains_node, js_string!("containsNode"), 2)
             .build();
     }
 
@@ -646,5 +652,147 @@ fn selection_to_string(this: &JsValue, _args: &[JsValue], _context: &mut Context
         Ok(JsValue::from(js_string!(text)))
     } else {
         Ok(JsValue::from(js_string!("")))
+    }
+}
+
+/// Collapse the selection to the start of the first range.
+fn collapse_to_start(this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Selection method called on non-object")
+    })?;
+
+    if let Some(mut selection_data) = this_obj.downcast_mut::<SelectionData>() {
+        if let Some(anchor) = selection_data.get_anchor_node() {
+            let offset = selection_data.get_anchor_offset();
+            selection_data.set_selection(
+                Some(anchor.clone()),
+                offset,
+                Some(anchor),
+                offset,
+                false
+            )?;
+        }
+        println!("Selection.collapseToStart called - delegated to FrameSelection");
+    }
+
+    Ok(JsValue::undefined())
+}
+
+/// Collapse the selection to the end of the last range.
+fn collapse_to_end(this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Selection method called on non-object")
+    })?;
+
+    if let Some(mut selection_data) = this_obj.downcast_mut::<SelectionData>() {
+        if let Some(focus) = selection_data.get_focus_node() {
+            let offset = selection_data.get_focus_offset();
+            selection_data.set_selection(
+                Some(focus.clone()),
+                offset,
+                Some(focus),
+                offset,
+                false
+            )?;
+        }
+        println!("Selection.collapseToEnd called - delegated to FrameSelection");
+    }
+
+    Ok(JsValue::undefined())
+}
+
+/// Extend the selection to the specified node and offset.
+fn extend(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Selection method called on non-object")
+    })?;
+
+    let node = args.get_or_undefined(0);
+    let offset = match args.get_or_undefined(1).to_integer_or_infinity(context)? {
+        boa_engine::value::IntegerOrInfinity::Integer(i) => i.max(0) as u32,
+        _ => 0,
+    };
+
+    if let Some(mut selection_data) = this_obj.downcast_mut::<SelectionData>() {
+        // Keep anchor position, extend focus position
+        let anchor_node = selection_data.get_anchor_node();
+        let anchor_offset = selection_data.get_anchor_offset();
+
+        selection_data.set_selection(
+            anchor_node,
+            anchor_offset,
+            Some(node.clone()),
+            offset,
+            true // Directional
+        )?;
+        println!("Selection.extend called - delegated to FrameSelection");
+    }
+
+    Ok(JsValue::undefined())
+}
+
+/// Select all children of the specified node.
+fn select_all_children(this: &JsValue, args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Selection method called on non-object")
+    })?;
+
+    let node = args.get_or_undefined(0);
+
+    if let Some(mut selection_data) = this_obj.downcast_mut::<SelectionData>() {
+        // In a real implementation, this would select all children of the node
+        // For now, create a selection from start to end of the node
+        selection_data.set_selection(
+            Some(node.clone()),
+            0,
+            Some(node.clone()),
+            1, // Placeholder: would be actual child count
+            false
+        )?;
+        println!("Selection.selectAllChildren called - delegated to FrameSelection");
+    }
+
+    Ok(JsValue::undefined())
+}
+
+/// Delete the contents of the selection from the document.
+fn delete_from_document(this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Selection method called on non-object")
+    })?;
+
+    if let Some(mut selection_data) = this_obj.downcast_mut::<SelectionData>() {
+        // In a real implementation, this would delete the selected content from the DOM
+        // For now, just clear the selection
+        selection_data.clear_selection()?;
+        println!("Selection.deleteFromDocument called - delegated to FrameSelection");
+    }
+
+    Ok(JsValue::undefined())
+}
+
+/// Check if the selection contains the specified node.
+fn contains_node(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Selection method called on non-object")
+    })?;
+
+    let node = args.get_or_undefined(0);
+    let allow_partial_containment = args.get_or_undefined(1).to_boolean();
+
+    if let Some(selection_data) = this_obj.downcast_ref::<SelectionData>() {
+        // In a real implementation, this would check if the node is contained in any range
+        // For now, do a simple check against anchor/focus nodes
+        let contains = if let (Some(anchor), Some(focus)) = (selection_data.get_anchor_node(), selection_data.get_focus_node()) {
+            // Simplified containment check
+            node.strict_equals(&anchor) || node.strict_equals(&focus) || allow_partial_containment
+        } else {
+            false
+        };
+
+        println!("Selection.containsNode called with allowPartialContainment: {} - delegated to FrameSelection", allow_partial_containment);
+        Ok(JsValue::from(contains))
+    } else {
+        Ok(JsValue::from(false))
     }
 }

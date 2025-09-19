@@ -750,10 +750,11 @@ fn clone_range(this: &JsValue, _: &[JsValue], context: &mut Context) -> JsResult
 
     if let Some(range_data) = this_obj.downcast_ref::<RangeData>() {
         let cloned_data = range_data.clone_range();
-        let prototype = StandardConstructors::range(context.intrinsics().constructors()).constructor();
+        let range_constructor = StandardConstructors::range(context.intrinsics().constructors()).constructor();
+        let prototype = get_prototype_from_constructor(&range_constructor.into(), StandardConstructors::range, context)?;
         let cloned_range = JsObject::from_proto_and_data_with_shared_shape(
             context.root_shape(),
-            prototype.prototype(),
+            prototype,
             cloned_data
         );
         Ok(cloned_range.into())

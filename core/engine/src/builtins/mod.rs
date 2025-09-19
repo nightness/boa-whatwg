@@ -16,6 +16,7 @@ pub mod element;
 pub mod selection;
 pub mod frame_selection;
 pub mod range;
+pub mod event;
 pub mod css;
 pub mod fetch;
 pub mod console;
@@ -100,6 +101,7 @@ pub(crate) use self::{
     element::Element,
     selection::Selection,
     range::Range,
+    event::Event,
     console::Console,
     blob::Blob,
     reflect::Reflect,
@@ -304,6 +306,7 @@ impl Realm {
         Element::init(self);
         Selection::init(self);
         Range::init(self);
+        Event::init(self);
         Fetch::init(self);
         Console::init(self);
         Blob::init(self);
@@ -457,6 +460,7 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<Console>(context)?;
     global_binding::<Blob>(context)?;
     global_binding::<Range>(context)?;
+    global_binding::<Event>(context)?;
     global_binding::<SetTimeout>(context)?;
     global_binding::<SetInterval>(context)?;
     global_binding::<ClearTimeout>(context)?;

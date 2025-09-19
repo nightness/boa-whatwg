@@ -178,6 +178,7 @@ pub struct StandardConstructors {
     element: StandardConstructor,
     selection: StandardConstructor,
     range: StandardConstructor,
+    event: StandardConstructor,
     console: StandardConstructor,
     blob: StandardConstructor,
     weak_ref: StandardConstructor,
@@ -285,6 +286,7 @@ impl Default for StandardConstructors {
             element: StandardConstructor::default(),
             selection: StandardConstructor::default(),
             range: StandardConstructor::default(),
+            event: StandardConstructor::default(),
             console: StandardConstructor::default(),
             blob: StandardConstructor::default(),
             weak_ref: StandardConstructor::default(),
@@ -969,6 +971,9 @@ impl StandardConstructors {
     }
     pub const fn range(&self) -> &StandardConstructor {
         &self.range
+    }
+    pub const fn event(&self) -> &StandardConstructor {
+        &self.event
     }
 
     /// Returns the `WeakRef` constructor.
