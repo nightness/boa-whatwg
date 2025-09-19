@@ -3,6 +3,9 @@
 
 use proc_macro::TokenStream;
 use quote::{ToTokens, TokenStreamExt, quote};
+#[cfg(feature = "use_vfs")]
+use vfs::fs as fs;
+#[cfg(not(feature = "use_vfs"))]
 use std::fs;
 use std::path::PathBuf;
 use syn::parse::ParseStream;
