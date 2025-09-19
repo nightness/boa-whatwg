@@ -34,11 +34,31 @@ pub struct BlobData {
 
 impl IntrinsicObject for Blob {
     fn init(realm: &Realm) {
+        let get_size = BuiltInBuilder::callable(realm, get_size)
+            .name(js_string!("get size"))
+            .build();
+
+        let get_type = BuiltInBuilder::callable(realm, get_type)
+            .name(js_string!("get type"))
+            .build();
+
         let _constructor = BuiltInBuilder::from_standard_constructor::<Self>(realm)
             .method(Self::slice, js_string!("slice"), 0)
             .method(Self::stream, js_string!("stream"), 0)
             .method(Self::text, js_string!("text"), 0)
             .method(Self::array_buffer, js_string!("arrayBuffer"), 0)
+            .accessor(
+                js_string!("size"),
+                Some(get_size),
+                None,
+                crate::property::Attribute::ENUMERABLE | crate::property::Attribute::CONFIGURABLE,
+            )
+            .accessor(
+                js_string!("type"),
+                Some(get_type),
+                None,
+                crate::property::Attribute::ENUMERABLE | crate::property::Attribute::CONFIGURABLE,
+            )
             .build();
     }
 
