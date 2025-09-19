@@ -40,13 +40,9 @@ impl DomSync {
     }
 
     fn update_document_html(&self, html: &str) {
-        eprintln!("🔥 DOM SYNC: DomSync.update_document_html called with: {}", html);
         if let Some(updater) = self.document_html_updater.lock().unwrap().as_ref() {
-            eprintln!("🔥 DOM SYNC: Calling updater function");
             updater(html);
-            eprintln!("🔥 DOM SYNC: Updater function completed");
         } else {
-            eprintln!("🔥 DOM SYNC: No updater function set!");
         }
     }
 }
@@ -536,16 +532,13 @@ impl ElementData {
     /// This is CRITICAL for querySelector to find dynamically added content
     fn update_document_html_content(&self) {
         // Debug: Print that this method is being called
-        eprintln!("🔥 DOM SYNC: update_document_html_content called!");
 
         // Regenerate full HTML from current DOM state
         let serialized_html = self.serialize_to_html();
-        eprintln!("🔥 DOM SYNC: serialized HTML: {}", serialized_html);
 
         // Find document in global scope and update its HTML content
         // This uses a global static to communicate between Element and Document
         GLOBAL_DOM_SYNC.get_or_init(|| DomSync::new()).update_document_html(&serialized_html);
-        eprintln!("🔥 DOM SYNC: Called update_document_html");
     }
 
     /// Serialize this element and all children to HTML string
@@ -884,7 +877,6 @@ fn get_inner_html(this: &JsValue, _args: &[JsValue], _context: &mut Context) -> 
 
 /// `Element.prototype.innerHTML` setter
 fn set_inner_html(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
-    eprintln!("🔥 DOM SYNC: set_inner_html JS function called!");
 
     let this_obj = this.as_object().ok_or_else(|| {
         JsNativeError::typ().with_message("Element.prototype.innerHTML setter called on non-object")
@@ -892,12 +884,9 @@ fn set_inner_html(this: &JsValue, args: &[JsValue], context: &mut Context) -> Js
 
     if let Some(element) = this_obj.downcast_ref::<ElementData>() {
         let html = args.get_or_undefined(0).to_string(context)?;
-        eprintln!("🔥 DOM SYNC: About to call element.set_inner_html with: {}", html.to_std_string_escaped());
         element.set_inner_html(html.to_std_string_escaped());
-        eprintln!("🔥 DOM SYNC: element.set_inner_html completed");
         Ok(JsValue::undefined())
     } else {
-        eprintln!("🔥 DOM SYNC: ERROR - not an ElementData object!");
         Err(JsNativeError::typ()
             .with_message("Element.prototype.innerHTML setter called on non-Element object")
             .into())
