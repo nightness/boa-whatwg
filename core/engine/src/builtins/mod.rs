@@ -398,6 +398,7 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<OrdinaryObject>(context)?;
     global_binding::<Math>(context)?;
     global_binding::<Json>(context)?;
+    global_binding::<css::Css>(context)?;
     global_binding::<Array>(context)?;
     global_binding::<Proxy>(context)?;
     global_binding::<ArrayBuffer>(context)?;

@@ -241,8 +241,13 @@ fn create_dom_structure(parsed: ParsedDocument, context: &mut Context) -> JsResu
         for (index, element) in parsed.elements.iter().enumerate() {
             let element_obj = create_element_object(element, context)?;
             array_obj.define_property_or_throw(
-                index.into(),
-                element_obj,
+                index,
+                PropertyDescriptorBuilder::new()
+                    .value(element_obj)
+                    .writable(true)
+                    .enumerable(true)
+                    .configurable(true)
+                    .build(),
                 context,
             )?;
         }
@@ -250,20 +255,35 @@ fn create_dom_structure(parsed: ParsedDocument, context: &mut Context) -> JsResu
         // Set array length
         array_obj.define_property_or_throw(
             js_string!("length"),
-            JsValue::from(parsed.elements.len()),
+            PropertyDescriptorBuilder::new()
+                .value(JsValue::from(parsed.elements.len()))
+                .writable(false)
+                .enumerable(false)
+                .configurable(false)
+                .build(),
             context,
         )?;
 
         // Add shadow DOM info
         array_obj.define_property_or_throw(
             js_string!("__shadow_roots"),
-            JsValue::from(parsed.shadow_roots.len()),
+            PropertyDescriptorBuilder::new()
+                .value(JsValue::from(parsed.shadow_roots.len()))
+                .writable(false)
+                .enumerable(false)
+                .configurable(false)
+                .build(),
             context,
         )?;
 
         array_obj.define_property_or_throw(
             js_string!("__has_declarative_shadow_dom"),
-            JsValue::from(parsed.has_declarative_shadow_dom),
+            PropertyDescriptorBuilder::new()
+                .value(JsValue::from(parsed.has_declarative_shadow_dom))
+                .writable(false)
+                .enumerable(false)
+                .configurable(false)
+                .build(),
             context,
         )?;
     }
@@ -280,19 +300,34 @@ fn create_element_object(element: &ParsedElement, context: &mut Context) -> JsRe
         let obj = &element_obj;
         obj.define_property_or_throw(
             js_string!("tagName"),
-            js_string!(element.tag_name.clone()),
+            PropertyDescriptorBuilder::new()
+                .value(js_string!(element.tag_name.clone()))
+                .writable(false)
+                .enumerable(true)
+                .configurable(false)
+                .build(),
             context,
         )?;
 
         obj.define_property_or_throw(
             js_string!("textContent"),
-            js_string!(element.text_content.clone()),
+            PropertyDescriptorBuilder::new()
+                .value(js_string!(element.text_content.clone()))
+                .writable(true)
+                .enumerable(true)
+                .configurable(true)
+                .build(),
             context,
         )?;
 
         obj.define_property_or_throw(
             js_string!("attributes"),
-            create_attributes_object(&element.attributes, context)?,
+            PropertyDescriptorBuilder::new()
+                .value(create_attributes_object(&element.attributes, context)?)
+                .writable(false)
+                .enumerable(true)
+                .configurable(false)
+                .build(),
             context,
         )?;
     }
@@ -310,7 +345,12 @@ fn create_attributes_object(attributes: &HashMap<String, String>, context: &mut 
         for (key, value) in attributes {
             obj.define_property_or_throw(
                 js_string!(key.clone()),
-                js_string!(value.clone()),
+                PropertyDescriptorBuilder::new()
+                    .value(js_string!(value.clone()))
+                    .writable(true)
+                    .enumerable(true)
+                    .configurable(true)
+                    .build(),
                 context,
             )?;
         }
@@ -324,7 +364,12 @@ fn setup_shadow_dom_support(document_obj: &JsObject, context: &mut Context) -> J
     // Add shadow DOM capability marker
     document_obj.define_property_or_throw(
         js_string!("__supports_shadow_dom"),
-        JsValue::from(true),
+        PropertyDescriptorBuilder::new()
+            .value(JsValue::from(true))
+            .writable(false)
+            .enumerable(false)
+            .configurable(false)
+            .build(),
         context,
     )?;
 

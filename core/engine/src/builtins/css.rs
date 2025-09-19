@@ -11,7 +11,7 @@ use crate::{
     object::JsObject,
     string::StaticJsStrings,
     value::JsValue,
-    Context, JsData, JsNativeError, JsResult, js_string, JsString,
+    Context, JsArgs, JsData, JsNativeError, JsResult, js_string, JsString,
 };
 use boa_gc::{Finalize, Trace};
 use std::collections::HashMap;
@@ -73,15 +73,15 @@ impl IntrinsicObject for Css {
 
         // Create CSS object
         BuiltInBuilder::with_intrinsic::<Self>(realm)
-            .static_method(supports_func, js_string!("supports"), 1)
-            .static_method(register_property_func, js_string!("registerProperty"), 1)
-            .static_method(number_func, js_string!("number"), 1)
-            .static_method(px_func, js_string!("px"), 1)
-            .static_method(percent_func, js_string!("percent"), 1)
-            .static_method(em_func, js_string!("em"), 1)
-            .static_method(rem_func, js_string!("rem"), 1)
-            .static_method(vw_func, js_string!("vw"), 1)
-            .static_method(vh_func, js_string!("vh"), 1)
+            .static_method(supports, js_string!("supports"), 1)
+            .static_method(register_property, js_string!("registerProperty"), 1)
+            .static_method(css_number, js_string!("number"), 1)
+            .static_method(css_px, js_string!("px"), 1)
+            .static_method(css_percent, js_string!("percent"), 1)
+            .static_method(css_em, js_string!("em"), 1)
+            .static_method(css_rem, js_string!("rem"), 1)
+            .static_method(css_vw, js_string!("vw"), 1)
+            .static_method(css_vh, js_string!("vh"), 1)
             .build();
 
         // Add CSS Houdini worklets
@@ -235,24 +235,11 @@ impl CssNumericValueData {
     }
 }
 
-/// Create a CSS worklet object
-fn create_worklet(realm: &crate::realm::Realm, name: &str) -> JsValue {
-    let worklet_data = CssWorkletData::new(name.to_string());
-    let worklet_obj = JsObject::from_proto_and_data_with_shared_shape(
-        realm.context().root_shape(),
-        realm.intrinsics().objects().object_prototype(),
-        worklet_data,
-    );
-
-    let add_module_func = BuiltInBuilder::callable(realm, worklet_add_module)
-        .name(js_string!("addModule"))
-        .length(1)
-        .build();
-
-    // Note: Property definition would need a context, which isn't available here
-    // This would be done during realm initialization
-
-    worklet_obj.into()
+/// Create a CSS worklet object (simplified for realm initialization)
+fn create_worklet(_realm: &crate::realm::Realm, _name: &str) -> JsValue {
+    // Simplified worklet creation - worklet functionality would be set up
+    // during context initialization with proper method binding
+    JsValue::null()
 }
 
 /// `CSS.supports(property, value)` implementation
@@ -267,7 +254,7 @@ fn supports(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResul
             let value = declaration_str[colon_pos + 1..].trim();
 
             let supported = CssPropertySupport::is_property_supported(property, Some(value));
-            return Ok(JsValue::Boolean(supported));
+            return Ok(JsValue::from(supported));
         }
     } else if args.len() >= 2 {
         // CSS.supports("display", "flex") format
@@ -283,10 +270,10 @@ fn supports(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResul
             CssPropertySupport::is_property_supported(&property_str, Some(&value_str))
         };
 
-        return Ok(JsValue::Boolean(supported));
+        return Ok(JsValue::from(supported));
     }
 
-    Ok(JsValue::Boolean(false))
+    Ok(JsValue::from(false))
 }
 
 /// `CSS.registerProperty(definition)` implementation
@@ -309,7 +296,8 @@ fn css_number(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsRes
     let numeric_data = CssNumericValueData::new(value, String::new());
 
     let numeric_obj = JsObject::from_proto_and_data_with_shared_shape(
-        context.intrinsics().objects().object_prototype(),
+        context.root_shape(),
+        context.intrinsics().constructors().object().prototype(),
         numeric_data,
     );
 
@@ -322,7 +310,8 @@ fn css_px(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<
     let numeric_data = CssNumericValueData::new(value, "px".to_string());
 
     let numeric_obj = JsObject::from_proto_and_data_with_shared_shape(
-        context.intrinsics().objects().object_prototype(),
+        context.root_shape(),
+        context.intrinsics().constructors().object().prototype(),
         numeric_data,
     );
 
@@ -335,7 +324,8 @@ fn css_percent(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsRe
     let numeric_data = CssNumericValueData::new(value, "%".to_string());
 
     let numeric_obj = JsObject::from_proto_and_data_with_shared_shape(
-        context.intrinsics().objects().object_prototype(),
+        context.root_shape(),
+        context.intrinsics().constructors().object().prototype(),
         numeric_data,
     );
 
@@ -348,7 +338,8 @@ fn css_em(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<
     let numeric_data = CssNumericValueData::new(value, "em".to_string());
 
     let numeric_obj = JsObject::from_proto_and_data_with_shared_shape(
-        context.intrinsics().objects().object_prototype(),
+        context.root_shape(),
+        context.intrinsics().constructors().object().prototype(),
         numeric_data,
     );
 
@@ -361,7 +352,8 @@ fn css_rem(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult
     let numeric_data = CssNumericValueData::new(value, "rem".to_string());
 
     let numeric_obj = JsObject::from_proto_and_data_with_shared_shape(
-        context.intrinsics().objects().object_prototype(),
+        context.root_shape(),
+        context.intrinsics().constructors().object().prototype(),
         numeric_data,
     );
 
@@ -374,7 +366,8 @@ fn css_vw(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<
     let numeric_data = CssNumericValueData::new(value, "vw".to_string());
 
     let numeric_obj = JsObject::from_proto_and_data_with_shared_shape(
-        context.intrinsics().objects().object_prototype(),
+        context.root_shape(),
+        context.intrinsics().constructors().object().prototype(),
         numeric_data,
     );
 
@@ -387,7 +380,8 @@ fn css_vh(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<
     let numeric_data = CssNumericValueData::new(value, "vh".to_string());
 
     let numeric_obj = JsObject::from_proto_and_data_with_shared_shape(
-        context.intrinsics().objects().object_prototype(),
+        context.root_shape(),
+        context.intrinsics().constructors().object().prototype(),
         numeric_data,
     );
 
@@ -400,7 +394,7 @@ fn worklet_add_module(this: &JsValue, args: &[JsValue], context: &mut Context) -
         JsNativeError::typ().with_message("addModule called on non-object")
     })?;
 
-    if let Some(worklet_data) = this_obj.downcast_mut::<CssWorkletData>() {
+    if let Some(mut worklet_data) = this_obj.downcast_mut::<CssWorkletData>() {
         let module_url = args.get_or_undefined(0).to_string(context)?;
         let module_url_str = module_url.to_std_string_escaped();
 
