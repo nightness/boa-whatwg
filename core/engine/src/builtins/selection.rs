@@ -236,6 +236,9 @@ impl IntrinsicObject for Selection {
             .method(get_range_at, js_string!("getRangeAt"), 1)
             .method(get_composed_ranges, js_string!("getComposedRanges"), 1)
             .method(set_base_and_extent, js_string!("setBaseAndExtent"), 4)
+            .method(collapse, js_string!("collapse"), 2)
+            .method(modify, js_string!("modify"), 3)
+            .method(selection_to_string, js_string!("toString"), 0)
             .build();
     }
 
@@ -577,4 +580,71 @@ fn set_base_and_extent(this: &JsValue, args: &[JsValue], context: &mut Context) 
     }
 
     Ok(JsValue::undefined())
+}
+
+/// Collapse the selection to a single point.
+fn collapse(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Selection method called on non-object")
+    })?;
+
+    let node = args.get_or_undefined(0);
+    let offset = match args.get_or_undefined(1).to_integer_or_infinity(context)? {
+        boa_engine::value::IntegerOrInfinity::Integer(i) => i.max(0) as u32,
+        _ => 0,
+    };
+
+    if let Some(mut selection_data) = this_obj.downcast_mut::<SelectionData>() {
+        selection_data.set_selection(
+            Some(node.clone()),
+            offset,
+            Some(node.clone()),
+            offset,
+            false
+        )?;
+        println!("Selection.collapse called - delegated to FrameSelection");
+    }
+
+    Ok(JsValue::undefined())
+}
+
+/// Modify the selection by extending it in a specified direction.
+fn modify(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Selection method called on non-object")
+    })?;
+
+    let alter = args.get_or_undefined(0).to_string(context)?;
+    let direction = args.get_or_undefined(1).to_string(context)?;
+    let granularity = args.get_or_undefined(2).to_string(context)?;
+
+    if let Some(selection_data) = this_obj.downcast_ref::<SelectionData>() {
+        // In a real implementation, this would use FrameSelection to modify the selection
+        // based on the alter ("move", "extend"), direction ("forward", "backward", etc.),
+        // and granularity ("character", "word", "sentence", "line", etc.)
+        println!("Selection.modify called with alter: '{}', direction: '{}', granularity: '{}'",
+                alter.to_std_string_escaped(), direction.to_std_string_escaped(), granularity.to_std_string_escaped());
+    }
+
+    Ok(JsValue::undefined())
+}
+
+/// Convert the selection to a string representation.
+fn selection_to_string(this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Selection method called on non-object")
+    })?;
+
+    if let Some(selection_data) = this_obj.downcast_ref::<SelectionData>() {
+        // In a real implementation, this would extract the text content from the selected ranges
+        // For now, return empty string for collapsed selections or placeholder text
+        let text = if selection_data.is_collapsed() {
+            ""
+        } else {
+            "selected text" // Placeholder - would extract actual text from DOM
+        };
+        Ok(JsValue::from(js_string!(text)))
+    } else {
+        Ok(JsValue::from(js_string!("")))
+    }
 }
