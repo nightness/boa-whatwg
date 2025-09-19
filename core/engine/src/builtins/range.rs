@@ -16,6 +16,9 @@ use boa_engine::{
     object::internal_methods::get_prototype_from_constructor,
 };
 
+#[cfg(test)]
+mod tests;
+
 /// How to position the boundary point in relation to the node
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RangeHowType {

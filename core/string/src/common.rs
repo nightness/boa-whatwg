@@ -143,6 +143,7 @@ impl StaticJsStrings {
         (JSON, "JSON"),
         (MAP, "Map"),
         (MATH, "Math"),
+        (CSS, "CSS"),
         (NUMBER, "Number"),
         (NUMBER_FORMAT, "NumberFormat"),
         (IS_FINITE, "isFinite"),

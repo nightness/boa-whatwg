@@ -1290,6 +1290,9 @@ pub struct IntrinsicObjects {
     /// [`%Temporal.Now%`](https://tc39.es/proposal-temporal/#sec-temporal-now-object)
     #[cfg(feature = "temporal")]
     now: JsObject,
+
+    /// [`%CSS%`](https://drafts.csswg.org/css-typed-om-1/#css-namespace)
+    css: JsObject,
 }
 
 impl IntrinsicObjects {
@@ -1331,6 +1334,7 @@ impl IntrinsicObjects {
             temporal: JsObject::default(),
             #[cfg(feature = "temporal")]
             now: JsObject::default(),
+            css: JsObject::default(),
         })
     }
 
@@ -1436,6 +1440,15 @@ impl IntrinsicObjects {
     #[must_use]
     pub fn json(&self) -> JsObject {
         self.json.clone()
+    }
+
+    /// Gets the [`%CSS%`][spec] intrinsic object.
+    ///
+    /// [spec]: https://drafts.csswg.org/css-typed-om-1/#css-namespace
+    #[inline]
+    #[must_use]
+    pub fn css(&self) -> JsObject {
+        self.css.clone()
     }
 
     /// Gets the [`%isFinite%`][spec] intrinsic function.

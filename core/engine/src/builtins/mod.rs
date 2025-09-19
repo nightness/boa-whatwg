@@ -15,6 +15,7 @@ pub mod element;
 pub mod selection;
 pub mod frame_selection;
 pub mod range;
+pub mod css;
 pub mod fetch;
 pub mod console;
 pub mod timers;
@@ -238,6 +239,7 @@ impl Realm {
         ForInIterator::init(self);
         Math::init(self);
         Json::init(self);
+        css::Css::init(self);
         Array::init(self);
         ArrayIterator::init(self);
         Proxy::init(self);

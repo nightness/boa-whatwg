@@ -18,6 +18,9 @@ use boa_engine::{
 
 use super::frame_selection::{FrameSelection, SelectionOptions};
 
+#[cfg(test)]
+mod tests;
+
 /// The Selection object represents the text selection made by the user.
 /// This is the JavaScript API layer that delegates to FrameSelection for internal state.
 #[derive(Debug, Clone, Trace, Finalize, JsData)]

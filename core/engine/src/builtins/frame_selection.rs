@@ -13,6 +13,9 @@ use boa_gc::{Finalize, Trace};
 use boa_engine::{JsValue, JsResult};
 use std::sync::{Arc, Mutex};
 
+#[cfg(test)]
+mod tests;
+
 /// Selection granularity levels (matches Chrome's implementation)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SelectionGranularity {
