@@ -414,5 +414,7 @@ pub fn setup_parse_html_unsafe(realm: &crate::realm::Realm) {
         .build();
 
     // Note: Property definition would need context, so we'll handle this during realm setup
-    println!("Document.parseHTMLUnsafe static method prepared for registration");
+    if std::env::var("THALORA_SILENT").is_err() {
+        eprintln!("Document.parseHTMLUnsafe static method prepared for registration");
+    }
 }
