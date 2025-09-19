@@ -10,7 +10,7 @@ use crate::{
     string::StaticJsStrings,
     value::JsValue,
     Context, JsArgs, JsData, JsNativeError, JsResult, js_string,
-    JsString, realm::Realm, property::{Attribute, PropertyDescriptorBuilder}
+    JsString, realm::Realm, property::Attribute
 };
 use boa_gc::{Finalize, Trace};
 use std::collections::HashMap;

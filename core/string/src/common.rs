@@ -295,6 +295,7 @@ const RAW_STATICS: &[JsStr<'static>] = &[
     JsStr::latin1("GeneratorFunction".as_bytes()),
     JsStr::latin1("Intl".as_bytes()),
     JsStr::latin1("Collator".as_bytes()),
+    JsStr::latin1("CSS".as_bytes()),
     JsStr::latin1("ListFormat".as_bytes()),
     JsStr::latin1("Locale".as_bytes()),
     JsStr::latin1("PluralRules".as_bytes()),

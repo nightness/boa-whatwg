@@ -297,7 +297,7 @@ impl Realm {
         WebSocketStream::init(self);
         AbortController::init(self);
         Document::init(self);
-        document_parse::setup_parse_html_unsafe(self)?;
+        document_parse::setup_parse_html_unsafe(self);
         Window::init(self);
         History::init(self);
         PageSwapEvent::init(self);

@@ -215,8 +215,8 @@ impl CssWorkletData {
     }
 
     fn add_module(&mut self, module_url: String) {
-        self.modules.push(module_url);
         println!("{} module added: {}", self.name, module_url);
+        self.modules.push(module_url);
     }
 }
 
