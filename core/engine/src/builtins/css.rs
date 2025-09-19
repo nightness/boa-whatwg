@@ -12,6 +12,7 @@ use crate::{
     string::StaticJsStrings,
     value::JsValue,
     Context, JsArgs, JsData, JsNativeError, JsResult, js_string, JsString,
+    property::PropertyDescriptorBuilder,
 };
 use boa_gc::{Finalize, Trace};
 use std::collections::HashMap;
@@ -84,11 +85,8 @@ impl IntrinsicObject for Css {
             .static_method(css_vh, js_string!("vh"), 1)
             .build();
 
-        // Add CSS Houdini worklets
-        let css_obj = realm.intrinsics().objects().css();
-
-        // CSS Houdini worklets are added during realm initialization
-        // This is done in the realm initialization process
+        // CSS Houdini worklets are added during global binding setup
+        // The worklet objects will be created when the CSS object is bound globally
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
@@ -180,6 +178,11 @@ impl CssPropertySupport {
     }
 
     fn is_selector_supported(selector: &str) -> bool {
+        // Check for invalid selector patterns first
+        if selector.starts_with(":::") {
+            return false;
+        }
+
         let supported_selectors = [
             ":hover", ":focus", ":active", ":visited", ":link",
             ":first-child", ":last-child", ":nth-child", ":nth-of-type",
@@ -193,7 +196,14 @@ impl CssPropertySupport {
             ":only-child", ":only-of-type"
         ];
 
-        supported_selectors.iter().any(|s| selector.contains(s))
+        // Use exact match or proper parsing instead of contains
+        supported_selectors.iter().any(|s| {
+            selector == *s ||
+            selector.starts_with(&format!("{}(", s)) || // e.g., ":nth-child(2n)"
+            selector.contains(&format!(" {}", s)) ||     // e.g., "div :hover"
+            selector.contains(&format!("{} ", s)) ||     // e.g., ":hover span"
+            selector.ends_with(s)                        // e.g., "div:hover"
+        })
     }
 }
 
@@ -207,14 +217,14 @@ pub struct CssWorkletData {
 }
 
 impl CssWorkletData {
-    fn new(name: String) -> Self {
+    pub fn new(name: String) -> Self {
         Self {
             name,
             modules: Vec::new(),
         }
     }
 
-    fn add_module(&mut self, module_url: String) {
+    pub fn add_module(&mut self, module_url: String) {
         println!("{} module added: {}", self.name, module_url);
         self.modules.push(module_url);
     }
@@ -235,11 +245,84 @@ impl CssNumericValueData {
     }
 }
 
-/// Create a CSS worklet object (simplified for realm initialization)
-fn create_worklet(_realm: &crate::realm::Realm, _name: &str) -> JsValue {
-    // Simplified worklet creation - worklet functionality would be set up
-    // during context initialization with proper method binding
-    JsValue::null()
+/// Setup CSS Houdini worklets on the global CSS object
+pub fn setup_css_worklets(context: &mut Context) -> JsResult<()> {
+    let global_object = context.global_object();
+
+    // Get the CSS object that was just bound globally
+    let css_obj = global_object.get(js_string!("CSS"), context)?;
+
+    if let Some(css_object) = css_obj.as_object() {
+        // Create paintWorklet
+        let paint_worklet = create_worklet_object(context, "paintWorklet")?;
+        css_object.define_property_or_throw(
+            js_string!("paintWorklet"),
+            PropertyDescriptorBuilder::new()
+                .value(paint_worklet)
+                .writable(false)
+                .enumerable(true)
+                .configurable(false)
+                .build(),
+            context,
+        )?;
+
+        // Create layoutWorklet
+        let layout_worklet = create_worklet_object(context, "layoutWorklet")?;
+        css_object.define_property_or_throw(
+            js_string!("layoutWorklet"),
+            PropertyDescriptorBuilder::new()
+                .value(layout_worklet)
+                .writable(false)
+                .enumerable(true)
+                .configurable(false)
+                .build(),
+            context,
+        )?;
+
+        // Create animationWorklet
+        let animation_worklet = create_worklet_object(context, "animationWorklet")?;
+        css_object.define_property_or_throw(
+            js_string!("animationWorklet"),
+            PropertyDescriptorBuilder::new()
+                .value(animation_worklet)
+                .writable(false)
+                .enumerable(true)
+                .configurable(false)
+                .build(),
+            context,
+        )?;
+    }
+
+    Ok(())
+}
+
+/// Create a CSS worklet object with addModule method
+fn create_worklet_object(context: &mut Context, name: &str) -> JsResult<JsValue> {
+    let worklet_data = CssWorkletData::new(name.to_string());
+    let worklet_obj = JsObject::from_proto_and_data_with_shared_shape(
+        context.root_shape(),
+        context.intrinsics().constructors().object().prototype(),
+        worklet_data,
+    );
+
+    // Add addModule method
+    let add_module_func = BuiltInBuilder::callable(context.realm(), worklet_add_module)
+        .name(js_string!("addModule"))
+        .length(1)
+        .build();
+
+    worklet_obj.define_property_or_throw(
+        js_string!("addModule"),
+        PropertyDescriptorBuilder::new()
+            .value(add_module_func)
+            .writable(false)
+            .enumerable(true)
+            .configurable(false)
+            .build(),
+        context,
+    )?;
+
+    Ok(worklet_obj.into())
 }
 
 /// `CSS.supports(property, value)` implementation
