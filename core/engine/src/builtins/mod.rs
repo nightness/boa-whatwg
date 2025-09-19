@@ -8,6 +8,7 @@ pub mod readable_stream;
 pub mod websocket;
 pub mod websocket_stream;
 pub mod document;
+pub mod document_parse;
 pub mod window;
 pub mod history;
 pub mod pageswap_event;
@@ -296,6 +297,7 @@ impl Realm {
         WebSocketStream::init(self);
         AbortController::init(self);
         Document::init(self);
+        document_parse::setup_parse_html_unsafe(self)?;
         Window::init(self);
         History::init(self);
         PageSwapEvent::init(self);
