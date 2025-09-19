@@ -45,8 +45,6 @@ pub fn parse_html_unsafe(_this: &JsValue, args: &[JsValue], context: &mut Contex
     let options = args.get_or_undefined(1);
     let sanitizer_config = parse_sanitizer_options(options, context)?;
 
-    println!("parseHTMLUnsafe: Parsing HTML ({} chars) with sanitizer: {:?}",
-             html_string.len(), sanitizer_config.allow_shadow_dom);
 
     // Create a new Document instance
     let document_constructor = context.intrinsics().constructors().document().constructor();
@@ -97,7 +95,6 @@ pub fn parse_html_unsafe(_this: &JsValue, args: &[JsValue], context: &mut Contex
             setup_shadow_dom_support(document_obj, context)?;
         }
 
-        println!("parseHTMLUnsafe: Successfully created Document with parsed DOM tree");
     }
 
     Ok(new_document.into())
@@ -160,8 +157,6 @@ fn parse_html_with_sanitizer(html: &str, config: &SanitizerConfig) -> JsResult<P
     // Parse regular elements
     parsed.elements = parse_elements(html, config);
 
-    println!("parseHTMLUnsafe: Parsed {} elements, {} shadow roots",
-             parsed.elements.len(), parsed.shadow_roots.len());
 
     Ok(parsed)
 }
@@ -376,7 +371,6 @@ fn setup_shadow_dom_support(document_obj: &JsObject, context: &mut Context) -> J
     // TODO: Add shadow DOM creation methods
     // This would include attachShadow, querySelector for shadow content, etc.
 
-    println!("parseHTMLUnsafe: Shadow DOM support enabled");
     Ok(())
 }
 
@@ -414,7 +408,4 @@ pub fn setup_parse_html_unsafe(realm: &crate::realm::Realm) {
         .build();
 
     // Note: Property definition would need context, so we'll handle this during realm setup
-    if std::env::var("THALORA_SILENT").is_err() {
-        eprintln!("Document.parseHTMLUnsafe static method prepared for registration");
-    }
 }
