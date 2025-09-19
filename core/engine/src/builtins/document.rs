@@ -140,17 +140,30 @@ pub struct DocumentData {
     elements: Arc<Mutex<HashMap<String, JsObject>>>,
     #[unsafe_ignore_trace]
     event_listeners: Arc<Mutex<HashMap<String, Vec<JsValue>>>>,
+    #[unsafe_ignore_trace]
+    html_content: Arc<Mutex<String>>,
 }
 
 impl DocumentData {
     fn new() -> Self {
-        Self {
+        let doc_data = Self {
             ready_state: Arc::new(Mutex::new("loading".to_string())),
             url: Arc::new(Mutex::new("about:blank".to_string())),
             title: Arc::new(Mutex::new("".to_string())),
             elements: Arc::new(Mutex::new(HashMap::new())),
             event_listeners: Arc::new(Mutex::new(HashMap::new())),
-        }
+            html_content: Arc::new(Mutex::new("".to_string())),
+        };
+
+        // Set up DOM sync bridge - connect Element changes to Document updates
+        use crate::builtins::element::GLOBAL_DOM_SYNC;
+        let html_content_ref = doc_data.html_content.clone();
+        GLOBAL_DOM_SYNC.get_or_init(|| crate::builtins::element::DomSync::new())
+            .set_updater(Box::new(move |html| {
+                *html_content_ref.lock().unwrap() = html.to_string();
+            }));
+
+        doc_data
     }
 
     pub fn set_ready_state(&self, state: &str) {
@@ -163,6 +176,18 @@ impl DocumentData {
 
     pub fn set_title(&self, title: &str) {
         *self.title.lock().unwrap() = title.to_string();
+    }
+
+    pub fn set_html_content(&self, html: &str) {
+        *self.html_content.lock().unwrap() = html.to_string();
+    }
+
+    pub fn update_html_from_dom(&self, html: &str) {
+        *self.html_content.lock().unwrap() = html.to_string();
+    }
+
+    pub fn get_html_content(&self) -> String {
+        self.html_content.lock().unwrap().clone()
     }
 
     pub fn get_ready_state(&self) -> String {
@@ -406,11 +431,18 @@ fn query_selector(this: &JsValue, args: &[JsValue], context: &mut Context) -> Js
         JsNativeError::typ().with_message("Document.prototype.querySelector called on non-object")
     })?;
 
-    if let Some(_document) = this_obj.downcast_ref::<DocumentData>() {
-        let _selector = args.get_or_undefined(0).to_string(context)?;
+    if let Some(document) = this_obj.downcast_ref::<DocumentData>() {
+        let selector = args.get_or_undefined(0).to_string(context)?;
+        let selector_str = selector.to_std_string_escaped();
 
-        // Simple implementation - return null for now
-        // Real implementation would parse CSS selectors and search DOM tree
+        // Get the HTML content from the document
+        let html_content = document.get_html_content();
+
+        // Use real DOM implementation with scraper library
+        if let Some(element) = create_real_element_from_html(context, &selector_str, &html_content)? {
+            return Ok(element.into());
+        }
+
         Ok(JsValue::null())
     } else {
         Err(JsNativeError::typ()
@@ -419,19 +451,126 @@ fn query_selector(this: &JsValue, args: &[JsValue], context: &mut Context) -> Js
     }
 }
 
+/// Real DOM element creation using scraper library and actual HTML content
+fn create_real_element_from_html(context: &mut Context, selector: &str, html_content: &str) -> JsResult<Option<JsObject>> {
+    // Use the scraper crate to parse real HTML and find elements
+    let document = scraper::Html::parse_document(html_content);
+
+    if let Ok(css_selector) = scraper::Selector::parse(selector) {
+        if let Some(element_ref) = document.select(&css_selector).next() {
+            let element_obj = context.intrinsics().constructors().object().constructor();
+
+            // Set real properties from the actual HTML element
+            let tag_name = element_ref.value().name().to_uppercase();
+            element_obj.set(js_string!("tagName"), js_string!(tag_name.clone()), false, context)?;
+            element_obj.set(js_string!("nodeType"), 1, false, context)?; // ELEMENT_NODE
+
+            // Set real attributes from the HTML
+            for (attr_name, attr_value) in element_ref.value().attrs() {
+                element_obj.set(js_string!(attr_name), js_string!(attr_value), false, context)?;
+            }
+
+            // Set text content
+            let text_content: String = element_ref.text().collect();
+            element_obj.set(js_string!("textContent"), js_string!(text_content), false, context)?;
+
+            // Set innerHTML
+            let inner_html = element_ref.inner_html();
+            element_obj.set(js_string!("innerHTML"), js_string!(inner_html), false, context)?;
+
+            // Add common DOM methods
+            let focus_fn = context.intrinsics().constructors().function().constructor();
+            element_obj.set(js_string!("focus"), focus_fn, false, context)?;
+
+            let click_fn = context.intrinsics().constructors().function().constructor();
+            element_obj.set(js_string!("click"), click_fn, false, context)?;
+
+            // Add value property for input elements
+            if tag_name == "INPUT" {
+                if let Some(value) = element_ref.value().attr("value") {
+                    element_obj.set(js_string!("value"), js_string!(value), false, context)?;
+                } else {
+                    element_obj.set(js_string!("value"), js_string!(""), false, context)?;
+                }
+            }
+
+            return Ok(Some(element_obj));
+        }
+    }
+
+    Ok(None)
+}
+
+/// Real DOM elements creation using scraper library to find all matching elements
+fn create_all_real_elements_from_html(context: &mut Context, selector: &str, html_content: &str) -> JsResult<Vec<JsValue>> {
+    let mut elements = Vec::new();
+
+    // Use the scraper crate to parse real HTML and find all elements
+    let document = scraper::Html::parse_document(html_content);
+
+    if let Ok(css_selector) = scraper::Selector::parse(selector) {
+        for element_ref in document.select(&css_selector) {
+            let element_obj = context.intrinsics().constructors().object().constructor();
+
+            // Set real properties from the actual HTML element
+            let tag_name = element_ref.value().name().to_uppercase();
+            element_obj.set(js_string!("tagName"), js_string!(tag_name.clone()), false, context)?;
+            element_obj.set(js_string!("nodeType"), 1, false, context)?; // ELEMENT_NODE
+
+            // Set real attributes from the HTML
+            for (attr_name, attr_value) in element_ref.value().attrs() {
+                element_obj.set(js_string!(attr_name), js_string!(attr_value), false, context)?;
+            }
+
+            // Set text content
+            let text_content: String = element_ref.text().collect();
+            element_obj.set(js_string!("textContent"), js_string!(text_content), false, context)?;
+
+            // Set innerHTML
+            let inner_html = element_ref.inner_html();
+            element_obj.set(js_string!("innerHTML"), js_string!(inner_html), false, context)?;
+
+            // Add common DOM methods
+            let focus_fn = context.intrinsics().constructors().function().constructor();
+            element_obj.set(js_string!("focus"), focus_fn, false, context)?;
+
+            let click_fn = context.intrinsics().constructors().function().constructor();
+            element_obj.set(js_string!("click"), click_fn, false, context)?;
+
+            // Add value property for input elements
+            if tag_name == "INPUT" {
+                if let Some(value) = element_ref.value().attr("value") {
+                    element_obj.set(js_string!("value"), js_string!(value), false, context)?;
+                } else {
+                    element_obj.set(js_string!("value"), js_string!(""), false, context)?;
+                }
+            }
+
+            elements.push(element_obj.into());
+        }
+    }
+
+    Ok(elements)
+}
+
 /// `Document.prototype.querySelectorAll(selector)`
 fn query_selector_all(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
     let this_obj = this.as_object().ok_or_else(|| {
         JsNativeError::typ().with_message("Document.prototype.querySelectorAll called on non-object")
     })?;
 
-    if let Some(_document) = this_obj.downcast_ref::<DocumentData>() {
-        let _selector = args.get_or_undefined(0).to_string(context)?;
+    if let Some(document) = this_obj.downcast_ref::<DocumentData>() {
+        let selector = args.get_or_undefined(0).to_string(context)?;
+        let selector_str = selector.to_std_string_escaped();
 
-        // Simple implementation - return empty array for now
-        // Real implementation would parse CSS selectors and search DOM tree
+        // Get the HTML content from the document
+        let html_content = document.get_html_content();
+
+        // Use real DOM implementation with scraper library to find all matching elements
+        let elements = create_all_real_elements_from_html(context, &selector_str, &html_content)?;
+
         use crate::builtins::Array;
-        let array = Array::create_array_from_list(vec![], context);
+        let array = Array::create_array_from_list(elements, context);
         Ok(array.into())
     } else {
         Err(JsNativeError::typ()

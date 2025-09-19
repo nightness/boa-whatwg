@@ -15,9 +15,36 @@ use crate::{
 use boa_gc::{Finalize, Trace};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, atomic::{AtomicU32, Ordering}};
+use std::sync::OnceLock;
 
 /// Global node ID counter for unique DOM node identification
 static NODE_ID_COUNTER: AtomicU32 = AtomicU32::new(1);
+
+/// Global DOM synchronization for updating document HTML content
+pub static GLOBAL_DOM_SYNC: OnceLock<DomSync> = OnceLock::new();
+
+/// Bridge between Element DOM changes and Document HTML content
+pub struct DomSync {
+    document_html_updater: Mutex<Option<Box<dyn Fn(&str) + Send + Sync>>>,
+}
+
+impl DomSync {
+    pub fn new() -> Self {
+        Self {
+            document_html_updater: Mutex::new(None),
+        }
+    }
+
+    pub fn set_updater(&self, updater: Box<dyn Fn(&str) + Send + Sync>) {
+        *self.document_html_updater.lock().unwrap() = Some(updater);
+    }
+
+    fn update_document_html(&self, html: &str) {
+        if let Some(updater) = self.document_html_updater.lock().unwrap().as_ref() {
+            updater(html);
+        }
+    }
+}
 
 /// JavaScript `Element` builtin implementation.
 #[derive(Debug, Copy, Clone)]
@@ -405,6 +432,9 @@ impl ElementData {
 
         // Recompute text content from parsed children
         self.recompute_text_content();
+
+        // CRITICAL: Update the document's HTML content so querySelector can find changes
+        self.update_document_html_content();
     }
 
     /// Parse HTML string and create child elements
@@ -495,6 +525,36 @@ impl ElementData {
         }
 
         *self.text_content.lock().unwrap() = text_parts.join("");
+    }
+
+    /// Update the document's HTML content to reflect DOM changes
+    /// This is CRITICAL for querySelector to find dynamically added content
+    fn update_document_html_content(&self) {
+        // Regenerate full HTML from current DOM state
+        let serialized_html = self.serialize_to_html();
+
+        // Find document in global scope and update its HTML content
+        // This uses a global static to communicate between Element and Document
+        GLOBAL_DOM_SYNC.get_or_init(|| DomSync::new()).update_document_html(&serialized_html);
+    }
+
+    /// Serialize this element and all children to HTML string
+    fn serialize_to_html(&self) -> String {
+        let tag_name = self.get_tag_name();
+        let mut html = format!("<{}", tag_name);
+
+        // Add attributes
+        let attributes = self.attributes.lock().unwrap();
+        for (name, value) in attributes.iter() {
+            html.push_str(&format!(" {}=\"{}\"", name, value));
+        }
+        html.push('>');
+
+        // Add inner HTML
+        html.push_str(&self.get_inner_html());
+
+        html.push_str(&format!("</{}>", tag_name));
+        html
     }
 
     pub fn get_text_content(&self) -> String {
