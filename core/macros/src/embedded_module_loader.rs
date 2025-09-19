@@ -131,7 +131,12 @@ fn find_all_files(dir: &mut fs::ReadDir, root: &PathBuf) -> Vec<PathBuf> {
         };
 
         let path = entry.path();
-        if path.is_dir() {
+        let is_dir = match fs::metadata(&path) {
+            Ok(m) => m.is_dir(),
+            Err(_) => false,
+        };
+
+        if is_dir {
             let Ok(mut sub_dir) = fs::read_dir(&path) else {
                 continue;
             };
