@@ -146,6 +146,8 @@ pub struct DocumentData {
 
 impl DocumentData {
     fn new() -> Self {
+        eprintln!("🔥 DOCUMENT: Creating NEW DocumentData instance!");
+
         let doc_data = Self {
             ready_state: Arc::new(Mutex::new("loading".to_string())),
             url: Arc::new(Mutex::new("about:blank".to_string())),
@@ -160,9 +162,11 @@ impl DocumentData {
         let html_content_ref = doc_data.html_content.clone();
         GLOBAL_DOM_SYNC.get_or_init(|| crate::builtins::element::DomSync::new())
             .set_updater(Box::new(move |html| {
+                eprintln!("🔥 DOCUMENT: DOM sync updater called with: {}", html);
                 *html_content_ref.lock().unwrap() = html.to_string();
             }));
 
+        eprintln!("🔥 DOCUMENT: DocumentData creation complete, DOM sync bridge set up");
         doc_data
     }
 
@@ -179,6 +183,7 @@ impl DocumentData {
     }
 
     pub fn set_html_content(&self, html: &str) {
+        eprintln!("🔥 DOCUMENT: set_html_content called with: {}", html);
         *self.html_content.lock().unwrap() = html.to_string();
     }
 
@@ -297,20 +302,11 @@ fn get_body(this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResul
         if let Some(body) = document.get_element("body") {
             Ok(body.into())
         } else {
-            // Create a new body element
-            let body_element = JsObject::default();
-
-            // Add tagName property
-            body_element.define_property_or_throw(
-                js_string!("tagName"),
-                PropertyDescriptorBuilder::new()
-                    .configurable(false)
-                    .enumerable(true)
-                    .writable(false)
-                    .value(JsString::from("BODY"))
-                    .build(),
-                context,
-            )?;
+            // Create a new body element using the Element constructor
+            eprintln!("🔥 DOCUMENT: Creating new body element using Element constructor");
+            let element_constructor = context.intrinsics().constructors().element().constructor();
+            let body_element = element_constructor.construct(&[], None, context)?;
+            eprintln!("🔥 DOCUMENT: Body element created successfully");
 
             document.add_element("body".to_string(), body_element.clone());
             Ok(body_element.into())
@@ -427,6 +423,8 @@ fn get_element_by_id(this: &JsValue, args: &[JsValue], context: &mut Context) ->
 
 /// `Document.prototype.querySelector(selector)`
 fn query_selector(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    eprintln!("🔥 DOCUMENT: querySelector called!");
+
     let this_obj = this.as_object().ok_or_else(|| {
         JsNativeError::typ().with_message("Document.prototype.querySelector called on non-object")
     })?;
@@ -434,17 +432,22 @@ fn query_selector(this: &JsValue, args: &[JsValue], context: &mut Context) -> Js
     if let Some(document) = this_obj.downcast_ref::<DocumentData>() {
         let selector = args.get_or_undefined(0).to_string(context)?;
         let selector_str = selector.to_std_string_escaped();
+        eprintln!("🔥 DOCUMENT: querySelector selector: {}", selector_str);
 
         // Get the HTML content from the document
         let html_content = document.get_html_content();
+        eprintln!("🔥 DOCUMENT: querySelector HTML content: {}", html_content);
 
         // Use real DOM implementation with scraper library
         if let Some(element) = create_real_element_from_html(context, &selector_str, &html_content)? {
+            eprintln!("🔥 DOCUMENT: querySelector found element!");
             return Ok(element.into());
         }
 
+        eprintln!("🔥 DOCUMENT: querySelector found NO element");
         Ok(JsValue::null())
     } else {
+        eprintln!("🔥 DOCUMENT: querySelector called on non-Document object!");
         Err(JsNativeError::typ()
             .with_message("Document.prototype.querySelector called on non-Document object")
             .into())
