@@ -374,6 +374,15 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
             .configurable(true),
         context,
     )?;
+    global_object.define_property_or_throw(
+        js_string!("window"),
+        PropertyDescriptor::builder()
+            .value(context.realm().global_this().clone())
+            .writable(true)
+            .enumerable(false)
+            .configurable(true),
+        context,
+    )?;
     let restricted = PropertyDescriptor::builder()
         .writable(false)
         .enumerable(false)
@@ -461,6 +470,22 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<WeakSet>(context)?;
     global_binding::<Atomics>(context)?;
 
+    // Add getSelection method to global object (window.getSelection)
+    let get_selection_func = BuiltInBuilder::callable(context.realm(), window_get_selection)
+        .name(js_string!("getSelection"))
+        .length(0)
+        .build();
+
+    global_object.define_property_or_throw(
+        js_string!("getSelection"),
+        PropertyDescriptor::builder()
+            .value(get_selection_func)
+            .writable(true)
+            .enumerable(true)
+            .configurable(true),
+        context,
+    )?;
+
     #[cfg(feature = "annex-b")]
     {
         global_binding::<escape::Escape>(context)?;
@@ -476,4 +501,16 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     }
 
     Ok(())
+}
+
+/// `window.getSelection()` global function
+fn window_get_selection(
+    _this: &JsValue,
+    _args: &[JsValue],
+    context: &mut Context,
+) -> JsResult<JsValue> {
+    // Create a new Selection object
+    let selection_constructor = context.intrinsics().constructors().selection().constructor();
+    let selection_obj = selection_constructor.construct(&[], None, context)?;
+    Ok(selection_obj.into())
 }
