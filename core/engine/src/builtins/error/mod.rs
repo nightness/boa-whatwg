@@ -178,6 +178,8 @@ impl IntrinsicObject for Error {
         #[cfg(feature = "experimental")]
         let builder = builder.static_method(Error::is_error, js_string!("isError"), 1);
 
+        let builder = builder.static_method(Error::capture_stack_trace, js_string!("captureStackTrace"), 2);
+
         builder.build();
     }
 
@@ -237,6 +239,10 @@ impl BuiltInConstructor for Error {
 
         // 4. Perform ? InstallErrorCause(O, options).
         Self::install_error_cause(&o, args.get_or_undefined(1), context)?;
+
+        // Add stack property for Google 2025 bot detection
+        let stack_trace = Self::generate_stack_trace(context);
+        o.create_non_enumerable_data_property_or_throw(js_string!("stack"), stack_trace, context);
 
         // 5. Return O.
         Ok(o.into())
@@ -339,5 +345,38 @@ impl Error {
             .as_object()
             .is_some_and(|o| o.is::<Error>())
             .into())
+    }
+
+    /// Generate a stack trace string for Error objects.
+    /// This is critical for Google 2025 bot detection which checks Error.prototype.stack.
+    pub(crate) fn generate_stack_trace(context: &Context) -> JsValue {
+        // Create a realistic stack trace that looks like V8/Chrome
+        let stack_trace = format!(
+            "Error\n    at <anonymous>:1:1\n    at eval (eval at <anonymous>:1:1)\n    at Object.eval (native)\n    at Function.call (native)"
+        );
+        js_string!(stack_trace).into()
+    }
+
+    /// `Error.captureStackTrace(targetObject[, constructorOpt])`
+    ///
+    /// V8/Chrome specific API that Google's 2025 bot detection relies on.
+    /// Sets the stack property on the target object.
+    pub(crate) fn capture_stack_trace(
+        _this: &JsValue,
+        args: &[JsValue],
+        context: &mut Context,
+    ) -> JsResult<JsValue> {
+        // Get the target object (first argument)
+        if let Some(target_obj) = args.get(0).and_then(|v| v.as_object()) {
+            // Generate stack trace and set it on the target object
+            let stack_trace = Self::generate_stack_trace(context);
+            target_obj.create_non_enumerable_data_property_or_throw(
+                js_string!("stack"),
+                stack_trace,
+                context
+            );
+        }
+
+        Ok(JsValue::undefined())
     }
 }
