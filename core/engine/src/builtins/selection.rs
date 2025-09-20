@@ -132,7 +132,7 @@ impl SelectionData {
 
         // TODO: Extract range boundaries and update FrameSelection
         // For now, just add to cached ranges
-        println!("Selection.addRange called - delegating to FrameSelection");
+        eprintln!("Selection.addRange called - delegating to FrameSelection");
         Ok(())
     }
 
@@ -400,7 +400,7 @@ fn add_range(this: &JsValue, args: &[JsValue], _: &mut Context) -> JsResult<JsVa
 
     if let Some(mut selection_data) = this_obj.downcast_mut::<SelectionData>() {
         selection_data.add_range(range.clone())?;
-        println!("Selection.addRange called - delegated to FrameSelection");
+        eprintln!("Selection.addRange called - delegated to FrameSelection");
     }
 
     Ok(JsValue::undefined())
@@ -414,7 +414,7 @@ fn remove_all_ranges(this: &JsValue, _: &[JsValue], _: &mut Context) -> JsResult
 
     if let Some(mut selection_data) = this_obj.downcast_mut::<SelectionData>() {
         selection_data.clear_selection()?;
-        println!("Selection.removeAllRanges called - delegated to FrameSelection");
+        eprintln!("Selection.removeAllRanges called - delegated to FrameSelection");
     }
 
     Ok(JsValue::undefined())
@@ -519,7 +519,7 @@ fn get_composed_ranges(this: &JsValue, args: &[JsValue], context: &mut Context) 
                         // 3. Create Range objects for each shadow tree segment
                         // 4. Handle slotted content and distribution
 
-                        println!("Selection.getComposedRanges: Processing {} shadow roots",
+                        eprintln!("Selection.getComposedRanges: Processing {} shadow roots",
                                 shadow_roots_obj.get(js_string!("length"), context)?
                                     .to_integer_or_infinity(context)?
                                     .as_integer().unwrap_or(0));
@@ -546,7 +546,7 @@ fn get_composed_ranges(this: &JsValue, args: &[JsValue], context: &mut Context) 
             array.set(i, range, true, context)?;
         }
 
-        println!("Selection.getComposedRanges: Returned {} ranges with Shadow DOM support",
+        eprintln!("Selection.getComposedRanges: Returned {} ranges with Shadow DOM support",
                 array.get(js_string!("length"), context)?
                     .to_integer_or_infinity(context)?
                     .as_integer().unwrap_or(0));
@@ -582,7 +582,7 @@ fn set_base_and_extent(this: &JsValue, args: &[JsValue], context: &mut Context) 
             focus_offset,
             false // Default to non-directional
         )?;
-        println!("Selection.setBaseAndExtent called - delegated to FrameSelection");
+        eprintln!("Selection.setBaseAndExtent called - delegated to FrameSelection");
     }
 
     Ok(JsValue::undefined())
@@ -608,7 +608,7 @@ fn collapse(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult
             offset,
             false
         )?;
-        println!("Selection.collapse called - delegated to FrameSelection");
+        eprintln!("Selection.collapse called - delegated to FrameSelection");
     }
 
     Ok(JsValue::undefined())
@@ -628,7 +628,7 @@ fn modify(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<J
         // In a real implementation, this would use FrameSelection to modify the selection
         // based on the alter ("move", "extend"), direction ("forward", "backward", etc.),
         // and granularity ("character", "word", "sentence", "line", etc.)
-        println!("Selection.modify called with alter: '{}', direction: '{}', granularity: '{}'",
+        eprintln!("Selection.modify called with alter: '{}', direction: '{}', granularity: '{}'",
                 alter.to_std_string_escaped(), direction.to_std_string_escaped(), granularity.to_std_string_escaped());
     }
 
@@ -672,7 +672,7 @@ fn collapse_to_start(this: &JsValue, _args: &[JsValue], _context: &mut Context) 
                 false
             )?;
         }
-        println!("Selection.collapseToStart called - delegated to FrameSelection");
+        eprintln!("Selection.collapseToStart called - delegated to FrameSelection");
     }
 
     Ok(JsValue::undefined())
@@ -695,7 +695,7 @@ fn collapse_to_end(this: &JsValue, _args: &[JsValue], _context: &mut Context) ->
                 false
             )?;
         }
-        println!("Selection.collapseToEnd called - delegated to FrameSelection");
+        eprintln!("Selection.collapseToEnd called - delegated to FrameSelection");
     }
 
     Ok(JsValue::undefined())
@@ -725,7 +725,7 @@ fn extend(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<J
             offset,
             true // Directional
         )?;
-        println!("Selection.extend called - delegated to FrameSelection");
+        eprintln!("Selection.extend called - delegated to FrameSelection");
     }
 
     Ok(JsValue::undefined())
@@ -749,7 +749,7 @@ fn select_all_children(this: &JsValue, args: &[JsValue], _context: &mut Context)
             1, // Placeholder: would be actual child count
             false
         )?;
-        println!("Selection.selectAllChildren called - delegated to FrameSelection");
+        eprintln!("Selection.selectAllChildren called - delegated to FrameSelection");
     }
 
     Ok(JsValue::undefined())
@@ -765,7 +765,7 @@ fn delete_from_document(this: &JsValue, _args: &[JsValue], _context: &mut Contex
         // In a real implementation, this would delete the selected content from the DOM
         // For now, just clear the selection
         selection_data.clear_selection()?;
-        println!("Selection.deleteFromDocument called - delegated to FrameSelection");
+        eprintln!("Selection.deleteFromDocument called - delegated to FrameSelection");
     }
 
     Ok(JsValue::undefined())
@@ -790,7 +790,7 @@ fn contains_node(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsR
             false
         };
 
-        println!("Selection.containsNode called with allowPartialContainment: {} - delegated to FrameSelection", allow_partial_containment);
+        eprintln!("Selection.containsNode called with allowPartialContainment: {} - delegated to FrameSelection", allow_partial_containment);
         Ok(JsValue::from(contains))
     } else {
         Ok(JsValue::from(false))

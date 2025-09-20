@@ -6,13 +6,15 @@
 //! This implements the complete XMLHttpRequest interface with real HTTP networking
 
 use crate::{
-    builtins::{IntrinsicObject, BuiltInBuilder, BuiltInObject},
-    object::{JsObject, PROTOTYPE},
+    builtins::{IntrinsicObject, BuiltInBuilder, BuiltInObject, BuiltInConstructor},
+    context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
+    object::{internal_methods::get_prototype_from_constructor, JsObject},
+    string::StaticJsStrings,
     value::JsValue,
     Context, JsArgs, JsNativeError, JsResult, js_string,
     realm::Realm, JsData, JsString,
-    context::intrinsics::Intrinsics,
-    job::NativeAsyncJob
+    job::NativeAsyncJob,
+    property::Attribute
 };
 use boa_gc::{Finalize, Trace};
 use std::collections::HashMap;
@@ -25,67 +27,23 @@ pub(crate) struct XmlHttpRequest;
 
 impl IntrinsicObject for XmlHttpRequest {
     fn init(realm: &Realm) {
-        let constructor = BuiltInBuilder::callable_with_intrinsic::<Self>(realm, Self::constructor)
-            .name(js_string!("XMLHttpRequest"))
-            .length(0)
+        BuiltInBuilder::from_standard_constructor::<Self>(realm)
+            .method(Self::open, js_string!("open"), 2)
+            .method(Self::send, js_string!("send"), 0)
+            .method(Self::set_request_header, js_string!("setRequestHeader"), 2)
+            .method(Self::get_response_header, js_string!("getResponseHeader"), 1)
+            .method(Self::get_all_response_headers, js_string!("getAllResponseHeaders"), 0)
+            .method(Self::abort, js_string!("abort"), 0)
+            .static_property(js_string!("UNSENT"), 0, Attribute::all())
+            .static_property(js_string!("OPENED"), 1, Attribute::all())
+            .static_property(js_string!("HEADERS_RECEIVED"), 2, Attribute::all())
+            .static_property(js_string!("LOADING"), 3, Attribute::all())
+            .static_property(js_string!("DONE"), 4, Attribute::all())
             .build();
-
-        // Add methods to prototype manually - can't use the STANDARD_CONSTRUCTOR pattern
-        // since XMLHttpRequest is not in Boa's intrinsics yet
-        let mut context = Context::default();
-        if let Ok(prototype_value) = constructor.get(js_string!("prototype"), &mut context) {
-            if let Some(prototype) = prototype_value.as_object() {
-                // Add instance methods
-                let open_fn = BuiltInBuilder::callable(realm, Self::open)
-                    .name(js_string!("open"))
-                    .length(2)
-                    .build();
-
-                let send_fn = BuiltInBuilder::callable(realm, Self::send)
-                    .name(js_string!("send"))
-                    .length(0)
-                    .build();
-
-                let set_request_header_fn = BuiltInBuilder::callable(realm, Self::set_request_header)
-                    .name(js_string!("setRequestHeader"))
-                    .length(2)
-                    .build();
-
-                let get_response_header_fn = BuiltInBuilder::callable(realm, Self::get_response_header)
-                    .name(js_string!("getResponseHeader"))
-                    .length(1)
-                    .build();
-
-                let get_all_response_headers_fn = BuiltInBuilder::callable(realm, Self::get_all_response_headers)
-                    .name(js_string!("getAllResponseHeaders"))
-                    .length(0)
-                    .build();
-
-                let abort_fn = BuiltInBuilder::callable(realm, Self::abort)
-                    .name(js_string!("abort"))
-                    .length(0)
-                    .build();
-
-                let _ = prototype.set(js_string!("open"), open_fn, false, &mut context);
-                let _ = prototype.set(js_string!("send"), send_fn, false, &mut context);
-                let _ = prototype.set(js_string!("setRequestHeader"), set_request_header_fn, false, &mut context);
-                let _ = prototype.set(js_string!("getResponseHeader"), get_response_header_fn, false, &mut context);
-                let _ = prototype.set(js_string!("getAllResponseHeaders"), get_all_response_headers_fn, false, &mut context);
-                let _ = prototype.set(js_string!("abort"), abort_fn, false, &mut context);
-
-                // Add constants
-                let _ = prototype.set(js_string!("UNSENT"), JsValue::from(0), false, &mut context);
-                let _ = prototype.set(js_string!("OPENED"), JsValue::from(1), false, &mut context);
-                let _ = prototype.set(js_string!("HEADERS_RECEIVED"), JsValue::from(2), false, &mut context);
-                let _ = prototype.set(js_string!("LOADING"), JsValue::from(3), false, &mut context);
-                let _ = prototype.set(js_string!("DONE"), JsValue::from(4), false, &mut context);
-            }
-        }
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
-        // XMLHttpRequest global constructor - get it from the global object
-        intrinsics.constructors().object().constructor()
+        Self::STANDARD_CONSTRUCTOR(intrinsics.constructors()).constructor()
     }
 }
 
@@ -93,12 +51,24 @@ impl BuiltInObject for XmlHttpRequest {
     const NAME: JsString = js_string!("XMLHttpRequest");
 }
 
-impl XmlHttpRequest {
+impl BuiltInConstructor for XmlHttpRequest {
+    const LENGTH: usize = 0;
+    const P: usize = 0;
+    const SP: usize = 0;
+
+    const STANDARD_CONSTRUCTOR: fn(&StandardConstructors) -> &StandardConstructor =
+        StandardConstructors::xmlhttprequest;
+
     fn constructor(
-        _new_target: &JsValue,
+        new_target: &JsValue,
         _args: &[JsValue],
         context: &mut Context,
     ) -> JsResult<JsValue> {
+        let prototype = get_prototype_from_constructor(
+            new_target,
+            StandardConstructors::xmlhttprequest,
+            context,
+        )?;
         // Create XMLHttpRequest object
         let xhr_data = XmlHttpRequestData {
             ready_state: 0,  // UNSENT
@@ -118,7 +88,7 @@ impl XmlHttpRequest {
 
         let xhr_obj = JsObject::from_proto_and_data_with_shared_shape(
             context.root_shape(),
-            None,
+            prototype,
             xhr_data
         );
 
@@ -147,7 +117,9 @@ impl XmlHttpRequest {
 
         Ok(xhr_obj.into())
     }
+}
 
+impl XmlHttpRequest {
     /// `XMLHttpRequest.prototype.open()` method
     fn open(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let xhr_obj = this.as_object().ok_or_else(|| {
@@ -457,31 +429,31 @@ impl XmlHttpRequest {
 
 /// Internal data for XMLHttpRequest instances
 #[derive(Debug, Trace, Finalize, JsData)]
-struct XmlHttpRequestData {
+pub struct XmlHttpRequestData {
     #[unsafe_ignore_trace]
-    ready_state: u8,
+    pub ready_state: u8,
     #[unsafe_ignore_trace]
-    response_url: String,
+    pub response_url: String,
     #[unsafe_ignore_trace]
-    status: u16,
+    pub status: u16,
     #[unsafe_ignore_trace]
-    status_text: String,
+    pub status_text: String,
     #[unsafe_ignore_trace]
-    response_text: String,
+    pub response_text: String,
     #[unsafe_ignore_trace]
-    response_xml: Option<String>,
+    pub response_xml: Option<String>,
     #[unsafe_ignore_trace]
-    response_headers: HashMap<String, String>,
+    pub response_headers: HashMap<String, String>,
     #[unsafe_ignore_trace]
-    request_method: String,
+    pub request_method: String,
     #[unsafe_ignore_trace]
-    request_url: String,
+    pub request_url: String,
     #[unsafe_ignore_trace]
-    request_headers: HashMap<String, String>,
+    pub request_headers: HashMap<String, String>,
     #[unsafe_ignore_trace]
-    is_async: bool,  // Fixed: renamed from async
+    pub is_async: bool,  // Fixed: renamed from async
     #[unsafe_ignore_trace]
-    timeout: u32,
+    pub timeout: u32,
     #[unsafe_ignore_trace]
-    with_credentials: bool,
+    pub with_credentials: bool,
 }

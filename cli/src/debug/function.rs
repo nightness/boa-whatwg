@@ -105,7 +105,7 @@ fn bytecode(_: &JsValue, args: &[JsValue], _: &mut Context) -> JsResult<JsValue>
     };
     let code = function.codeblock();
 
-    println!("{code}");
+    eprintln!("{code}");
 
     Ok(JsValue::undefined())
 }

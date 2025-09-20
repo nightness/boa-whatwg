@@ -20,6 +20,9 @@ pub mod event;
 pub mod css;
 pub mod fetch;
 pub mod xmlhttprequest;
+pub mod mutation_observer;
+pub mod intersection_observer;
+pub mod resize_observer;
 pub mod console;
 pub mod timers;
 pub mod blob;
@@ -106,6 +109,9 @@ pub(crate) use self::{
     console::Console,
     blob::Blob,
     xmlhttprequest::XmlHttpRequest,
+    mutation_observer::MutationObserver,
+    intersection_observer::IntersectionObserver,
+    resize_observer::ResizeObserver,
     reflect::Reflect,
     regexp::RegExp,
     set::Set,
@@ -118,7 +124,7 @@ pub(crate) use self::{
 };
 
 use crate::{
-    Context, JsResult, JsString, JsValue,
+    Context, JsResult, JsString, JsValue, JsNativeError,
     builtins::{
         array::ArrayIterator,
         array_buffer::{ArrayBuffer, SharedArrayBuffer},
@@ -310,7 +316,10 @@ impl Realm {
         Range::init(self);
         Event::init(self);
         Fetch::init(self);
-        // XmlHttpRequest::init(self);  // Temporarily disabled
+        XmlHttpRequest::init(self);
+        MutationObserver::init(self);
+        IntersectionObserver::init(self);
+        ResizeObserver::init(self);
         Console::init(self);
         Blob::init(self);
         SetTimeout::init(self);
@@ -461,7 +470,10 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<ReadableStream>(context)?;
     global_binding::<WebSocket>(context)?;
     global_binding::<AbortController>(context)?;
-    // global_binding::<XmlHttpRequest>(context)?;  // Temporarily disabled
+    global_binding::<XmlHttpRequest>(context)?;
+    global_binding::<MutationObserver>(context)?;
+    global_binding::<IntersectionObserver>(context)?;
+    global_binding::<ResizeObserver>(context)?;
     global_binding::<Console>(context)?;
     global_binding::<Blob>(context)?;
     global_binding::<Range>(context)?;
@@ -523,3 +535,4 @@ fn window_get_selection(
     let selection_obj = selection_constructor.construct(&[], None, context)?;
     Ok(selection_obj.into())
 }
+

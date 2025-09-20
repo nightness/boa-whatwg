@@ -225,7 +225,7 @@ impl CssWorkletData {
     }
 
     pub fn add_module(&mut self, module_url: String) {
-        println!("{} module added: {}", self.name, module_url);
+        eprintln!("{} module added: {}", self.name, module_url);
         self.modules.push(module_url);
     }
 }
@@ -366,7 +366,7 @@ fn register_property(_this: &JsValue, args: &[JsValue], context: &mut Context) -
     if let Some(obj) = definition.as_object() {
         if let Ok(name) = obj.get(js_string!("name"), context) {
             let name_str = name.to_string(context)?;
-            println!("CSS custom property registered: {}", name_str.to_std_string_escaped());
+            eprintln!("CSS custom property registered: {}", name_str.to_std_string_escaped());
         }
     }
 

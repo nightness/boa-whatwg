@@ -264,7 +264,7 @@ impl FrameSelection {
             self.notify_selection_changed();
         }
 
-        println!("FrameSelection: Selection updated with granularity {:?}", self.granularity);
+        eprintln!("FrameSelection: Selection updated with granularity {:?}", self.granularity);
         Ok(())
     }
 
@@ -280,7 +280,7 @@ impl FrameSelection {
             self.notify_selection_changed();
         }
 
-        println!("FrameSelection: Selection cleared");
+        eprintln!("FrameSelection: Selection cleared");
         Ok(())
     }
 
@@ -293,7 +293,7 @@ impl FrameSelection {
         // TODO: Implement actual text modification logic based on DOM tree traversal
         // For now, this is a stub that demonstrates the API structure
 
-        println!("FrameSelection: Modify selection - alter: {:?}, direction: {:?}, granularity: {:?}",
+        eprintln!("FrameSelection: Modify selection - alter: {:?}, direction: {:?}, granularity: {:?}",
                 alter, direction, granularity);
 
         // Simulate selection modification
@@ -333,7 +333,7 @@ impl FrameSelection {
     pub fn set_focused(&mut self, focused: bool) {
         if self.is_focused != focused {
             self.is_focused = focused;
-            println!("FrameSelection: Focus state changed to {}", focused);
+            eprintln!("FrameSelection: Focus state changed to {}", focused);
         }
     }
 
@@ -346,7 +346,7 @@ impl FrameSelection {
     pub fn set_caret_visible(&mut self, visible: bool) {
         if self.is_caret_visible != visible {
             self.is_caret_visible = visible;
-            println!("FrameSelection: Caret visibility changed to {}", visible);
+            eprintln!("FrameSelection: Caret visibility changed to {}", visible);
         }
     }
 
@@ -354,21 +354,21 @@ impl FrameSelection {
     pub fn add_change_listener(&mut self, listener: JsValue) {
         let mut listeners = self.change_listeners.lock().unwrap();
         listeners.push(listener);
-        println!("FrameSelection: Added selection change listener");
+        eprintln!("FrameSelection: Added selection change listener");
     }
 
     /// Remove selection change listener
     pub fn remove_change_listener(&mut self, listener: &JsValue) {
         let mut listeners = self.change_listeners.lock().unwrap();
         listeners.retain(|l| l != listener);
-        println!("FrameSelection: Removed selection change listener");
+        eprintln!("FrameSelection: Removed selection change listener");
     }
 
     /// Notify all listeners of selection change
     fn notify_selection_changed(&self) {
         let listeners = self.change_listeners.lock().unwrap();
         if !listeners.is_empty() {
-            println!("FrameSelection: Notifying {} selection change listeners", listeners.len());
+            eprintln!("FrameSelection: Notifying {} selection change listeners", listeners.len());
             // TODO: Actually dispatch events to listeners
             // This would require access to the JavaScript context
         }
@@ -391,7 +391,7 @@ impl FrameSelection {
     /// Set granularity
     pub fn set_granularity(&mut self, granularity: SelectionGranularity) {
         self.granularity = granularity;
-        println!("FrameSelection: Granularity changed to {:?}", granularity);
+        eprintln!("FrameSelection: Granularity changed to {:?}", granularity);
     }
 }
 

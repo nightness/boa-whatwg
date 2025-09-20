@@ -101,7 +101,7 @@ pub(crate) fn write_json(
     };
 
     if verbose != 0 {
-        println!("Writing the results to {}...", output_dir.display());
+        eprintln!("Writing the results to {}...", output_dir.display());
     }
 
     // Write the latest results.
@@ -133,7 +133,7 @@ pub(crate) fn write_json(
     serde_json::to_writer(output, &all_results)?;
 
     if verbose != 0 {
-        println!("Results written correctly");
+        eprintln!("Results written correctly");
     }
 
     // Write the full list of features, existing features go first.
@@ -152,7 +152,7 @@ pub(crate) fn write_json(
     serde_json::to_writer(features, &all_features)?;
 
     if verbose != 0 {
-        println!("Features written correctly");
+        eprintln!("Features written correctly");
     }
 
     Ok(())
@@ -237,39 +237,39 @@ pub(crate) fn compare_results(base: &Path, new: &Path, markdown: bool) -> Result
             )
         }
 
-        println!("| Test result | main count | PR count | difference |");
-        println!("| :---------: | :----------: | :------: | :--------: |");
-        println!(
+        eprintln!("| Test result | main count | PR count | difference |");
+        eprintln!("| :---------: | :----------: | :------: | :--------: |");
+        eprintln!(
             "| Total | {} | {} | {} |",
             pretty_int(base_total),
             pretty_int(new_total),
             diff_format(total_diff),
         );
-        println!(
+        eprintln!(
             "| Passed | {} | {} | {} |",
             pretty_int(base_passed),
             pretty_int(new_passed),
             diff_format(passed_diff),
         );
-        println!(
+        eprintln!(
             "| Ignored | {} | {} | {} |",
             pretty_int(base_ignored),
             pretty_int(new_ignored),
             diff_format(ignored_diff),
         );
-        println!(
+        eprintln!(
             "| Failed | {} | {} | {} |",
             pretty_int(base_failed),
             pretty_int(new_failed),
             diff_format(failed_diff),
         );
-        println!(
+        eprintln!(
             "| Panics | {} | {} | {} |",
             pretty_int(base_panics),
             pretty_int(new_panics),
             diff_format(panic_diff),
         );
-        println!(
+        eprintln!(
             "| Conformance | {:.2}% | {:.2}% | {}{}{:.2}%{} |",
             base_conformance,
             new_conformance,
@@ -288,109 +288,109 @@ pub(crate) fn compare_results(base: &Path, new: &Path, markdown: bool) -> Result
         );
 
         if !test_diff.fixed.is_empty() {
-            println!();
-            println!(
+            eprintln!();
+            eprintln!(
                 "<details><summary><b>Fixed tests ({}):</b></summary>",
                 test_diff.fixed.len()
             );
-            println!("\n```");
+            eprintln!("\n```");
             for test in test_diff.fixed {
-                println!("{test}");
+                eprintln!("{test}");
             }
-            println!("```");
-            println!("</details>");
+            eprintln!("```");
+            eprintln!("</details>");
         }
 
         if !test_diff.broken.is_empty() {
-            println!();
-            println!(
+            eprintln!();
+            eprintln!(
                 "<details><summary><b>Broken tests ({}):</b></summary>",
                 test_diff.broken.len()
             );
-            println!("\n```");
+            eprintln!("\n```");
             for test in test_diff.broken {
-                println!("{test}");
+                eprintln!("{test}");
             }
-            println!("```");
-            println!("</details>");
+            eprintln!("```");
+            eprintln!("</details>");
         }
 
         if !test_diff.new_panics.is_empty() {
-            println!();
-            println!(
+            eprintln!();
+            eprintln!(
                 "<details><summary><b>New panics ({}):</b></summary>",
                 test_diff.new_panics.len()
             );
-            println!("\n```");
+            eprintln!("\n```");
             for test in test_diff.new_panics {
-                println!("{test}");
+                eprintln!("{test}");
             }
-            println!("```");
-            println!("</details>");
+            eprintln!("```");
+            eprintln!("</details>");
         }
 
         if !test_diff.panic_fixes.is_empty() {
-            println!();
-            println!(
+            eprintln!();
+            eprintln!(
                 "<details><summary><b>Fixed panics ({}):</b></summary>",
                 test_diff.panic_fixes.len()
             );
-            println!("\n```");
+            eprintln!("\n```");
             for test in test_diff.panic_fixes {
-                println!("{test}");
+                eprintln!("{test}");
             }
-            println!("```");
-            println!("</details>");
+            eprintln!("```");
+            eprintln!("</details>");
         }
     } else {
-        println!("Test262 conformance changes:");
-        println!("| Test result | main |    PR   | difference |");
-        println!(
+        eprintln!("Test262 conformance changes:");
+        eprintln!("| Test result | main |    PR   | difference |");
+        eprintln!(
             "|    Passed   | {base_passed:^6} | {new_passed:^5} | {:^10} |",
             base_passed - new_passed
         );
-        println!(
+        eprintln!(
             "|   Ignored   | {base_ignored:^6} | {new_ignored:^5} | {:^10} |",
             base_ignored - new_ignored
         );
-        println!(
+        eprintln!(
             "|   Failed    | {base_failed:^6} | {new_failed:^5} | {:^10} |",
             base_failed - new_failed,
         );
-        println!(
+        eprintln!(
             "|   Panics    | {base_panics:^6} | {new_panics:^5} | {:^10} |",
             base_panics - new_panics
         );
 
         if !test_diff.fixed.is_empty() {
-            println!();
-            println!("Fixed tests ({}):", test_diff.fixed.len());
+            eprintln!();
+            eprintln!("Fixed tests ({}):", test_diff.fixed.len());
             for test in test_diff.fixed {
-                println!("{test}");
+                eprintln!("{test}");
             }
         }
 
         if !test_diff.broken.is_empty() {
-            println!();
-            println!("Broken tests ({}):", test_diff.broken.len());
+            eprintln!();
+            eprintln!("Broken tests ({}):", test_diff.broken.len());
             for test in test_diff.broken {
-                println!("{test}");
+                eprintln!("{test}");
             }
         }
 
         if !test_diff.new_panics.is_empty() {
-            println!();
-            println!("New panics ({}):", test_diff.new_panics.len());
+            eprintln!();
+            eprintln!("New panics ({}):", test_diff.new_panics.len());
             for test in test_diff.new_panics {
-                println!("{test}");
+                eprintln!("{test}");
             }
         }
 
         if !test_diff.panic_fixes.is_empty() {
-            println!();
-            println!("Fixed panics ({}):", test_diff.panic_fixes.len());
+            eprintln!();
+            eprintln!("Fixed panics ({}):", test_diff.panic_fixes.len());
             for test in test_diff.panic_fixes {
-                println!("{test}");
+                eprintln!("{test}");
             }
         }
     }

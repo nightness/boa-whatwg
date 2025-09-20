@@ -73,7 +73,7 @@ impl RangeData {
         }
 
         self.update_state();
-        println!("Range: Set start to node with offset {}", offset);
+        eprintln!("Range: Set start to node with offset {}", offset);
         Ok(())
     }
 
@@ -89,7 +89,7 @@ impl RangeData {
         }
 
         self.update_state();
-        println!("Range: Set end to node with offset {}", offset);
+        eprintln!("Range: Set end to node with offset {}", offset);
         Ok(())
     }
 
@@ -101,7 +101,7 @@ impl RangeData {
         self.end_offset = end_offset;
 
         self.update_state();
-        println!("Range: Set range from offset {} to {}", start_offset, end_offset);
+        eprintln!("Range: Set range from offset {} to {}", start_offset, end_offset);
         Ok(())
     }
 
@@ -120,7 +120,7 @@ impl RangeData {
         }
 
         self.update_state();
-        println!("Range: Collapsed to {}", if to_start { "start" } else { "end" });
+        eprintln!("Range: Collapsed to {}", if to_start { "start" } else { "end" });
     }
 
     /// Select the contents of a node
@@ -134,7 +134,7 @@ impl RangeData {
         self.end_offset = 0; // Would be node.childNodes.length for element nodes
 
         self.update_state();
-        println!("Range: Selected node contents");
+        eprintln!("Range: Selected node contents");
         Ok(())
     }
 
@@ -143,7 +143,7 @@ impl RangeData {
         // For a complete implementation, we'd need to access the parent node
         // For now, we'll approximate by selecting the node's contents
         self.select_node_contents(node)?;
-        println!("Range: Selected entire node");
+        eprintln!("Range: Selected entire node");
         Ok(())
     }
 
@@ -203,7 +203,7 @@ impl RangeData {
     fn extract_contents(&mut self) -> JsResult<JsValue> {
         // In a real implementation, this would create a DocumentFragment
         // and move the range contents into it
-        println!("Range: Extracted contents (simplified implementation)");
+        eprintln!("Range: Extracted contents (simplified implementation)");
 
         // Collapse the range after extraction
         self.collapse(true);
@@ -216,7 +216,7 @@ impl RangeData {
     fn clone_contents(&self) -> JsResult<JsValue> {
         // In a real implementation, this would create a DocumentFragment
         // with cloned copies of the range contents
-        println!("Range: Cloned contents (simplified implementation)");
+        eprintln!("Range: Cloned contents (simplified implementation)");
         Ok(JsValue::null())
     }
 
@@ -224,7 +224,7 @@ impl RangeData {
     fn insert_node(&mut self, _node: JsValue) -> JsResult<()> {
         // In a real implementation, this would insert the node into the DOM
         // and update the range boundaries accordingly
-        println!("Range: Inserted node (simplified implementation)");
+        eprintln!("Range: Inserted node (simplified implementation)");
         Ok(())
     }
 
@@ -235,7 +235,7 @@ impl RangeData {
         // 2. Insert the new parent at the range position
         // 3. Append the extracted contents to the new parent
         // 4. Update the range to select the new parent's contents
-        println!("Range: Surrounded contents with new parent (simplified implementation)");
+        eprintln!("Range: Surrounded contents with new parent (simplified implementation)");
         Ok(())
     }
 
@@ -259,7 +259,7 @@ impl RangeData {
         self.end_offset = 0;
         self.collapsed = true;
         self.common_ancestor_container = None;
-        println!("Range: Detached");
+        eprintln!("Range: Detached");
     }
 }
 
@@ -680,7 +680,7 @@ fn delete_contents(this: &JsValue, _: &[JsValue], _: &mut Context) -> JsResult<J
     if let Some(mut range_data) = this_obj.downcast_mut::<RangeData>() {
         // In a real implementation, this would remove the range contents from the DOM
         range_data.collapse(true);
-        println!("Range: Deleted contents");
+        eprintln!("Range: Deleted contents");
     }
 
     Ok(JsValue::undefined())
