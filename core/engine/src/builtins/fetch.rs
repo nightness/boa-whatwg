@@ -6,12 +6,13 @@
 //! This implements the complete Fetch interface with real HTTP networking
 
 use crate::{
-    builtins::{IntrinsicObject, BuiltInBuilder, BuiltInObject},
-    object::JsObject,
+    builtins::{IntrinsicObject, BuiltInBuilder, BuiltInObject, Json},
+    object::{JsObject, builtins::JsPromise, PROTOTYPE},
     value::JsValue,
     Context, JsArgs, JsNativeError, JsResult, js_string,
     realm::Realm, JsData, JsString,
-    context::intrinsics::Intrinsics
+    context::intrinsics::Intrinsics,
+    job::NativeAsyncJob
 };
 use boa_gc::{Finalize, Trace};
 use std::collections::HashMap;
@@ -74,64 +75,94 @@ fn fetch(
         ("GET".to_string(), HashMap::new(), None)
     };
 
-    // Perform actual HTTP request
-    let client = reqwest::Client::new();
-    let mut request_builder = client.request(
-        reqwest::Method::from_bytes(method.as_bytes()).unwrap_or(reqwest::Method::GET),
-        &url_string
+    // Create a new pending Promise and return it immediately
+    let (promise, resolvers) = JsPromise::new_pending(context);
+
+    // Enqueue an async job to perform the actual HTTP request
+    context.enqueue_job(
+        NativeAsyncJob::new(async move |context| {
+            // Perform HTTP request in the background
+            let client = reqwest::Client::new();
+            let mut request_builder = client.request(
+                reqwest::Method::from_bytes(method.as_bytes()).unwrap_or(reqwest::Method::GET),
+                &url_string
+            );
+
+            // Add headers
+            for (key, value) in headers {
+                request_builder = request_builder.header(&key, &value);
+            }
+
+            // Add body if present
+            if let Some(body_content) = body {
+                request_builder = request_builder.body(body_content);
+            }
+
+            // Execute the request
+            let response_result = request_builder.send().await;
+
+            let context = &mut context.borrow_mut();
+
+            match response_result {
+                Ok(response) => {
+                    // Extract response data
+                    let status = response.status().as_u16();
+                    let status_text = response.status().canonical_reason().unwrap_or("").to_string();
+
+                    // Convert headers
+                    let mut response_headers = HashMap::new();
+                    for (name, value) in response.headers() {
+                        if let Ok(value_str) = value.to_str() {
+                            response_headers.insert(name.to_string(), value_str.to_string());
+                        }
+                    }
+
+                    // Get response body
+                    let body_result = response.text().await;
+                    match body_result {
+                        Ok(body_text) => {
+                            // Create Response object and resolve the promise
+                            let response_data = ResponseData {
+                                body: Some(body_text),
+                                status,
+                                status_text: status_text.clone(),
+                                headers: response_headers,
+                                url: url_string.clone(),
+                            };
+
+                            let response_obj = JsObject::from_proto_and_data(None, response_data);
+
+                            // Add properties to the Response object
+                            let _ = response_obj.set(js_string!("status"), JsValue::from(status), false, context);
+                            let _ = response_obj.set(js_string!("statusText"), JsValue::from(js_string!(status_text)), false, context);
+                            let _ = response_obj.set(js_string!("ok"), JsValue::from(status >= 200 && status < 300), false, context);
+                            let _ = response_obj.set(js_string!("url"), JsValue::from(js_string!(url_string)), false, context);
+
+                            resolvers.resolve.call(&JsValue::undefined(), &[response_obj.into()], context)
+                        }
+                        Err(e) => {
+                            // Reject promise with body read error
+                            let error = JsNativeError::typ()
+                                .with_message(format!("Failed to read response body: {}", e))
+                                .to_opaque(context);
+                            resolvers.reject.call(&JsValue::undefined(), &[error.into()], context)
+                        }
+                    }
+                }
+                Err(e) => {
+                    // Reject promise with network error
+                    let error = JsNativeError::typ()
+                        .with_message(format!("Fetch request failed: {}", e))
+                        .to_opaque(context);
+                    resolvers.reject.call(&JsValue::undefined(), &[error.into()], context)
+                }
+            }
+        })
+        .into(),
     );
 
-    // Add headers
-    for (key, value) in headers {
-        request_builder = request_builder.header(&key, &value);
-    }
-
-    // Add body if present
-    if let Some(body_content) = body {
-        request_builder = request_builder.body(body_content);
-    }
-
-    // Execute request asynchronously
-    // For now, we'll block on the future since Boa's fetch is synchronous
-    let response = tokio::task::block_in_place(|| {
-        tokio::runtime::Handle::current().block_on(async {
-            request_builder.send().await
-        })
-    }).map_err(|e| {
-        JsNativeError::typ().with_message(format!("Fetch request failed: {}", e))
-    })?;
-
-    // Extract response data
-    let status = response.status().as_u16();
-    let status_text = response.status().canonical_reason().unwrap_or("").to_string();
-
-    // Convert headers
-    let mut response_headers = HashMap::new();
-    for (name, value) in response.headers() {
-        if let Ok(value_str) = value.to_str() {
-            response_headers.insert(name.to_string(), value_str.to_string());
-        }
-    }
-
-    // Get response body
-    let body_text = tokio::task::block_in_place(|| {
-        tokio::runtime::Handle::current().block_on(async {
-            response.text().await
-        })
-    }).map_err(|e| {
-        JsNativeError::typ().with_message(format!("Failed to read response body: {}", e))
-    })?;
-
-    let response_data = ResponseData {
-        body: Some(body_text),
-        status,
-        status_text,
-        headers: response_headers,
-        url: url_string,
-    };
-
-    let response_obj = JsObject::from_proto_and_data(None, response_data);
-    Ok(response_obj.into())
+    // Return the Promise immediately
+    Ok(promise.into())
 }
 
 /// Parse fetch init options
@@ -264,10 +295,37 @@ pub(crate) struct Response;
 
 impl IntrinsicObject for Response {
     fn init(realm: &Realm) {
-        BuiltInBuilder::callable_with_intrinsic::<Self>(realm, Self::constructor)
+        let constructor = BuiltInBuilder::callable_with_intrinsic::<Self>(realm, Self::constructor)
             .name(js_string!("Response"))
             .length(0)
             .build();
+
+        // Add methods to the prototype
+        let mut context = Context::default();
+        let prototype = constructor
+            .get(PROTOTYPE, &mut context)
+            .expect("Response constructor should have a prototype")
+            .as_object()
+            .expect("Response prototype should be an object")
+            .clone();
+
+        let text_fn = BuiltInBuilder::callable(realm, Self::text)
+            .name(js_string!("text"))
+            .length(0)
+            .build();
+
+        let json_fn = BuiltInBuilder::callable(realm, Self::json)
+            .name(js_string!("json"))
+            .length(0)
+            .build();
+
+        prototype
+            .set(js_string!("text"), text_fn, false, &mut context)
+            .expect("Failed to set text method");
+
+        prototype
+            .set(js_string!("json"), json_fn, false, &mut context)
+            .expect("Failed to set json method");
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
@@ -342,13 +400,65 @@ impl Response {
         let response_data = ResponseData {
             body: body_text,
             status,
-            status_text,
+            status_text: status_text.clone(),
             headers,
             url: String::new(),
         };
 
         let response_obj = JsObject::from_proto_and_data(None, response_data);
+
+        // Add properties to the Response object
+        response_obj.set(js_string!("status"), JsValue::from(status), false, context)?;
+        response_obj.set(js_string!("statusText"), JsValue::from(js_string!(status_text)), false, context)?;
+        response_obj.set(js_string!("ok"), JsValue::from(status >= 200 && status < 300), false, context)?;
+        response_obj.set(js_string!("url"), JsValue::from(js_string!("")), false, context)?;
+
         Ok(response_obj.into())
+    }
+
+    /// `Response.prototype.text()` method
+    fn text(this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        let response_obj = this.as_object().ok_or_else(|| {
+            JsNativeError::typ().with_message("Response.text called on non-object")
+        })?;
+
+        let response_data = response_obj.downcast_ref::<ResponseData>().ok_or_else(|| {
+            JsNativeError::typ().with_message("Response.text called on non-Response object")
+        })?;
+
+        // Create and return a resolved Promise with the body text
+        if let Some(ref body) = response_data.body {
+            Ok(JsPromise::resolve(JsValue::from(js_string!(body.clone())), context).into())
+        } else {
+            Ok(JsPromise::resolve(JsValue::from(js_string!("")), context).into())
+        }
+    }
+
+    /// `Response.prototype.json()` method
+    fn json(this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        let response_obj = this.as_object().ok_or_else(|| {
+            JsNativeError::typ().with_message("Response.json called on non-object")
+        })?;
+
+        let response_data = response_obj.downcast_ref::<ResponseData>().ok_or_else(|| {
+            JsNativeError::typ().with_message("Response.json called on non-Response object")
+        })?;
+
+        // Parse JSON from body text
+        if let Some(ref body) = response_data.body {
+            match Json::parse(&JsValue::undefined(), &[JsValue::from(js_string!(body.clone()))], context) {
+                Ok(json_value) => Ok(JsPromise::resolve(json_value, context).into()),
+                Err(e) => {
+                    let error = JsNativeError::syntax()
+                        .with_message(format!("Failed to parse JSON: {}", e));
+                    Ok(JsPromise::reject(error, context).into())
+                }
+            }
+        } else {
+            let error = JsNativeError::typ()
+                .with_message("Response body is null");
+            Ok(JsPromise::reject(error, context).into())
+        }
     }
 }
 
