@@ -107,7 +107,7 @@ impl Console {
 
     /// `console.clear()`
     fn clear(_this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
-        print!("\x1B[2J\x1B[1;1H"); // ANSI escape codes to clear screen
+        eprint!("\x1B[2J\x1B[1;1H"); // ANSI escape codes to clear screen (to stderr)
         Ok(JsValue::undefined())
     }
 

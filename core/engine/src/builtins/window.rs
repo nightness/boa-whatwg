@@ -100,7 +100,7 @@ impl IntrinsicObject for Window {
             // Minimal, safe bypass API exposed as a window method
             .method(google_bypass, js_string!("__google_bypass"), 0)
             .build();
-        eprintln!("🚀 Window initialization completed (minimal __google_bypass installed)");
+        // eprintln!("🚀 Window initialization completed (minimal __google_bypass installed)");
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
