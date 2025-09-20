@@ -54,6 +54,8 @@
 #![allow(unused)]
 #![allow(let_underscore_drop)]
 #![allow(unexpected_cfgs)]
+#![allow(missing_debug_implementations)]
+#![allow(missing_copy_implementations)]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/boa-dev/boa/main/assets/logo_black.svg",
     html_favicon_url = "https://raw.githubusercontent.com/boa-dev/boa/main/assets/logo_black.svg"
