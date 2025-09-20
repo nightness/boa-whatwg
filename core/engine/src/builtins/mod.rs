@@ -19,6 +19,7 @@ pub mod range;
 pub mod event;
 pub mod css;
 pub mod fetch;
+pub mod xmlhttprequest;
 pub mod console;
 pub mod timers;
 pub mod blob;
@@ -104,6 +105,7 @@ pub(crate) use self::{
     event::Event,
     console::Console,
     blob::Blob,
+    xmlhttprequest::XmlHttpRequest,
     reflect::Reflect,
     regexp::RegExp,
     set::Set,
@@ -308,6 +310,7 @@ impl Realm {
         Range::init(self);
         Event::init(self);
         Fetch::init(self);
+        // XmlHttpRequest::init(self);  // Temporarily disabled
         Console::init(self);
         Blob::init(self);
         SetTimeout::init(self);
@@ -457,6 +460,8 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<Promise>(context)?;
     global_binding::<ReadableStream>(context)?;
     global_binding::<WebSocket>(context)?;
+    global_binding::<AbortController>(context)?;
+    // global_binding::<XmlHttpRequest>(context)?;  // Temporarily disabled
     global_binding::<Console>(context)?;
     global_binding::<Blob>(context)?;
     global_binding::<Range>(context)?;
