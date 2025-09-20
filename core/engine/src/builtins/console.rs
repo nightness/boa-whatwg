@@ -65,14 +65,14 @@ impl Console {
     /// `console.log(...data)`
     fn log(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let output = Self::format_args(args, context)?;
-        println!("{}", output);
+        eprintln!("{}", output);
         Ok(JsValue::undefined())
     }
 
     /// `console.info(...data)`
     fn info(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let output = Self::format_args(args, context)?;
-        println!("ℹ {}", output);
+        eprintln!("ℹ {}", output);
         Ok(JsValue::undefined())
     }
 
@@ -93,14 +93,14 @@ impl Console {
     /// `console.debug(...data)`
     fn debug(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let output = Self::format_args(args, context)?;
-        println!("🐛 {}", output);
+        eprintln!("🐛 {}", output);
         Ok(JsValue::undefined())
     }
 
     /// `console.trace(...data)`
     fn trace(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let output = Self::format_args(args, context)?;
-        println!("📍 {}", output);
+        eprintln!("📍 {}", output);
         // In real implementation, would print stack trace
         Ok(JsValue::undefined())
     }
@@ -118,7 +118,7 @@ impl Console {
         } else {
             Self::format_args(args, context)?
         };
-        println!("▼ {}", label);
+        eprintln!("▼ {}", label);
         Ok(JsValue::undefined())
     }
 
@@ -129,7 +129,7 @@ impl Console {
         } else {
             Self::format_args(args, context)?
         };
-        println!("▶ {}", label);
+        eprintln!("▶ {}", label);
         Ok(JsValue::undefined())
     }
 
@@ -142,7 +142,7 @@ impl Console {
     /// `console.time(label)`
     fn time(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let label = args.get_or_undefined(0).to_string(context)?.to_std_string_escaped();
-        println!("⏱ Timer '{}' started", label);
+        eprintln!("⏱ Timer '{}' started", label);
         // In real implementation, would store start time
         Ok(JsValue::undefined())
     }
@@ -150,7 +150,7 @@ impl Console {
     /// `console.timeEnd(label)`
     fn time_end(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let label = args.get_or_undefined(0).to_string(context)?.to_std_string_escaped();
-        println!("⏱ Timer '{}' ended", label);
+        eprintln!("⏱ Timer '{}' ended", label);
         // In real implementation, would calculate and display elapsed time
         Ok(JsValue::undefined())
     }
@@ -163,7 +163,7 @@ impl Console {
         } else {
             "".to_string()
         };
-        println!("⏱ Timer '{}': {}", label, data);
+        eprintln!("⏱ Timer '{}': {}", label, data);
         Ok(JsValue::undefined())
     }
 
@@ -174,7 +174,7 @@ impl Console {
         } else {
             args[0].to_string(context)?.to_std_string_escaped()
         };
-        println!("🔢 {}: 1", label);
+        eprintln!("🔢 {}: 1", label);
         // In real implementation, would maintain counter state
         Ok(JsValue::undefined())
     }
@@ -186,7 +186,7 @@ impl Console {
         } else {
             args[0].to_string(context)?.to_std_string_escaped()
         };
-        println!("🔢 Counter '{}' reset", label);
+        eprintln!("🔢 Counter '{}' reset", label);
         Ok(JsValue::undefined())
     }
 
@@ -207,7 +207,7 @@ impl Console {
     /// `console.table(data)`
     fn table(_this: &JsValue, args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
         let data = args.get_or_undefined(0);
-        println!("📊 Table: {}", data.display());
+        eprintln!("📊 Table: {}", data.display());
         // In real implementation, would format as table
         Ok(JsValue::undefined())
     }
@@ -215,7 +215,7 @@ impl Console {
     /// `console.dir(object)`
     fn dir(_this: &JsValue, args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
         let object = args.get_or_undefined(0);
-        println!("📂 {:#}", object.display());
+        eprintln!("📂 {:#}", object.display());
         Ok(JsValue::undefined())
     }
 

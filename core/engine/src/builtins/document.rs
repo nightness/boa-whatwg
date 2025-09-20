@@ -83,6 +83,7 @@ impl IntrinsicObject for Document {
             .method(query_selector_all, js_string!("querySelectorAll"), 1)
             .method(add_event_listener, js_string!("addEventListener"), 2)
             .method(remove_event_listener, js_string!("removeEventListener"), 2)
+            .method(dispatch_event, js_string!("dispatchEvent"), 1)
             .method(start_view_transition, js_string!("startViewTransition"), 0)
             .build();
     }
@@ -221,6 +222,13 @@ impl DocumentData {
         if let Some(listeners) = self.event_listeners.lock().unwrap().get_mut(event_type) {
             listeners.retain(|l| !JsValue::same_value(l, listener));
         }
+    }
+
+    pub fn get_event_listeners(&self, event_type: &str) -> Vec<JsValue> {
+        self.event_listeners.lock().unwrap()
+            .get(event_type)
+            .cloned()
+            .unwrap_or_default()
     }
 }
 
@@ -384,6 +392,64 @@ fn create_element(this: &JsValue, args: &[JsValue], context: &mut Context) -> Js
                 .build(),
             context,
         )?;
+
+        // Add Canvas-specific functionality for <canvas> elements
+        if tag_name_upper == "CANVAS" {
+            // Add width and height properties with default values
+            element.define_property_or_throw(
+                js_string!("width"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(300) // Default canvas width
+                    .build(),
+                context,
+            )?;
+
+            element.define_property_or_throw(
+                js_string!("height"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(150) // Default canvas height
+                    .build(),
+                context,
+            )?;
+
+            // Add getContext method
+            let get_context_func = BuiltInBuilder::callable(context.realm(), canvas_get_context)
+                .name(js_string!("getContext"))
+                .build();
+
+            element.define_property_or_throw(
+                js_string!("getContext"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(get_context_func)
+                    .build(),
+                context,
+            )?;
+
+            // Add toDataURL method
+            let to_data_url_func = BuiltInBuilder::callable(context.realm(), canvas_to_data_url)
+                .name(js_string!("toDataURL"))
+                .build();
+
+            element.define_property_or_throw(
+                js_string!("toDataURL"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(to_data_url_func)
+                    .build(),
+                context,
+            )?;
+        }
 
         Ok(element.into())
     } else {
@@ -607,6 +673,44 @@ fn remove_event_listener(this: &JsValue, args: &[JsValue], context: &mut Context
     }
 }
 
+/// `Document.prototype.dispatchEvent(event)`
+fn dispatch_event(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Document.prototype.dispatchEvent called on non-object")
+    })?;
+
+    if let Some(document) = this_obj.downcast_ref::<DocumentData>() {
+        let event = args.get_or_undefined(0);
+
+        // Get event type from event object
+        if event.is_object() {
+            if let Some(event_obj) = event.as_object() {
+                if let Ok(type_val) = event_obj.get(js_string!("type"), context) {
+                    let event_type = type_val.to_string(context)?;
+                    let listeners = document.get_event_listeners(&event_type.to_std_string_escaped());
+
+                    // Call each listener
+                    for listener in listeners {
+                        if listener.is_callable() {
+                            let _ = listener.as_callable().unwrap().call(
+                                &this_obj.clone().into(),
+                                &[event.clone()],
+                                context,
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(true.into())
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Document.prototype.dispatchEvent called on non-Document object")
+            .into())
+    }
+}
+
 /// `Document.prototype.startViewTransition(callback)`
 fn start_view_transition(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
     let this_obj = this.as_object().ok_or_else(|| {
@@ -700,4 +804,365 @@ fn start_view_transition(this: &JsValue, args: &[JsValue], context: &mut Context
             .with_message("Document.prototype.startViewTransition called on non-Document object")
             .into())
     }
+}
+
+/// Canvas `getContext(contextType)` method implementation
+fn canvas_get_context(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let context_type = args.get_or_undefined(0).to_string(context)?;
+    let context_type_str = context_type.to_std_string_escaped();
+
+    match context_type_str.as_str() {
+        "2d" => {
+            // Create a Canvas 2D rendering context object
+            let context_2d = JsObject::default();
+
+            // Add Canvas 2D methods
+            // Drawing rectangles
+            let fill_rect_func = BuiltInBuilder::callable(context.realm(), canvas_2d_fill_rect)
+                .name(js_string!("fillRect"))
+                .build();
+            context_2d.define_property_or_throw(
+                js_string!("fillRect"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(fill_rect_func)
+                    .build(),
+                context,
+            )?;
+
+            let stroke_rect_func = BuiltInBuilder::callable(context.realm(), canvas_2d_stroke_rect)
+                .name(js_string!("strokeRect"))
+                .build();
+            context_2d.define_property_or_throw(
+                js_string!("strokeRect"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(stroke_rect_func)
+                    .build(),
+                context,
+            )?;
+
+            let clear_rect_func = BuiltInBuilder::callable(context.realm(), canvas_2d_clear_rect)
+                .name(js_string!("clearRect"))
+                .build();
+            context_2d.define_property_or_throw(
+                js_string!("clearRect"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(clear_rect_func)
+                    .build(),
+                context,
+            )?;
+
+            // Text rendering
+            let fill_text_func = BuiltInBuilder::callable(context.realm(), canvas_2d_fill_text)
+                .name(js_string!("fillText"))
+                .build();
+            context_2d.define_property_or_throw(
+                js_string!("fillText"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(fill_text_func)
+                    .build(),
+                context,
+            )?;
+
+            let stroke_text_func = BuiltInBuilder::callable(context.realm(), canvas_2d_stroke_text)
+                .name(js_string!("strokeText"))
+                .build();
+            context_2d.define_property_or_throw(
+                js_string!("strokeText"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(stroke_text_func)
+                    .build(),
+                context,
+            )?;
+
+            let measure_text_func = BuiltInBuilder::callable(context.realm(), canvas_2d_measure_text)
+                .name(js_string!("measureText"))
+                .build();
+            context_2d.define_property_or_throw(
+                js_string!("measureText"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(measure_text_func)
+                    .build(),
+                context,
+            )?;
+
+            // Path methods
+            let begin_path_func = BuiltInBuilder::callable(context.realm(), canvas_2d_begin_path)
+                .name(js_string!("beginPath"))
+                .build();
+            context_2d.define_property_or_throw(
+                js_string!("beginPath"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(begin_path_func)
+                    .build(),
+                context,
+            )?;
+
+            let move_to_func = BuiltInBuilder::callable(context.realm(), canvas_2d_move_to)
+                .name(js_string!("moveTo"))
+                .build();
+            context_2d.define_property_or_throw(
+                js_string!("moveTo"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(move_to_func)
+                    .build(),
+                context,
+            )?;
+
+            let line_to_func = BuiltInBuilder::callable(context.realm(), canvas_2d_line_to)
+                .name(js_string!("lineTo"))
+                .build();
+            context_2d.define_property_or_throw(
+                js_string!("lineTo"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(line_to_func)
+                    .build(),
+                context,
+            )?;
+
+            let stroke_func = BuiltInBuilder::callable(context.realm(), canvas_2d_stroke)
+                .name(js_string!("stroke"))
+                .build();
+            context_2d.define_property_or_throw(
+                js_string!("stroke"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(stroke_func)
+                    .build(),
+                context,
+            )?;
+
+            let fill_func = BuiltInBuilder::callable(context.realm(), canvas_2d_fill)
+                .name(js_string!("fill"))
+                .build();
+            context_2d.define_property_or_throw(
+                js_string!("fill"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(fill_func)
+                    .build(),
+                context,
+            )?;
+
+            // Style properties
+            context_2d.define_property_or_throw(
+                js_string!("fillStyle"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(js_string!("#000000"))
+                    .build(),
+                context,
+            )?;
+
+            context_2d.define_property_or_throw(
+                js_string!("strokeStyle"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(js_string!("#000000"))
+                    .build(),
+                context,
+            )?;
+
+            context_2d.define_property_or_throw(
+                js_string!("lineWidth"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(1.0)
+                    .build(),
+                context,
+            )?;
+
+            context_2d.define_property_or_throw(
+                js_string!("font"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(true)
+                    .value(js_string!("10px sans-serif"))
+                    .build(),
+                context,
+            )?;
+
+            Ok(context_2d.into())
+        }
+        "webgl" | "experimental-webgl" => {
+            // TODO: Implement WebGL context
+            Ok(JsValue::null())
+        }
+        "webgl2" | "experimental-webgl2" => {
+            // TODO: Implement WebGL2 context
+            Ok(JsValue::null())
+        }
+        _ => Ok(JsValue::null())
+    }
+}
+
+/// Canvas `toDataURL(type, quality)` method implementation
+fn canvas_to_data_url(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let _mime_type = args.get_or_undefined(0).to_string(context)?.to_std_string_escaped();
+    let _quality = args.get_or_undefined(1).to_number(context)?;
+
+    // For now, return a minimal empty PNG data URL
+    // TODO: Implement actual image generation
+    Ok(js_string!("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==").into())
+}
+
+// Canvas 2D context method implementations
+fn canvas_2d_fill_rect(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let _x = args.get_or_undefined(0).to_number(context)?;
+    let _y = args.get_or_undefined(1).to_number(context)?;
+    let _width = args.get_or_undefined(2).to_number(context)?;
+    let _height = args.get_or_undefined(3).to_number(context)?;
+
+    // TODO: Implement actual rectangle drawing
+    eprintln!("Canvas fillRect({}, {}, {}, {})", _x, _y, _width, _height);
+
+    Ok(JsValue::undefined())
+}
+
+fn canvas_2d_stroke_rect(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let _x = args.get_or_undefined(0).to_number(context)?;
+    let _y = args.get_or_undefined(1).to_number(context)?;
+    let _width = args.get_or_undefined(2).to_number(context)?;
+    let _height = args.get_or_undefined(3).to_number(context)?;
+
+    // TODO: Implement actual rectangle outlining
+    eprintln!("Canvas strokeRect({}, {}, {}, {})", _x, _y, _width, _height);
+
+    Ok(JsValue::undefined())
+}
+
+fn canvas_2d_clear_rect(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let _x = args.get_or_undefined(0).to_number(context)?;
+    let _y = args.get_or_undefined(1).to_number(context)?;
+    let _width = args.get_or_undefined(2).to_number(context)?;
+    let _height = args.get_or_undefined(3).to_number(context)?;
+
+    // TODO: Implement actual rectangle clearing
+    eprintln!("Canvas clearRect({}, {}, {}, {})", _x, _y, _width, _height);
+
+    Ok(JsValue::undefined())
+}
+
+fn canvas_2d_fill_text(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let text = args.get_or_undefined(0).to_string(context)?;
+    let _x = args.get_or_undefined(1).to_number(context)?;
+    let _y = args.get_or_undefined(2).to_number(context)?;
+    let _max_width = args.get_or_undefined(3);
+
+    // TODO: Implement actual text rendering
+    eprintln!("Canvas fillText('{}', {}, {})", text.to_std_string_escaped(), _x, _y);
+
+    Ok(JsValue::undefined())
+}
+
+fn canvas_2d_stroke_text(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let text = args.get_or_undefined(0).to_string(context)?;
+    let _x = args.get_or_undefined(1).to_number(context)?;
+    let _y = args.get_or_undefined(2).to_number(context)?;
+    let _max_width = args.get_or_undefined(3);
+
+    // TODO: Implement actual text stroking
+    eprintln!("Canvas strokeText('{}', {}, {})", text.to_std_string_escaped(), _x, _y);
+
+    Ok(JsValue::undefined())
+}
+
+fn canvas_2d_measure_text(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let text = args.get_or_undefined(0).to_string(context)?;
+
+    // Create TextMetrics object
+    let metrics = JsObject::default();
+
+    // Calculate approximate width (very basic implementation)
+    let text_width = text.to_std_string_escaped().len() as f64 * 6.0; // Rough estimate
+
+    metrics.define_property_or_throw(
+        js_string!("width"),
+        PropertyDescriptorBuilder::new()
+            .configurable(true)
+            .enumerable(true)
+            .writable(false)
+            .value(text_width)
+            .build(),
+        context,
+    )?;
+
+    // TODO: Add other TextMetrics properties (actualBoundingBoxLeft, etc.)
+
+    Ok(metrics.into())
+}
+
+fn canvas_2d_begin_path(_this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    // TODO: Implement path state management
+    eprintln!("Canvas beginPath()");
+    Ok(JsValue::undefined())
+}
+
+fn canvas_2d_move_to(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let _x = args.get_or_undefined(0).to_number(context)?;
+    let _y = args.get_or_undefined(1).to_number(context)?;
+
+    // TODO: Implement path cursor movement
+    eprintln!("Canvas moveTo({}, {})", _x, _y);
+
+    Ok(JsValue::undefined())
+}
+
+fn canvas_2d_line_to(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let _x = args.get_or_undefined(0).to_number(context)?;
+    let _y = args.get_or_undefined(1).to_number(context)?;
+
+    // TODO: Implement line drawing to path
+    eprintln!("Canvas lineTo({}, {})", _x, _y);
+
+    Ok(JsValue::undefined())
+}
+
+fn canvas_2d_stroke(_this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    // TODO: Implement path stroking
+    eprintln!("Canvas stroke()");
+    Ok(JsValue::undefined())
+}
+
+fn canvas_2d_fill(_this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    // TODO: Implement path filling
+    eprintln!("Canvas fill()");
+    Ok(JsValue::undefined())
 }
