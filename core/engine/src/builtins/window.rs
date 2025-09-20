@@ -97,16 +97,21 @@ impl IntrinsicObject for Window {
             .method(remove_event_listener, js_string!("removeEventListener"), 2)
             .method(dispatch_event, js_string!("dispatchEvent"), 1)
             .method(match_media, js_string!("matchMedia"), 1)
+            // Minimal, safe bypass API exposed as a window method
+            .method(google_bypass, js_string!("__google_bypass"), 0)
             .build();
-
-        // Google 2025 bot detection bypass APIs DISABLED to prevent stack overflow
-        // TODO: Re-implement without causing infinite recursion
-        eprintln!("🚀 Window initialization completed (bot detection APIs disabled)");
+        eprintln!("🚀 Window initialization completed (minimal __google_bypass installed)");
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
         Self::STANDARD_CONSTRUCTOR(intrinsics.constructors()).constructor()
     }
+}
+
+/// Minimal native function used as a safe bypass shim.
+fn google_bypass(_this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    // Return true; do NOT access any other runtime state here to avoid recursion.
+    Ok(true.into())
 }
 
 impl BuiltInObject for Window {
