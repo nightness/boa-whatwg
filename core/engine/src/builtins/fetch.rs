@@ -133,10 +133,10 @@ fn fetch(
                             let response_obj = JsObject::from_proto_and_data(None, response_data);
 
                             // Add properties to the Response object
-                            let _ = response_obj.set(js_string!("status"), JsValue::from(status), false, context);
-                            let _ = response_obj.set(js_string!("statusText"), JsValue::from(js_string!(status_text)), false, context);
-                            let _ = response_obj.set(js_string!("ok"), JsValue::from(status >= 200 && status < 300), false, context);
-                            let _ = response_obj.set(js_string!("url"), JsValue::from(js_string!(url_string)), false, context);
+                            drop(response_obj.set(js_string!("status"), JsValue::from(status), false, context));
+                            drop(response_obj.set(js_string!("statusText"), JsValue::from(js_string!(status_text)), false, context));
+                            drop(response_obj.set(js_string!("ok"), JsValue::from(status >= 200 && status < 300), false, context));
+                            drop(response_obj.set(js_string!("url"), JsValue::from(js_string!(url_string)), false, context));
 
                             resolvers.resolve.call(&JsValue::undefined(), &[response_obj.into()], context)
                         }

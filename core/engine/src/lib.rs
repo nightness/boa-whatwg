@@ -46,6 +46,14 @@
 //! [ecma-402]: https://tc39.es/ecma402
 //! [examples]: https://github.com/boa-dev/boa/tree/main/examples
 #![doc = include_str!("../ABOUT.md")]
+#![allow(missing_docs)]
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+#![allow(unused_mut)]
+#![allow(unused)]
+#![allow(let_underscore_drop)]
+#![allow(unexpected_cfgs)]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/boa-dev/boa/main/assets/logo_black.svg",
     html_favicon_url = "https://raw.githubusercontent.com/boa-dev/boa/main/assets/logo_black.svg"
