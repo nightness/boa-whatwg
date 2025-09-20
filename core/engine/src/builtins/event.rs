@@ -106,7 +106,7 @@ impl EventData {
     pub fn get_bubbles(&self) -> bool { self.bubbles }
     pub fn get_cancelable(&self) -> bool { self.cancelable }
     pub fn get_default_prevented(&self) -> bool { self.default_prevented }
-    pub fn get_phase(&self) -> EventPhase { self.phase }
+    pub fn get_phase(&self) -> EventPhase { self.phase.clone() }
     pub fn get_current_target(&self) -> Option<JsObject> { self.current_target.clone() }
     pub fn get_target(&self) -> Option<JsObject> { self.target.clone() }
     pub fn get_timestamp(&self) -> f64 { self.timestamp }
@@ -376,7 +376,13 @@ fn get_event_phase(this: &JsValue, _: &[JsValue], _: &mut Context) -> JsResult<J
     })?;
 
     if let Some(event_data) = this_obj.downcast_ref::<EventData>() {
-        Ok(JsValue::from(event_data.get_phase() as u32))
+        let phase_num = match event_data.get_phase() {
+            EventPhase::None => 0u32,
+            EventPhase::CapturingPhase => 1u32,
+            EventPhase::AtTarget => 2u32,
+            EventPhase::BubblingPhase => 3u32,
+        };
+        Ok(JsValue::from(phase_num))
     } else {
         Err(JsNativeError::typ().with_message("Event method called on non-Event object").into())
     }

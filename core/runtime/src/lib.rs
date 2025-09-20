@@ -370,6 +370,9 @@ pub(crate) mod test {
                     kind,
                     message,
                 } => {
+                    if source.contains("super()") || source.contains("super.a") {
+                        println!("[debug test harness] evaluating source: {}", source);
+                    }
                     let err = match forward_val(context, &source) {
                         Ok(v) => panic!(
                             "{}\nExpected error, got value `{}`",
