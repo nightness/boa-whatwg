@@ -38,6 +38,10 @@ impl IntrinsicObject for Window {
             .name(js_string!("get navigator"))
             .build();
 
+        let screen_func = BuiltInBuilder::callable(realm, get_screen)
+            .name(js_string!("get screen"))
+            .build();
+
         BuiltInBuilder::from_standard_constructor::<Self>(realm)
             .accessor(
                 js_string!("location"),
@@ -63,9 +67,16 @@ impl IntrinsicObject for Window {
                 None,
                 Attribute::CONFIGURABLE,
             )
+            .accessor(
+                js_string!("screen"),
+                Some(screen_func),
+                None,
+                Attribute::CONFIGURABLE,
+            )
             .method(add_event_listener, js_string!("addEventListener"), 2)
             .method(remove_event_listener, js_string!("removeEventListener"), 2)
             .method(dispatch_event, js_string!("dispatchEvent"), 1)
+            .method(match_media, js_string!("matchMedia"), 1)
             .build();
     }
 
@@ -583,4 +594,358 @@ fn dispatch_event(this: &JsValue, args: &[JsValue], context: &mut Context) -> Js
             .with_message("Window.prototype.dispatchEvent called on non-Window object")
             .into())
     }
+}
+
+/// `Window.prototype.matchMedia(mediaQuery)`
+fn match_media(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Window.prototype.matchMedia called on non-object")
+    })?;
+
+    if let Some(_window) = this_obj.downcast_ref::<WindowData>() {
+        let media_query = args.get_or_undefined(0).to_string(context)?;
+        let query_str = media_query.to_std_string_escaped();
+
+        // Create MediaQueryList object
+        let media_query_list = JsObject::default();
+
+        // Parse and evaluate the media query
+        let matches = evaluate_media_query(&query_str);
+
+        // Add properties to MediaQueryList
+        media_query_list.define_property_or_throw(
+            js_string!("media"),
+            PropertyDescriptorBuilder::new()
+                .configurable(false)
+                .enumerable(true)
+                .writable(false)
+                .value(media_query)
+                .build(),
+            context,
+        )?;
+
+        media_query_list.define_property_or_throw(
+            js_string!("matches"),
+            PropertyDescriptorBuilder::new()
+                .configurable(false)
+                .enumerable(true)
+                .writable(false)
+                .value(matches)
+                .build(),
+            context,
+        )?;
+
+        // Add addListener method
+        let add_listener_func = BuiltInBuilder::callable(context.realm(), media_query_list_add_listener)
+            .name(js_string!("addListener"))
+            .build();
+
+        media_query_list.define_property_or_throw(
+            js_string!("addListener"),
+            PropertyDescriptorBuilder::new()
+                .configurable(true)
+                .enumerable(true)
+                .writable(true)
+                .value(add_listener_func)
+                .build(),
+            context,
+        )?;
+
+        // Add removeListener method
+        let remove_listener_func = BuiltInBuilder::callable(context.realm(), media_query_list_remove_listener)
+            .name(js_string!("removeListener"))
+            .build();
+
+        media_query_list.define_property_or_throw(
+            js_string!("removeListener"),
+            PropertyDescriptorBuilder::new()
+                .configurable(true)
+                .enumerable(true)
+                .writable(true)
+                .value(remove_listener_func)
+                .build(),
+            context,
+        )?;
+
+        // Add addEventListener method (newer API)
+        let add_event_listener_func = BuiltInBuilder::callable(context.realm(), media_query_list_add_event_listener)
+            .name(js_string!("addEventListener"))
+            .build();
+
+        media_query_list.define_property_or_throw(
+            js_string!("addEventListener"),
+            PropertyDescriptorBuilder::new()
+                .configurable(true)
+                .enumerable(true)
+                .writable(true)
+                .value(add_event_listener_func)
+                .build(),
+            context,
+        )?;
+
+        // Add removeEventListener method
+        let remove_event_listener_func = BuiltInBuilder::callable(context.realm(), media_query_list_remove_event_listener)
+            .name(js_string!("removeEventListener"))
+            .build();
+
+        media_query_list.define_property_or_throw(
+            js_string!("removeEventListener"),
+            PropertyDescriptorBuilder::new()
+                .configurable(true)
+                .enumerable(true)
+                .writable(true)
+                .value(remove_event_listener_func)
+                .build(),
+            context,
+        )?;
+
+        Ok(media_query_list.into())
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Window.prototype.matchMedia called on non-Window object")
+            .into())
+    }
+}
+
+/// Simple media query evaluator
+fn evaluate_media_query(query: &str) -> bool {
+    // Basic media query parsing and evaluation
+    // For now, implement some common patterns
+
+    let query = query.trim();
+
+    // Handle common responsive breakpoints
+    if query.contains("max-width: 600px") || query.contains("max-width:600px") {
+        // Assume viewport is 1024px (desktop default) for now
+        false
+    } else if query.contains("min-width: 768px") || query.contains("min-width:768px") {
+        true
+    } else if query.contains("max-width: 768px") || query.contains("max-width:768px") {
+        false
+    } else if query.contains("min-width: 1024px") || query.contains("min-width:1024px") {
+        true
+    } else if query.contains("max-width: 1024px") || query.contains("max-width:1024px") {
+        true
+    } else if query.contains("orientation: portrait") {
+        false // Assume landscape by default
+    } else if query.contains("orientation: landscape") {
+        true
+    } else if query.contains("print") {
+        false // Not print media
+    } else if query.contains("screen") {
+        true // Screen media type
+    } else if query == "all" || query.is_empty() {
+        true
+    } else {
+        // Default to true for unrecognized queries
+        true
+    }
+}
+
+// MediaQueryList method implementations
+fn media_query_list_add_listener(_this: &JsValue, args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    let _listener = args.get_or_undefined(0);
+    // TODO: Implement listener storage and management
+    eprintln!("MediaQueryList addListener called");
+    Ok(JsValue::undefined())
+}
+
+fn media_query_list_remove_listener(_this: &JsValue, args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    let _listener = args.get_or_undefined(0);
+    // TODO: Implement listener removal
+    eprintln!("MediaQueryList removeListener called");
+    Ok(JsValue::undefined())
+}
+
+fn media_query_list_add_event_listener(_this: &JsValue, args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    let _event_type = args.get_or_undefined(0);
+    let _listener = args.get_or_undefined(1);
+    // TODO: Implement event listener storage and management
+    eprintln!("MediaQueryList addEventListener called");
+    Ok(JsValue::undefined())
+}
+
+fn media_query_list_remove_event_listener(_this: &JsValue, args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    let _event_type = args.get_or_undefined(0);
+    let _listener = args.get_or_undefined(1);
+    // TODO: Implement event listener removal
+    eprintln!("MediaQueryList removeEventListener called");
+    Ok(JsValue::undefined())
+}
+
+/// `Window.prototype.screen` getter
+fn get_screen(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    // Create Screen object
+    let screen = JsObject::default();
+
+    // Default desktop screen dimensions (1920x1080)
+    let width = 1920;
+    let height = 1080;
+    let avail_width = 1920; // Available width (excluding taskbar, etc.)
+    let avail_height = 1040; // Available height (excluding taskbar)
+    let color_depth = 24; // 24-bit color
+    let pixel_depth = 24; // Same as color depth on modern displays
+
+    // Add width property
+    screen.define_property_or_throw(
+        js_string!("width"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(width)
+            .build(),
+        context,
+    )?;
+
+    // Add height property
+    screen.define_property_or_throw(
+        js_string!("height"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(height)
+            .build(),
+        context,
+    )?;
+
+    // Add availWidth property
+    screen.define_property_or_throw(
+        js_string!("availWidth"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(avail_width)
+            .build(),
+        context,
+    )?;
+
+    // Add availHeight property
+    screen.define_property_or_throw(
+        js_string!("availHeight"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(avail_height)
+            .build(),
+        context,
+    )?;
+
+    // Add colorDepth property
+    screen.define_property_or_throw(
+        js_string!("colorDepth"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(color_depth)
+            .build(),
+        context,
+    )?;
+
+    // Add pixelDepth property
+    screen.define_property_or_throw(
+        js_string!("pixelDepth"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(pixel_depth)
+            .build(),
+        context,
+    )?;
+
+    // Create orientation object
+    let orientation = JsObject::default();
+
+    // Add orientation properties
+    orientation.define_property_or_throw(
+        js_string!("angle"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(0) // 0 degrees (landscape)
+            .build(),
+        context,
+    )?;
+
+    orientation.define_property_or_throw(
+        js_string!("type"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(js_string!("landscape-primary"))
+            .build(),
+        context,
+    )?;
+
+    // Add lock method to orientation
+    let lock_func = BuiltInBuilder::callable(context.realm(), screen_orientation_lock)
+        .name(js_string!("lock"))
+        .build();
+
+    orientation.define_property_or_throw(
+        js_string!("lock"),
+        PropertyDescriptorBuilder::new()
+            .configurable(true)
+            .enumerable(true)
+            .writable(true)
+            .value(lock_func)
+            .build(),
+        context,
+    )?;
+
+    // Add unlock method to orientation
+    let unlock_func = BuiltInBuilder::callable(context.realm(), screen_orientation_unlock)
+        .name(js_string!("unlock"))
+        .build();
+
+    orientation.define_property_or_throw(
+        js_string!("unlock"),
+        PropertyDescriptorBuilder::new()
+            .configurable(true)
+            .enumerable(true)
+            .writable(true)
+            .value(unlock_func)
+            .build(),
+        context,
+    )?;
+
+    // Add orientation property to screen
+    screen.define_property_or_throw(
+        js_string!("orientation"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(orientation)
+            .build(),
+        context,
+    )?;
+
+    Ok(screen.into())
+}
+
+// Screen orientation method implementations
+fn screen_orientation_lock(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let _orientation = args.get_or_undefined(0).to_string(context)?;
+    // TODO: Implement actual screen orientation locking
+    eprintln!("Screen orientation lock called");
+
+    // Return a resolved Promise for now
+    let promise = context.eval(boa_engine::Source::from_bytes("Promise.resolve()"))?;
+    Ok(promise)
+}
+
+fn screen_orientation_unlock(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    // TODO: Implement actual screen orientation unlocking
+    eprintln!("Screen orientation unlock called");
+
+    // Return undefined as per spec
+    Ok(JsValue::undefined())
 }
