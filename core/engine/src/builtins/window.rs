@@ -707,39 +707,187 @@ fn match_media(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsRes
     }
 }
 
-/// Simple media query evaluator
+/// Enhanced media query evaluator with better parsing
 fn evaluate_media_query(query: &str) -> bool {
-    // Basic media query parsing and evaluation
-    // For now, implement some common patterns
-
     let query = query.trim();
 
-    // Handle common responsive breakpoints
-    if query.contains("max-width: 600px") || query.contains("max-width:600px") {
-        // Assume viewport is 1024px (desktop default) for now
-        false
-    } else if query.contains("min-width: 768px") || query.contains("min-width:768px") {
-        true
-    } else if query.contains("max-width: 768px") || query.contains("max-width:768px") {
-        false
-    } else if query.contains("min-width: 1024px") || query.contains("min-width:1024px") {
-        true
-    } else if query.contains("max-width: 1024px") || query.contains("max-width:1024px") {
-        true
-    } else if query.contains("orientation: portrait") {
-        false // Assume landscape by default
-    } else if query.contains("orientation: landscape") {
-        true
-    } else if query.contains("print") {
-        false // Not print media
-    } else if query.contains("screen") {
-        true // Screen media type
-    } else if query == "all" || query.is_empty() {
-        true
-    } else {
-        // Default to true for unrecognized queries
-        true
+    // Default viewport dimensions (can be made configurable later)
+    let viewport_width = 1366.0; // Common desktop width
+    let viewport_height = 768.0;  // Common desktop height
+    let pixel_density = 1.0;
+
+    // Handle empty/all queries
+    if query.is_empty() || query == "all" {
+        return true;
     }
+
+    // Handle media types
+    if query == "screen" {
+        return true;
+    }
+    if query == "print" || query == "speech" || query == "braille" {
+        return false;
+    }
+
+    // Parse complex queries with logical operators
+    if query.contains(" and ") {
+        return query.split(" and ")
+            .all(|part| evaluate_single_media_feature(part.trim(), viewport_width, viewport_height, pixel_density));
+    }
+
+    if query.contains(" or ") || query.contains(", ") {
+        // Handle both comma-separated and " or " separated queries
+        let parts = if query.contains(", ") {
+            query.split(", ").collect::<Vec<_>>()
+        } else {
+            query.split(" or ").collect::<Vec<_>>()
+        };
+
+        return parts.iter()
+            .map(|part| part.trim())
+            .any(|part| {
+                if part.contains(" and ") {
+                    part.split(" and ")
+                        .all(|subpart| evaluate_single_media_feature(subpart.trim(), viewport_width, viewport_height, pixel_density))
+                } else {
+                    evaluate_single_media_feature(part, viewport_width, viewport_height, pixel_density)
+                }
+            });
+    }
+
+    // Single media feature
+    evaluate_single_media_feature(query, viewport_width, viewport_height, pixel_density)
+}
+
+fn evaluate_single_media_feature(feature: &str, width: f64, height: f64, density: f64) -> bool {
+    let feature = feature.trim();
+
+    // Remove parentheses if present
+    let feature = if feature.starts_with('(') && feature.ends_with(')') {
+        &feature[1..feature.len()-1]
+    } else {
+        feature
+    };
+
+    // Width queries
+    if let Some(value) = extract_pixel_value(feature, "max-width") {
+        return width <= value;
+    }
+    if let Some(value) = extract_pixel_value(feature, "min-width") {
+        return width >= value;
+    }
+    if let Some(value) = extract_pixel_value(feature, "width") {
+        return width == value;
+    }
+
+    // Height queries
+    if let Some(value) = extract_pixel_value(feature, "max-height") {
+        return height <= value;
+    }
+    if let Some(value) = extract_pixel_value(feature, "min-height") {
+        return height >= value;
+    }
+    if let Some(value) = extract_pixel_value(feature, "height") {
+        return height == value;
+    }
+
+    // Device pixel ratio
+    if let Some(value) = extract_float_value(feature, "max-device-pixel-ratio") {
+        return density <= value;
+    }
+    if let Some(value) = extract_float_value(feature, "min-device-pixel-ratio") {
+        return density >= value;
+    }
+    if let Some(value) = extract_float_value(feature, "-webkit-max-device-pixel-ratio") {
+        return density <= value;
+    }
+    if let Some(value) = extract_float_value(feature, "-webkit-min-device-pixel-ratio") {
+        return density >= value;
+    }
+
+    // Orientation
+    if feature.contains("orientation: landscape") || feature.contains("orientation:landscape") {
+        return width > height;
+    }
+    if feature.contains("orientation: portrait") || feature.contains("orientation:portrait") {
+        return height > width;
+    }
+
+    // Media types
+    if feature == "screen" {
+        return true;
+    }
+    if feature == "print" || feature == "speech" || feature == "braille" {
+        return false;
+    }
+
+    // Color capabilities
+    if feature.contains("color") && !feature.contains(":") {
+        return true; // Assume color display
+    }
+    if let Some(value) = extract_numeric_value(feature, "min-color") {
+        return value <= 8; // 8-bit color depth
+    }
+
+    // Default to true for unrecognized features to be permissive
+    true
+}
+
+fn extract_pixel_value(feature: &str, property: &str) -> Option<f64> {
+    let pattern = format!("{}:", property);
+    if let Some(start) = feature.find(&pattern) {
+        let value_part = &feature[start + pattern.len()..];
+        let value_part = value_part.trim();
+
+        // Handle px values
+        if value_part.ends_with("px") {
+            if let Ok(value) = value_part[..value_part.len()-2].trim().parse::<f64>() {
+                return Some(value);
+            }
+        }
+
+        // Handle em values (assume 16px = 1em)
+        if value_part.ends_with("em") {
+            if let Ok(value) = value_part[..value_part.len()-2].trim().parse::<f64>() {
+                return Some(value * 16.0);
+            }
+        }
+
+        // Handle rem values (assume 16px = 1rem)
+        if value_part.ends_with("rem") {
+            if let Ok(value) = value_part[..value_part.len()-3].trim().parse::<f64>() {
+                return Some(value * 16.0);
+            }
+        }
+
+        // Handle unitless values (assume px)
+        if let Ok(value) = value_part.parse::<f64>() {
+            return Some(value);
+        }
+    }
+    None
+}
+
+fn extract_float_value(feature: &str, property: &str) -> Option<f64> {
+    let pattern = format!("{}:", property);
+    if let Some(start) = feature.find(&pattern) {
+        let value_part = &feature[start + pattern.len()..];
+        if let Ok(value) = value_part.trim().parse::<f64>() {
+            return Some(value);
+        }
+    }
+    None
+}
+
+fn extract_numeric_value(feature: &str, property: &str) -> Option<u32> {
+    let pattern = format!("{}:", property);
+    if let Some(start) = feature.find(&pattern) {
+        let value_part = &feature[start + pattern.len()..];
+        if let Ok(value) = value_part.trim().parse::<u32>() {
+            return Some(value);
+        }
+    }
+    None
 }
 
 // MediaQueryList method implementations
