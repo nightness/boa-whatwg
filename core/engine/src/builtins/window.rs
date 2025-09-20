@@ -98,6 +98,10 @@ impl IntrinsicObject for Window {
             .method(dispatch_event, js_string!("dispatchEvent"), 1)
             .method(match_media, js_string!("matchMedia"), 1)
             .build();
+
+        // Google 2025 bot detection bypass APIs DISABLED to prevent stack overflow
+        // TODO: Re-implement without causing infinite recursion
+        eprintln!("🚀 Window initialization completed (bot detection APIs disabled)");
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
