@@ -42,6 +42,10 @@ impl IntrinsicObject for Window {
             .name(js_string!("get screen"))
             .build();
 
+        let chrome_func = BuiltInBuilder::callable(realm, get_chrome)
+            .name(js_string!("get chrome"))
+            .build();
+
         BuiltInBuilder::from_standard_constructor::<Self>(realm)
             .accessor(
                 js_string!("location"),
@@ -72,6 +76,22 @@ impl IntrinsicObject for Window {
                 Some(screen_func),
                 None,
                 Attribute::CONFIGURABLE,
+            )
+            .accessor(
+                js_string!("chrome"),
+                Some(chrome_func),
+                None,
+                Attribute::CONFIGURABLE,
+            )
+            .property(
+                js_string!("innerWidth"),
+                1366, // Standard desktop width
+                Attribute::WRITABLE | Attribute::ENUMERABLE | Attribute::CONFIGURABLE,
+            )
+            .property(
+                js_string!("innerHeight"),
+                768, // Standard desktop height
+                Attribute::WRITABLE | Attribute::ENUMERABLE | Attribute::CONFIGURABLE,
             )
             .method(add_event_listener, js_string!("addEventListener"), 2)
             .method(remove_event_listener, js_string!("removeEventListener"), 2)
@@ -475,26 +495,26 @@ fn get_navigator(this: &JsValue, _args: &[JsValue], context: &mut Context) -> Js
 
         // Initialize navigator object if empty
         if !navigator.has_property(js_string!("userAgent"), context)? {
-            // Add userAgent property
+            // Add userAgent property - use Windows Chrome to avoid Linux bot detection
             navigator.define_property_or_throw(
                 js_string!("userAgent"),
                 PropertyDescriptorBuilder::new()
                     .configurable(false)
                     .enumerable(true)
                     .writable(false)
-                    .value(JsString::from("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Thalora/1.0"))
+                    .value(JsString::from("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"))
                     .build(),
                 context,
             )?;
 
-            // Add platform property
+            // Add platform property - Windows to match userAgent
             navigator.define_property_or_throw(
                 js_string!("platform"),
                 PropertyDescriptorBuilder::new()
                     .configurable(false)
                     .enumerable(true)
                     .writable(false)
-                    .value(JsString::from("Linux x86_64"))
+                    .value(JsString::from("Win32"))
                     .build(),
                 context,
             )?;
@@ -507,6 +527,148 @@ fn get_navigator(this: &JsValue, _args: &[JsValue], context: &mut Context) -> Js
                     .enumerable(true)
                     .writable(false)
                     .value(JsString::from("en-US"))
+                    .build(),
+                context,
+            )?;
+
+            // Add languages array property
+            use crate::builtins::array::Array;
+            let languages_array = Array::create_array_from_list([
+                JsString::from("en-US").into(),
+                JsString::from("en").into(),
+            ], context);
+            navigator.define_property_or_throw(
+                js_string!("languages"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(false)
+                    .enumerable(true)
+                    .writable(false)
+                    .value(languages_array)
+                    .build(),
+                context,
+            )?;
+
+            // Add webdriver property (should be false for legitimate browsers)
+            navigator.define_property_or_throw(
+                js_string!("webdriver"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(true)
+                    .enumerable(true)
+                    .writable(false)
+                    .value(false)
+                    .build(),
+                context,
+            )?;
+
+            // Add plugins array (fake some common plugins)
+            let plugins_array = Array::create_array_from_list([
+                // Create fake PDF Viewer plugin
+                create_fake_plugin(context, "PDF Viewer", "Portable Document Format", "pdf")?,
+                // Create fake Chrome PDF Plugin
+                create_fake_plugin(context, "Chrome PDF Plugin", "Portable Document Format", "pdf")?,
+                // Create fake Chromium PDF Plugin
+                create_fake_plugin(context, "Chromium PDF Plugin", "Portable Document Format", "pdf")?,
+                // Create fake Microsoft Edge PDF Plugin
+                create_fake_plugin(context, "Microsoft Edge PDF Plugin", "Portable Document Format", "pdf")?,
+                // Create fake WebKit built-in PDF
+                create_fake_plugin(context, "WebKit built-in PDF", "Portable Document Format", "pdf")?,
+            ], context);
+
+            // Add length property to plugins array
+            plugins_array.define_property_or_throw(
+                js_string!("length"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(false)
+                    .enumerable(false)
+                    .writable(false)
+                    .value(5)
+                    .build(),
+                context,
+            )?;
+
+            navigator.define_property_or_throw(
+                js_string!("plugins"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(false)
+                    .enumerable(true)
+                    .writable(false)
+                    .value(plugins_array)
+                    .build(),
+                context,
+            )?;
+
+            // Add mimeTypes array (related to plugins)
+            let mime_types_array = Array::create_array_from_list([
+                create_fake_mime_type(context, "application/pdf", "pdf")?,
+                create_fake_mime_type(context, "text/pdf", "pdf")?,
+            ], context);
+
+            mime_types_array.define_property_or_throw(
+                js_string!("length"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(false)
+                    .enumerable(false)
+                    .writable(false)
+                    .value(2)
+                    .build(),
+                context,
+            )?;
+
+            navigator.define_property_or_throw(
+                js_string!("mimeTypes"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(false)
+                    .enumerable(true)
+                    .writable(false)
+                    .value(mime_types_array)
+                    .build(),
+                context,
+            )?;
+
+            // Add cookieEnabled property
+            navigator.define_property_or_throw(
+                js_string!("cookieEnabled"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(false)
+                    .enumerable(true)
+                    .writable(false)
+                    .value(true)
+                    .build(),
+                context,
+            )?;
+
+            // Add doNotTrack property
+            navigator.define_property_or_throw(
+                js_string!("doNotTrack"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(false)
+                    .enumerable(true)
+                    .writable(false)
+                    .value(JsValue::null())
+                    .build(),
+                context,
+            )?;
+
+            // Add hardwareConcurrency property (fake CPU core count)
+            navigator.define_property_or_throw(
+                js_string!("hardwareConcurrency"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(false)
+                    .enumerable(true)
+                    .writable(false)
+                    .value(8) // Fake 8 CPU cores
+                    .build(),
+                context,
+            )?;
+
+            // Add maxTouchPoints property
+            navigator.define_property_or_throw(
+                js_string!("maxTouchPoints"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(false)
+                    .enumerable(true)
+                    .writable(false)
+                    .value(0) // Desktop - no touch
                     .build(),
                 context,
             )?;
@@ -923,6 +1085,15 @@ fn media_query_list_remove_event_listener(_this: &JsValue, args: &[JsValue], _co
 
 /// `Window.prototype.screen` getter
 fn get_screen(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    eprintln!("✅ Creating Screen object for window.screen");
+
+    // Check if we already have a screen object in global scope to avoid creating duplicate
+    if let Ok(existing_screen) = context.global_object().get(js_string!("screen"), context) {
+        if !existing_screen.is_undefined() {
+            return Ok(existing_screen);
+        }
+    }
+
     // Create Screen object
     let screen = JsObject::default();
 
@@ -1076,6 +1247,17 @@ fn get_screen(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsRe
         context,
     )?;
 
+    // Also register screen as a global variable (not just window.screen)
+    // This ensures both window.screen and global screen work correctly
+    context.global_object().set(
+        js_string!("screen"),
+        screen.clone(),
+        false,
+        context,
+    )?;
+
+    eprintln!("✅ Screen object registered both as window.screen and global screen");
+
     Ok(screen.into())
 }
 
@@ -1096,4 +1278,322 @@ fn screen_orientation_unlock(_this: &JsValue, _args: &[JsValue], context: &mut C
 
     // Return undefined as per spec
     Ok(JsValue::undefined())
+}
+
+/// Helper function to create fake plugin objects
+fn create_fake_plugin(context: &mut Context, name: &str, description: &str, suffix: &str) -> JsResult<JsValue> {
+    let plugin = JsObject::default();
+
+    // Add name property
+    plugin.define_property_or_throw(
+        js_string!("name"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(JsString::from(name))
+            .build(),
+        context,
+    )?;
+
+    // Add description property
+    plugin.define_property_or_throw(
+        js_string!("description"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(JsString::from(description))
+            .build(),
+        context,
+    )?;
+
+    // Add filename property
+    plugin.define_property_or_throw(
+        js_string!("filename"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(JsString::from(format!("internal-{}-viewer", suffix)))
+            .build(),
+        context,
+    )?;
+
+    // Add length property
+    plugin.define_property_or_throw(
+        js_string!("length"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(false)
+            .writable(false)
+            .value(1)
+            .build(),
+        context,
+    )?;
+
+    Ok(plugin.into())
+}
+
+/// Helper function to create fake MIME type objects
+fn create_fake_mime_type(context: &mut Context, type_name: &str, suffix: &str) -> JsResult<JsValue> {
+    let mime_type = JsObject::default();
+
+    // Add type property
+    mime_type.define_property_or_throw(
+        js_string!("type"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(JsString::from(type_name))
+            .build(),
+        context,
+    )?;
+
+    // Add suffixes property
+    mime_type.define_property_or_throw(
+        js_string!("suffixes"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(JsString::from(suffix))
+            .build(),
+        context,
+    )?;
+
+    // Add description property
+    mime_type.define_property_or_throw(
+        js_string!("description"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(JsString::from("Portable Document Format"))
+            .build(),
+        context,
+    )?;
+
+    // Add enabledPlugin property (reference back to plugin)
+    let fake_plugin = create_fake_plugin(context, "PDF Viewer", "Portable Document Format", suffix)?;
+    mime_type.define_property_or_throw(
+        js_string!("enabledPlugin"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(fake_plugin)
+            .build(),
+        context,
+    )?;
+
+    Ok(mime_type.into())
+}
+
+/// `Window.prototype.chrome` getter - Chrome-specific APIs
+fn get_chrome(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    // Create Chrome object with common Chrome-specific APIs
+    let chrome = JsObject::default();
+
+    // Add runtime object (Chrome extension API)
+    let runtime = JsObject::default();
+
+    // Add onConnect property to runtime (for Chrome extensions)
+    runtime.define_property_or_throw(
+        js_string!("onConnect"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(JsValue::undefined())
+            .build(),
+        context,
+    )?;
+
+    // Add getManifest method to runtime
+    let get_manifest_func = BuiltInBuilder::callable(context.realm(), |_this, _args, _context| {
+        // Return undefined since we're not a Chrome extension
+        Ok(JsValue::undefined())
+    })
+    .name(js_string!("getManifest"))
+    .build();
+
+    runtime.define_property_or_throw(
+        js_string!("getManifest"),
+        PropertyDescriptorBuilder::new()
+            .configurable(true)
+            .enumerable(true)
+            .writable(true)
+            .value(get_manifest_func)
+            .build(),
+        context,
+    )?;
+
+    chrome.define_property_or_throw(
+        js_string!("runtime"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(runtime)
+            .build(),
+        context,
+    )?;
+
+    // Add app object (Chrome Apps API)
+    let app = JsObject::default();
+
+    // Add isInstalled property
+    app.define_property_or_throw(
+        js_string!("isInstalled"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(false)
+            .build(),
+        context,
+    )?;
+
+    chrome.define_property_or_throw(
+        js_string!("app"),
+        PropertyDescriptorBuilder::new()
+            .configurable(false)
+            .enumerable(true)
+            .writable(false)
+            .value(app)
+            .build(),
+        context,
+    )?;
+
+    // Add csi method (Chrome Speed Index)
+    let csi_func = BuiltInBuilder::callable(context.realm(), |_this, _args, _context| {
+        // Return empty object for CSI data
+        Ok(JsValue::undefined())
+    })
+    .name(js_string!("csi"))
+    .build();
+
+    chrome.define_property_or_throw(
+        js_string!("csi"),
+        PropertyDescriptorBuilder::new()
+            .configurable(true)
+            .enumerable(true)
+            .writable(true)
+            .value(csi_func)
+            .build(),
+        context,
+    )?;
+
+    // Add loadTimes method (deprecated but still checked)
+    let load_times_func = BuiltInBuilder::callable(context.realm(), |_this, _args, context| {
+        // Return realistic Chrome loadTimes object
+        let load_times = JsObject::default();
+
+        load_times.define_property_or_throw(
+            js_string!("requestTime"),
+            PropertyDescriptorBuilder::new()
+                .configurable(true)
+                .enumerable(true)
+                .writable(true)
+                .value(1577836800.0) // Unix timestamp
+                .build(),
+            context,
+        )?;
+
+        load_times.define_property_or_throw(
+            js_string!("startLoadTime"),
+            PropertyDescriptorBuilder::new()
+                .configurable(true)
+                .enumerable(true)
+                .writable(true)
+                .value(1577836800.1)
+                .build(),
+            context,
+        )?;
+
+        load_times.define_property_or_throw(
+            js_string!("commitLoadTime"),
+            PropertyDescriptorBuilder::new()
+                .configurable(true)
+                .enumerable(true)
+                .writable(true)
+                .value(1577836800.2)
+                .build(),
+            context,
+        )?;
+
+        load_times.define_property_or_throw(
+            js_string!("finishDocumentLoadTime"),
+            PropertyDescriptorBuilder::new()
+                .configurable(true)
+                .enumerable(true)
+                .writable(true)
+                .value(1577836800.3)
+                .build(),
+            context,
+        )?;
+
+        load_times.define_property_or_throw(
+            js_string!("finishLoadTime"),
+            PropertyDescriptorBuilder::new()
+                .configurable(true)
+                .enumerable(true)
+                .writable(true)
+                .value(1577836800.4)
+                .build(),
+            context,
+        )?;
+
+        load_times.define_property_or_throw(
+            js_string!("firstPaintTime"),
+            PropertyDescriptorBuilder::new()
+                .configurable(true)
+                .enumerable(true)
+                .writable(true)
+                .value(1577836800.5)
+                .build(),
+            context,
+        )?;
+
+        load_times.define_property_or_throw(
+            js_string!("firstPaintAfterLoadTime"),
+            PropertyDescriptorBuilder::new()
+                .configurable(true)
+                .enumerable(true)
+                .writable(true)
+                .value(1577836800.6)
+                .build(),
+            context,
+        )?;
+
+        load_times.define_property_or_throw(
+            js_string!("navigationType"),
+            PropertyDescriptorBuilder::new()
+                .configurable(true)
+                .enumerable(true)
+                .writable(true)
+                .value(JsString::from("navigate"))
+                .build(),
+            context,
+        )?;
+
+        Ok(load_times.into())
+    })
+    .name(js_string!("loadTimes"))
+    .build();
+
+    chrome.define_property_or_throw(
+        js_string!("loadTimes"),
+        PropertyDescriptorBuilder::new()
+            .configurable(true)
+            .enumerable(true)
+            .writable(true)
+            .value(load_times_func)
+            .build(),
+        context,
+    )?;
+
+    Ok(chrome.into())
 }
