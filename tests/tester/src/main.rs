@@ -268,7 +268,7 @@ fn main() -> Result<()> {
 /// Returns the commit hash and commit message of the provided branch name.
 fn get_last_branch_commit(branch: &str, verbose: u8) -> Result<(String, String)> {
     if verbose > 1 {
-        println!("Getting last commit on '{branch}' branch");
+        eprintln!("Getting last commit on '{branch}' branch");
     }
     let result = Command::new("git")
         .arg("log")
@@ -296,7 +296,7 @@ fn get_last_branch_commit(branch: &str, verbose: u8) -> Result<(String, String)>
 
 fn reset_test262_commit(commit: &str, verbose: u8) -> Result<()> {
     if verbose != 0 {
-        println!("Reset test262 to commit: {commit}...");
+        eprintln!("Reset test262 to commit: {commit}...");
     }
 
     let result = Command::new("git")
@@ -332,7 +332,7 @@ fn clone_test262(commit: Option<&str>, verbose: u8) -> Result<()> {
         }
 
         if verbose != 0 {
-            println!("Fetching latest test262 commits...");
+            eprintln!("Fetching latest test262 commits...");
         }
         let result = Command::new("git")
             .arg("fetch")
@@ -347,28 +347,28 @@ fn clone_test262(commit: Option<&str>, verbose: u8) -> Result<()> {
         }
 
         if let Some(commit) = commit {
-            println!("Test262 switching to commit {commit}...");
+            eprintln!("Test262 switching to commit {commit}...");
             reset_test262_commit(commit, verbose)?;
             return Ok(());
         }
 
         if verbose != 0 {
-            println!("Checking latest Test262 with current HEAD...");
+            eprintln!("Checking latest Test262 with current HEAD...");
         }
         let (latest_commit_hash, latest_commit_message) =
             get_last_branch_commit("origin/main", verbose)?;
 
         if current_commit_hash != latest_commit_hash {
             if update {
-                println!("Updating Test262 repository:");
+                eprintln!("Updating Test262 repository:");
             } else {
-                println!(
+                eprintln!(
                     "Warning Test262 repository is not in sync, use '--test262-commit latest' to automatically update it:"
                 );
             }
 
-            println!("    Current commit: {current_commit_hash} {current_commit_message}");
-            println!("    Latest commit:  {latest_commit_hash} {latest_commit_message}");
+            eprintln!("    Current commit: {current_commit_hash} {current_commit_message}");
+            eprintln!("    Latest commit:  {latest_commit_hash} {latest_commit_message}");
 
             if update {
                 reset_test262_commit(&latest_commit_hash, verbose)?;
@@ -378,7 +378,7 @@ fn clone_test262(commit: Option<&str>, verbose: u8) -> Result<()> {
         return Ok(());
     }
 
-    println!("Cloning test262...");
+    eprintln!("Cloning test262...");
     let result = Command::new("git")
         .arg("clone")
         .arg(TEST262_REPOSITORY)
@@ -394,7 +394,7 @@ fn clone_test262(commit: Option<&str>, verbose: u8) -> Result<()> {
 
     if let Some(commit) = commit {
         if verbose != 0 {
-            println!("Reset Test262 to commit: {commit}...");
+            eprintln!("Reset Test262 to commit: {commit}...");
         }
 
         reset_test262_commit(commit, verbose)?;
@@ -428,7 +428,7 @@ fn run_test_suite(
     }
 
     if verbose != 0 {
-        println!("Loading the test suite...");
+        eprintln!("Loading the test suite...");
     }
     let harness = read_harness(test262_path).wrap_err("could not read harness")?;
 
@@ -440,16 +440,16 @@ fn run_test_suite(
 
         if test.edition <= edition {
             if verbose != 0 {
-                println!("Test loaded, starting...");
+                eprintln!("Test loaded, starting...");
             }
             test.run(&harness, verbose, optimizer_options, console);
         } else {
-            println!(
+            eprintln!(
                 "Minimum spec edition of test is bigger than the specified edition. Skipping."
             );
         }
 
-        println!();
+        eprintln!();
     } else {
         let suite =
             read_suite(&test262_path.join(suite), config.ignored(), false).wrap_err_with(|| {
@@ -458,7 +458,7 @@ fn run_test_suite(
             })?;
 
         if verbose != 0 {
-            println!("Test suite loaded, starting tests...");
+            eprintln!("Test suite loaded, starting tests...");
         }
         let results = suite.run(
             &harness,
@@ -504,8 +504,8 @@ fn run_test_suite(
                     conformance,
                 ]);
             }
-            println!("\n\nResults\n");
-            println!("{table}");
+            eprintln!("\n\nResults\n");
+            eprintln!("{table}");
         } else {
             let Statistics {
                 total,
@@ -513,16 +513,16 @@ fn run_test_suite(
                 ignored,
                 panic,
             } = results.stats;
-            println!("\n\nResults ({edition}):");
-            println!("Total tests: {total}");
-            println!("Passed tests: {}", passed.to_string().green());
-            println!("Ignored tests: {}", ignored.to_string().yellow());
-            println!(
+            eprintln!("\n\nResults ({edition}):");
+            eprintln!("Total tests: {total}");
+            eprintln!("Passed tests: {}", passed.to_string().green());
+            eprintln!("Ignored tests: {}", ignored.to_string().yellow());
+            eprintln!(
                 "Failed tests: {} ({})",
                 (total - passed - ignored).to_string().red(),
                 format!("{panic} panics").red()
             );
-            println!(
+            eprintln!(
                 "Conformance: {:.2}%",
                 (passed as f64 / total as f64) * 100.0
             );

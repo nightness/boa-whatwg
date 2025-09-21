@@ -1,11 +1,31 @@
 //! Boa's ECMAScript built-in object implementations, e.g. Object, String, Math, Array, etc.
 
+pub mod abort_controller;
 pub mod array;
 pub mod array_buffer;
 pub mod async_function;
 pub mod readable_stream;
 pub mod websocket;
+pub mod websocket_stream;
+pub mod document;
+pub mod document_parse;
+pub mod window;
+pub mod history;
+pub mod pageswap_event;
+pub mod element;
+pub mod selection;
+pub mod frame_selection;
+pub mod range;
+pub mod event;
+pub mod css;
 pub mod fetch;
+pub mod xmlhttprequest;
+pub mod mutation_observer;
+pub mod intersection_observer;
+pub mod resize_observer;
+pub mod console;
+pub mod timers;
+pub mod blob;
 pub mod async_generator;
 pub mod async_generator_function;
 pub mod atomics;
@@ -56,6 +76,7 @@ pub(crate) mod options;
 pub mod temporal;
 
 pub(crate) use self::{
+    abort_controller::AbortController,
     array::Array,
     async_function::AsyncFunction,
     bigint::BigInt,
@@ -76,6 +97,21 @@ pub(crate) use self::{
     proxy::Proxy,
     readable_stream::ReadableStream,
     websocket::WebSocket,
+    websocket_stream::WebSocketStream,
+    document::Document,
+    window::Window,
+    history::History,
+    pageswap_event::PageSwapEvent,
+    element::Element,
+    selection::Selection,
+    range::Range,
+    event::Event,
+    console::Console,
+    blob::Blob,
+    xmlhttprequest::XmlHttpRequest,
+    mutation_observer::MutationObserver,
+    intersection_observer::IntersectionObserver,
+    resize_observer::ResizeObserver,
     reflect::Reflect,
     regexp::RegExp,
     set::Set,
@@ -88,7 +124,7 @@ pub(crate) use self::{
 };
 
 use crate::{
-    Context, JsResult, JsString, JsValue,
+    Context, JsResult, JsString, JsValue, JsNativeError,
     builtins::{
         array::ArrayIterator,
         array_buffer::{ArrayBuffer, SharedArrayBuffer},
@@ -97,6 +133,7 @@ use crate::{
         atomics::Atomics,
         error::r#type::ThrowTypeError,
         fetch::Fetch,
+        timers::{SetTimeout, SetInterval, ClearTimeout, ClearInterval},
         generator::Generator,
         generator_function::GeneratorFunction,
         iterable::{AsyncFromSyncIterator, AsyncIterator, Iterator},
@@ -213,6 +250,7 @@ impl Realm {
         ForInIterator::init(self);
         Math::init(self);
         Json::init(self);
+        css::Css::init(self);
         Array::init(self);
         ArrayIterator::init(self);
         Proxy::init(self);
@@ -266,7 +304,28 @@ impl Realm {
         Promise::init(self);
         ReadableStream::init(self);
         WebSocket::init(self);
+        WebSocketStream::init(self);
+        AbortController::init(self);
+        Document::init(self);
+        document_parse::setup_parse_html_unsafe(self);
+        Window::init(self);
+        History::init(self);
+        PageSwapEvent::init(self);
+        Element::init(self);
+        Selection::init(self);
+        Range::init(self);
+        Event::init(self);
         Fetch::init(self);
+        XmlHttpRequest::init(self);
+        MutationObserver::init(self);
+        IntersectionObserver::init(self);
+        ResizeObserver::init(self);
+        Console::init(self);
+        Blob::init(self);
+        SetTimeout::init(self);
+        SetInterval::init(self);
+        ClearTimeout::init(self);
+        ClearInterval::init(self);
         AsyncFunction::init(self);
         AsyncGenerator::init(self);
         AsyncGeneratorFunction::init(self);
@@ -330,6 +389,15 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
             .configurable(true),
         context,
     )?;
+    global_object.define_property_or_throw(
+        js_string!("window"),
+        PropertyDescriptor::builder()
+            .value(context.realm().global_this().clone())
+            .writable(true)
+            .enumerable(false)
+            .configurable(true),
+        context,
+    )?;
     let restricted = PropertyDescriptor::builder()
         .writable(false)
         .enumerable(false)
@@ -354,6 +422,8 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<OrdinaryObject>(context)?;
     global_binding::<Math>(context)?;
     global_binding::<Json>(context)?;
+    global_binding::<css::Css>(context)?;
+    css::setup_css_worklets(context)?;
     global_binding::<Array>(context)?;
     global_binding::<Proxy>(context)?;
     global_binding::<ArrayBuffer>(context)?;
@@ -399,6 +469,19 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<Promise>(context)?;
     global_binding::<ReadableStream>(context)?;
     global_binding::<WebSocket>(context)?;
+    global_binding::<AbortController>(context)?;
+    global_binding::<XmlHttpRequest>(context)?;
+    global_binding::<MutationObserver>(context)?;
+    global_binding::<IntersectionObserver>(context)?;
+    global_binding::<ResizeObserver>(context)?;
+    global_binding::<Console>(context)?;
+    global_binding::<Blob>(context)?;
+    global_binding::<Range>(context)?;
+    global_binding::<Event>(context)?;
+    global_binding::<SetTimeout>(context)?;
+    global_binding::<SetInterval>(context)?;
+    global_binding::<ClearTimeout>(context)?;
+    global_binding::<ClearInterval>(context)?;
     global_binding::<EncodeUri>(context)?;
     global_binding::<EncodeUriComponent>(context)?;
     global_binding::<DecodeUri>(context)?;
@@ -407,6 +490,22 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<WeakMap>(context)?;
     global_binding::<WeakSet>(context)?;
     global_binding::<Atomics>(context)?;
+
+    // Add getSelection method to global object (window.getSelection)
+    let get_selection_func = BuiltInBuilder::callable(context.realm(), window_get_selection)
+        .name(js_string!("getSelection"))
+        .length(0)
+        .build();
+
+    global_object.define_property_or_throw(
+        js_string!("getSelection"),
+        PropertyDescriptor::builder()
+            .value(get_selection_func)
+            .writable(true)
+            .enumerable(true)
+            .configurable(true),
+        context,
+    )?;
 
     #[cfg(feature = "annex-b")]
     {
@@ -424,3 +523,16 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
 
     Ok(())
 }
+
+/// `window.getSelection()` global function
+fn window_get_selection(
+    _this: &JsValue,
+    _args: &[JsValue],
+    context: &mut Context,
+) -> JsResult<JsValue> {
+    // Create a new Selection object
+    let selection_constructor = context.intrinsics().constructors().selection().constructor();
+    let selection_obj = selection_constructor.construct(&[], None, context)?;
+    Ok(selection_obj.into())
+}
+

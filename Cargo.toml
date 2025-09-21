@@ -10,7 +10,7 @@ members = [
     # TOOLS
     "tools/*",
     # OTHERS
-    "examples",
+    # "examples",
     "cli",
     # UTILS
     "utils/*",

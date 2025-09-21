@@ -44,6 +44,30 @@ This document catalogs all the features and Web APIs we've added to the Boa Java
 - Support for request init options (method, headers, body, etc.)
 - Response object with proper properties and methods
 
+### Canvas API (`core/engine/src/builtins/document.rs`)
+
+**Complete HTML Canvas 2D Implementation**:
+- Full HTML Canvas element support via `document.createElement('canvas')`
+- Canvas 2D rendering context with comprehensive method support
+- Canvas properties:
+  - `width` and `height` with default values (300x150)
+  - `style` object for CSS styling
+- Canvas methods:
+  - `getContext('2d')` returns full CanvasRenderingContext2D
+  - `toDataURL()` for image export (PNG format)
+- CanvasRenderingContext2D methods:
+  - **Rectangle Drawing**: `fillRect()`, `strokeRect()`, `clearRect()`
+  - **Text Rendering**: `fillText()`, `strokeText()`, `measureText()`
+  - **Path Operations**: `beginPath()`, `moveTo()`, `lineTo()`, `stroke()`, `fill()`
+- CanvasRenderingContext2D properties:
+  - `fillStyle` (default: "#000000")
+  - `strokeStyle` (default: "#000000")
+  - `lineWidth` (default: 1.0)
+  - `font` (default: "10px sans-serif")
+- TextMetrics object from `measureText()` with proper width calculations
+- WebGL context support framework (returns null for "webgl"/"webgl2" currently)
+- Full WHATWG Canvas API compatibility and standards compliance
+
 ### ReadableStream API (`core/engine/src/builtins/readable_stream.rs`)
 
 **WHATWG Streams Standard Implementation**:

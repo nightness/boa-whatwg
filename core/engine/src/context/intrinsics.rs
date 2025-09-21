@@ -169,6 +169,22 @@ pub struct StandardConstructors {
     promise: StandardConstructor,
     readable_stream: StandardConstructor,
     websocket: StandardConstructor,
+    websocket_stream: StandardConstructor,
+    abort_controller: StandardConstructor,
+    xmlhttprequest: StandardConstructor,
+    mutation_observer: StandardConstructor,
+    intersection_observer: StandardConstructor,
+    resize_observer: StandardConstructor,
+    document: StandardConstructor,
+    window: StandardConstructor,
+    history: StandardConstructor,
+    pageswap_event: StandardConstructor,
+    element: StandardConstructor,
+    selection: StandardConstructor,
+    range: StandardConstructor,
+    event: StandardConstructor,
+    console: StandardConstructor,
+    blob: StandardConstructor,
     weak_ref: StandardConstructor,
     weak_map: StandardConstructor,
     weak_set: StandardConstructor,
@@ -265,6 +281,22 @@ impl Default for StandardConstructors {
             promise: StandardConstructor::default(),
             readable_stream: StandardConstructor::default(),
             websocket: StandardConstructor::default(),
+            websocket_stream: StandardConstructor::default(),
+            abort_controller: StandardConstructor::default(),
+            xmlhttprequest: StandardConstructor::default(),
+            mutation_observer: StandardConstructor::default(),
+            intersection_observer: StandardConstructor::default(),
+            resize_observer: StandardConstructor::default(),
+            document: StandardConstructor::default(),
+            window: StandardConstructor::default(),
+            history: StandardConstructor::default(),
+            pageswap_event: StandardConstructor::default(),
+            element: StandardConstructor::default(),
+            selection: StandardConstructor::default(),
+            range: StandardConstructor::default(),
+            event: StandardConstructor::default(),
+            console: StandardConstructor::default(),
+            blob: StandardConstructor::default(),
             weak_ref: StandardConstructor::default(),
             weak_map: StandardConstructor::default(),
             weak_set: StandardConstructor::default(),
@@ -822,6 +854,30 @@ impl StandardConstructors {
         &self.readable_stream
     }
 
+    /// Returns the `Console` constructor.
+    ///
+    /// More information:
+    ///  - [Console API reference][spec]
+    ///
+    /// [spec]: https://console.spec.whatwg.org/
+    #[inline]
+    #[must_use]
+    pub const fn console(&self) -> &StandardConstructor {
+        &self.console
+    }
+
+    /// Returns the `Blob` constructor.
+    ///
+    /// More information:
+    ///  - [File API reference][spec]
+    ///
+    /// [spec]: https://w3c.github.io/FileAPI/#blob-section
+    #[inline]
+    #[must_use]
+    pub const fn blob(&self) -> &StandardConstructor {
+        &self.blob
+    }
+
     /// Returns the `WebSocket` constructor.
     ///
     /// More information:
@@ -832,6 +888,148 @@ impl StandardConstructors {
     #[must_use]
     pub const fn websocket(&self) -> &StandardConstructor {
         &self.websocket
+    }
+
+    /// Returns the `WebSocketStream` constructor.
+    ///
+    /// More information:
+    ///  - [WebSocketStream API reference][spec]
+    ///
+    /// [spec]: https://websockets.spec.whatwg.org/#websocketstream
+    #[inline]
+    #[must_use]
+    pub const fn websocket_stream(&self) -> &StandardConstructor {
+        &self.websocket_stream
+    }
+
+    /// Returns the `AbortController` constructor.
+    ///
+    /// More information:
+    ///  - [AbortController API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-abortcontroller
+    #[inline]
+    #[must_use]
+    pub const fn abort_controller(&self) -> &StandardConstructor {
+        &self.abort_controller
+    }
+
+    /// Returns the `XMLHttpRequest` constructor.
+    ///
+    /// More information:
+    ///  - [XMLHttpRequest API reference][spec]
+    ///
+    /// [spec]: https://xhr.spec.whatwg.org/
+    #[inline]
+    #[must_use]
+    pub const fn xmlhttprequest(&self) -> &StandardConstructor {
+        &self.xmlhttprequest
+    }
+
+    /// Returns the `MutationObserver` constructor.
+    ///
+    /// More information:
+    ///  - [MutationObserver API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-mutationobserver
+    #[inline]
+    #[must_use]
+    pub const fn mutation_observer(&self) -> &StandardConstructor {
+        &self.mutation_observer
+    }
+
+    /// Returns the `IntersectionObserver` constructor.
+    ///
+    /// More information:
+    ///  - [IntersectionObserver API reference][spec]
+    ///
+    /// [spec]: https://w3c.github.io/IntersectionObserver/
+    #[inline]
+    #[must_use]
+    pub const fn intersection_observer(&self) -> &StandardConstructor {
+        &self.intersection_observer
+    }
+
+    /// Returns the `ResizeObserver` constructor.
+    ///
+    /// More information:
+    ///  - [ResizeObserver API reference][spec]
+    ///
+    /// [spec]: https://wicg.github.io/ResizeObserver/
+    #[inline]
+    #[must_use]
+    pub const fn resize_observer(&self) -> &StandardConstructor {
+        &self.resize_observer
+    }
+
+    /// Returns the `Document` constructor.
+    ///
+    /// More information:
+    ///  - [Document API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-document
+    #[inline]
+    #[must_use]
+    pub const fn document(&self) -> &StandardConstructor {
+        &self.document
+    }
+
+    /// Returns the `Window` constructor.
+    ///
+    /// More information:
+    ///  - [Window API reference][spec]
+    ///
+    /// [spec]: https://html.spec.whatwg.org/#the-window-object
+    #[inline]
+    #[must_use]
+    pub const fn window(&self) -> &StandardConstructor {
+        &self.window
+    }
+
+    /// Returns the `History` constructor.
+    ///
+    /// More information:
+    ///  - [History API reference][spec]
+    ///
+    /// [spec]: https://html.spec.whatwg.org/#the-history-interface
+    #[inline]
+    #[must_use]
+    pub const fn history(&self) -> &StandardConstructor {
+        &self.history
+    }
+
+    /// Returns the `PageSwapEvent` constructor.
+    ///
+    /// More information:
+    ///  - [PageSwapEvent API reference][spec]
+    ///
+    /// [spec]: https://wicg.github.io/navigation-api/#pageswapevent
+    #[inline]
+    #[must_use]
+    pub const fn pageswap_event(&self) -> &StandardConstructor {
+        &self.pageswap_event
+    }
+
+    /// Returns the `Element` constructor.
+    ///
+    /// More information:
+    ///  - [Element API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-element
+    #[inline]
+    #[must_use]
+    pub const fn element(&self) -> &StandardConstructor {
+        &self.element
+    }
+
+    pub const fn selection(&self) -> &StandardConstructor {
+        &self.selection
+    }
+    pub const fn range(&self) -> &StandardConstructor {
+        &self.range
+    }
+    pub const fn event(&self) -> &StandardConstructor {
+        &self.event
     }
 
     /// Returns the `WeakRef` constructor.
@@ -1130,6 +1328,18 @@ pub struct IntrinsicObjects {
     /// [`%parseInt%`](https://tc39.es/ecma262/#sec-parseint-string-radix)
     parse_int: JsFunction,
 
+    /// [`%setTimeout%`](https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-settimeout)
+    set_timeout: JsFunction,
+
+    /// [`%setInterval%`](https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-setinterval)
+    set_interval: JsFunction,
+
+    /// [`%clearTimeout%`](https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-cleartimeout)
+    clear_timeout: JsFunction,
+
+    /// [`%clearInterval%`](https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-clearinterval)
+    clear_interval: JsFunction,
+
     /// [`%escape%`](https://tc39.es/ecma262/#sec-escape-string)
     #[cfg(feature = "annex-b")]
     escape: JsFunction,
@@ -1153,6 +1363,9 @@ pub struct IntrinsicObjects {
     /// [`%Temporal.Now%`](https://tc39.es/proposal-temporal/#sec-temporal-now-object)
     #[cfg(feature = "temporal")]
     now: JsObject,
+
+    /// [`%CSS%`](https://drafts.csswg.org/css-typed-om-1/#css-namespace)
+    css: JsObject,
 }
 
 impl IntrinsicObjects {
@@ -1182,6 +1395,10 @@ impl IntrinsicObjects {
             is_nan: JsFunction::empty_intrinsic_function(false),
             parse_float: JsFunction::empty_intrinsic_function(false),
             parse_int: JsFunction::empty_intrinsic_function(false),
+            set_timeout: JsFunction::empty_intrinsic_function(false),
+            set_interval: JsFunction::empty_intrinsic_function(false),
+            clear_timeout: JsFunction::empty_intrinsic_function(false),
+            clear_interval: JsFunction::empty_intrinsic_function(false),
             #[cfg(feature = "annex-b")]
             escape: JsFunction::empty_intrinsic_function(false),
             #[cfg(feature = "annex-b")]
@@ -1194,6 +1411,7 @@ impl IntrinsicObjects {
             temporal: JsObject::default(),
             #[cfg(feature = "temporal")]
             now: JsObject::default(),
+            css: JsObject::default(),
         })
     }
 
@@ -1301,6 +1519,15 @@ impl IntrinsicObjects {
         self.json.clone()
     }
 
+    /// Gets the [`%CSS%`][spec] intrinsic object.
+    ///
+    /// [spec]: https://drafts.csswg.org/css-typed-om-1/#css-namespace
+    #[inline]
+    #[must_use]
+    pub fn css(&self) -> JsObject {
+        self.css.clone()
+    }
+
     /// Gets the [`%isFinite%`][spec] intrinsic function.
     ///
     /// [spec]: https://tc39.es/ecma262/#sec-isfinite-number
@@ -1335,6 +1562,42 @@ impl IntrinsicObjects {
     #[must_use]
     pub fn parse_int(&self) -> JsFunction {
         self.parse_int.clone()
+    }
+
+    /// Gets the [`%setTimeout%`][spec] intrinsic function.
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-settimeout
+    #[inline]
+    #[must_use]
+    pub fn set_timeout(&self) -> JsFunction {
+        self.set_timeout.clone()
+    }
+
+    /// Gets the [`%setInterval%`][spec] intrinsic function.
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-setinterval
+    #[inline]
+    #[must_use]
+    pub fn set_interval(&self) -> JsFunction {
+        self.set_interval.clone()
+    }
+
+    /// Gets the [`%clearTimeout%`][spec] intrinsic function.
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-cleartimeout
+    #[inline]
+    #[must_use]
+    pub fn clear_timeout(&self) -> JsFunction {
+        self.clear_timeout.clone()
+    }
+
+    /// Gets the [`%clearInterval%`][spec] intrinsic function.
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-clearinterval
+    #[inline]
+    #[must_use]
+    pub fn clear_interval(&self) -> JsFunction {
+        self.clear_interval.clone()
     }
 
     /// Gets the [`%escape%`][spec] intrinsic function.

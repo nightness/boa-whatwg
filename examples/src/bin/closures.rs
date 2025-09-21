@@ -25,10 +25,10 @@ fn main() -> Result<(), JsError> {
             JsString::from("closure"),
             0,
             NativeFunction::from_copy_closure(move |_, _, _| {
-                println!("Called `closure`");
+                eprintln!("Called `closure`");
                 // `variable` is captured from the main function.
-                println!("variable = {variable}");
-                println!();
+                eprintln!("variable = {variable}");
+                eprintln!();
 
                 // We return the moved variable as a `JsValue`.
                 Ok(JsValue::new(variable))
@@ -74,7 +74,7 @@ fn main() -> Result<(), JsError> {
             |_, _, captures, context| {
                 let mut captures = captures.borrow_mut();
                 let BigStruct { greeting, object } = &mut *captures;
-                println!("Called `createMessage`");
+                eprintln!("Called `createMessage`");
                 // We obtain the `name` property of `captures.object`
                 let name = object.get(js_string!("name"), context)?;
 
@@ -89,8 +89,8 @@ fn main() -> Result<(), JsError> {
                 // We can also mutate the moved data inside the closure.
                 captures.greeting = js_string!(&*greeting, &js_string!(" Hello!"));
 
-                println!("{}", message.to_std_string_escaped());
-                println!();
+                eprintln!("{}", message.to_std_string_escaped());
+                eprintln!();
 
                 // We convert `message` into `JsValue` to be able to return it.
                 Ok(message.into())
@@ -149,10 +149,10 @@ fn main() -> Result<(), JsError> {
             // types captured by the closure are not traceable.
             unsafe {
                 NativeFunction::from_closure(move |_, _, context| {
-                    println!("Called `enumerate`");
+                    eprintln!("Called `enumerate`");
                     // `index` is captured from the main function.
-                    println!("index = {}", index.get());
-                    println!();
+                    eprintln!("index = {}", index.get());
+                    eprintln!();
 
                     numbers.borrow_mut().push(index.get());
                     index.set(index.get() + 1);
