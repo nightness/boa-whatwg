@@ -158,6 +158,7 @@ impl IntrinsicObject for Element {
             .method(remove_child, js_string!("removeChild"), 1)
             .method(set_html, js_string!("setHTML"), 1)
             .method(set_html_unsafe, js_string!("setHTMLUnsafe"), 1)
+            .method(attach_shadow, js_string!("attachShadow"), 1)
             .build();
     }
 
@@ -240,6 +241,9 @@ pub struct ElementData {
     /// Event listeners attached to this element
     #[unsafe_ignore_trace]
     event_listeners: Arc<Mutex<HashMap<String, Vec<JsValue>>>>,
+    /// Shadow root for Shadow DOM API
+    #[unsafe_ignore_trace]
+    shadow_root: Arc<Mutex<Option<JsObject>>>,
 }
 
 /// CSS Style Declaration for real style computation
@@ -388,6 +392,7 @@ impl ElementData {
             style: Arc::new(Mutex::new(CSSStyleDeclaration::new())),
             bounding_rect: Arc::new(Mutex::new(DOMRect::new())),
             event_listeners: Arc::new(Mutex::new(HashMap::new())),
+            shadow_root: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -621,6 +626,16 @@ impl ElementData {
         if let Some(listeners) = self.event_listeners.lock().unwrap().get_mut(event_type) {
             listeners.retain(|l| !JsValue::same_value(l, listener));
         }
+    }
+
+    /// Attach shadow root for Shadow DOM API
+    pub fn attach_shadow_root(&self, shadow_root: JsObject) {
+        *self.shadow_root.lock().unwrap() = Some(shadow_root);
+    }
+
+    /// Get shadow root (returns None if no shadow root or mode is 'closed')
+    pub fn get_shadow_root(&self) -> Option<JsObject> {
+        self.shadow_root.lock().unwrap().clone()
     }
 
     /// Dispatch event on this element
@@ -1151,6 +1166,97 @@ fn set_html_unsafe(this: &JsValue, args: &[JsValue], context: &mut Context) -> J
     } else {
         Err(JsNativeError::typ()
             .with_message("Element.prototype.setHTMLUnsafe called on non-Element object")
+            .into())
+    }
+}
+
+/// `Element.prototype.attachShadow(options)` - Shadow DOM API
+fn attach_shadow(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Element.prototype.attachShadow called on non-object")
+    })?;
+
+    if let Some(element) = this_obj.downcast_ref::<ElementData>() {
+        let options = args.get_or_undefined(0);
+
+        // Parse options object to get mode ('open' or 'closed')
+        let mode = if let Some(options_obj) = options.as_object() {
+            if let Ok(mode_value) = options_obj.get(js_string!("mode"), context) {
+                mode_value.to_string(context)?.to_std_string_escaped()
+            } else {
+                "open".to_string()
+            }
+        } else {
+            "open".to_string()
+        };
+
+        // Validate mode
+        if mode != "open" && mode != "closed" {
+            return Err(JsNativeError::typ()
+                .with_message("attachShadow mode must be 'open' or 'closed'")
+                .into());
+        }
+
+        // Create a shadow root object
+        let shadow_root = JsObject::default();
+
+        // Add mode property to shadow root
+        shadow_root.define_property_or_throw(
+            js_string!("mode"),
+            crate::property::PropertyDescriptorBuilder::new()
+                .value(js_string!(mode.as_str()))
+                .writable(false)
+                .enumerable(true)
+                .configurable(false)
+                .build(),
+            context,
+        )?;
+
+        // Add host property pointing back to the element
+        shadow_root.define_property_or_throw(
+            js_string!("host"),
+            crate::property::PropertyDescriptorBuilder::new()
+                .value(this_obj.clone())
+                .writable(false)
+                .enumerable(true)
+                .configurable(false)
+                .build(),
+            context,
+        )?;
+
+        // Set shadowRoot property on the element (if mode is 'open')
+        if mode == "open" {
+            this_obj.define_property_or_throw(
+                js_string!("shadowRoot"),
+                crate::property::PropertyDescriptorBuilder::new()
+                    .value(shadow_root.clone())
+                    .writable(false)
+                    .enumerable(true)
+                    .configurable(false)
+                    .build(),
+                context,
+            )?;
+        } else {
+            // For 'closed' mode, shadowRoot property should be null
+            this_obj.define_property_or_throw(
+                js_string!("shadowRoot"),
+                crate::property::PropertyDescriptorBuilder::new()
+                    .value(JsValue::null())
+                    .writable(false)
+                    .enumerable(true)
+                    .configurable(false)
+                    .build(),
+                context,
+            )?;
+        }
+
+        // Store the shadow root internally in element data
+        element.attach_shadow_root(shadow_root.clone());
+
+        Ok(shadow_root.into())
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Element.prototype.attachShadow called on non-Element object")
             .into())
     }
 }

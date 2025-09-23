@@ -179,10 +179,19 @@ pub struct StandardConstructors {
     window: StandardConstructor,
     history: StandardConstructor,
     pageswap_event: StandardConstructor,
+    node: StandardConstructor,
+    character_data: StandardConstructor,
+    text: StandardConstructor,
+    document_fragment: StandardConstructor,
+    nodelist: StandardConstructor,
     element: StandardConstructor,
+    html_form_element: StandardConstructor,
+    html_form_controls_collection: StandardConstructor,
+    html_input_element: StandardConstructor,
     selection: StandardConstructor,
     range: StandardConstructor,
     event: StandardConstructor,
+    event_target: StandardConstructor,
     console: StandardConstructor,
     blob: StandardConstructor,
     weak_ref: StandardConstructor,
@@ -291,10 +300,19 @@ impl Default for StandardConstructors {
             window: StandardConstructor::default(),
             history: StandardConstructor::default(),
             pageswap_event: StandardConstructor::default(),
+            node: StandardConstructor::default(),
+            character_data: StandardConstructor::default(),
+            text: StandardConstructor::default(),
+            document_fragment: StandardConstructor::default(),
+            nodelist: StandardConstructor::default(),
             element: StandardConstructor::default(),
+            html_form_element: StandardConstructor::default(),
+            html_form_controls_collection: StandardConstructor::default(),
+            html_input_element: StandardConstructor::default(),
             selection: StandardConstructor::default(),
             range: StandardConstructor::default(),
             event: StandardConstructor::default(),
+            event_target: StandardConstructor::default(),
             console: StandardConstructor::default(),
             blob: StandardConstructor::default(),
             weak_ref: StandardConstructor::default(),
@@ -1010,6 +1028,62 @@ impl StandardConstructors {
         &self.pageswap_event
     }
 
+    /// Returns the `Node` constructor.
+    ///
+    /// More information:
+    ///  - [Node API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-node
+    #[inline]
+    #[must_use]
+    pub const fn node(&self) -> &StandardConstructor {
+        &self.node
+    }
+
+    /// Returns the `CharacterData` constructor.
+    ///
+    /// More information:
+    ///  - [CharacterData API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-characterdata
+    pub const fn character_data(&self) -> &StandardConstructor {
+        &self.character_data
+    }
+
+    /// Returns the `Text` constructor.
+    ///
+    /// More information:
+    ///  - [Text API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-text
+    pub const fn text(&self) -> &StandardConstructor {
+        &self.text
+    }
+
+    /// Returns the `DocumentFragment` constructor.
+    ///
+    /// More information:
+    ///  - [DocumentFragment API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-documentfragment
+    #[inline]
+    #[must_use]
+    pub const fn document_fragment(&self) -> &StandardConstructor {
+        &self.document_fragment
+    }
+
+    /// Returns the `NodeList` constructor.
+    ///
+    /// More information:
+    ///  - [NodeList API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-nodelist
+    #[inline]
+    #[must_use]
+    pub const fn nodelist(&self) -> &StandardConstructor {
+        &self.nodelist
+    }
+
     /// Returns the `Element` constructor.
     ///
     /// More information:
@@ -1022,6 +1096,27 @@ impl StandardConstructors {
         &self.element
     }
 
+    /// Returns the `HTMLFormElement` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn html_form_element(&self) -> &StandardConstructor {
+        &self.html_form_element
+    }
+
+    /// Returns the `HTMLFormControlsCollection` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn html_form_controls_collection(&self) -> &StandardConstructor {
+        &self.html_form_controls_collection
+    }
+
+    /// Returns the `HTMLInputElement` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn html_input_element(&self) -> &StandardConstructor {
+        &self.html_input_element
+    }
+
     pub const fn selection(&self) -> &StandardConstructor {
         &self.selection
     }
@@ -1030,6 +1125,18 @@ impl StandardConstructors {
     }
     pub const fn event(&self) -> &StandardConstructor {
         &self.event
+    }
+
+    /// Returns the `EventTarget` constructor.
+    ///
+    /// More information:
+    ///  - [EventTarget API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-eventtarget
+    #[inline]
+    #[must_use]
+    pub const fn event_target(&self) -> &StandardConstructor {
+        &self.event_target
     }
 
     /// Returns the `WeakRef` constructor.

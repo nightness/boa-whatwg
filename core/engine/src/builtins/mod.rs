@@ -9,14 +9,21 @@ pub mod websocket;
 pub mod websocket_stream;
 pub mod document;
 pub mod document_parse;
+pub mod form;
 pub mod window;
 pub mod history;
 pub mod pageswap_event;
+pub mod node;
+pub mod character_data;
+pub mod text;
+pub mod document_fragment;
+pub mod nodelist;
 pub mod element;
 pub mod selection;
 pub mod frame_selection;
 pub mod range;
 pub mod event;
+pub mod event_target;
 pub mod css;
 pub mod fetch;
 pub mod xmlhttprequest;
@@ -99,13 +106,20 @@ pub(crate) use self::{
     websocket::WebSocket,
     websocket_stream::WebSocketStream,
     document::Document,
+    form::{HTMLFormElement, HTMLFormControlsCollection, HTMLInputElement},
     window::Window,
     history::History,
     pageswap_event::PageSwapEvent,
+    node::Node,
+    character_data::CharacterData,
+    text::Text,
+    document_fragment::DocumentFragment,
+    nodelist::NodeList,
     element::Element,
     selection::Selection,
     range::Range,
     event::Event,
+    event_target::EventTarget,
     console::Console,
     blob::Blob,
     xmlhttprequest::XmlHttpRequest,
@@ -311,10 +325,19 @@ impl Realm {
         Window::init(self);
         History::init(self);
         PageSwapEvent::init(self);
+        Node::init(self);
+        CharacterData::init(self);
+        Text::init(self);
+        DocumentFragment::init(self);
+        NodeList::init(self);
         Element::init(self);
+        HTMLFormElement::init(self);
+        HTMLFormControlsCollection::init(self);
+        HTMLInputElement::init(self);
         Selection::init(self);
         Range::init(self);
         Event::init(self);
+        EventTarget::init(self);
         Fetch::init(self);
         XmlHttpRequest::init(self);
         MutationObserver::init(self);
@@ -478,6 +501,13 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<Blob>(context)?;
     global_binding::<Range>(context)?;
     global_binding::<Event>(context)?;
+    global_binding::<EventTarget>(context)?;
+    global_binding::<Node>(context)?;
+    global_binding::<CharacterData>(context)?;
+    global_binding::<Text>(context)?;
+    global_binding::<DocumentFragment>(context)?;
+    global_binding::<NodeList>(context)?;
+    global_binding::<Document>(context)?;
     global_binding::<SetTimeout>(context)?;
     global_binding::<SetInterval>(context)?;
     global_binding::<ClearTimeout>(context)?;
