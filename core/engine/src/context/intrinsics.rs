@@ -182,6 +182,7 @@ pub struct StandardConstructors {
     node: StandardConstructor,
     character_data: StandardConstructor,
     text: StandardConstructor,
+    document_fragment: StandardConstructor,
     element: StandardConstructor,
     html_form_element: StandardConstructor,
     html_form_controls_collection: StandardConstructor,
@@ -300,6 +301,7 @@ impl Default for StandardConstructors {
             node: StandardConstructor::default(),
             character_data: StandardConstructor::default(),
             text: StandardConstructor::default(),
+            document_fragment: StandardConstructor::default(),
             element: StandardConstructor::default(),
             html_form_element: StandardConstructor::default(),
             html_form_controls_collection: StandardConstructor::default(),
@@ -1052,6 +1054,18 @@ impl StandardConstructors {
     /// [spec]: https://dom.spec.whatwg.org/#interface-text
     pub const fn text(&self) -> &StandardConstructor {
         &self.text
+    }
+
+    /// Returns the `DocumentFragment` constructor.
+    ///
+    /// More information:
+    ///  - [DocumentFragment API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-documentfragment
+    #[inline]
+    #[must_use]
+    pub const fn document_fragment(&self) -> &StandardConstructor {
+        &self.document_fragment
     }
 
     /// Returns the `Element` constructor.

@@ -16,6 +16,7 @@ pub mod pageswap_event;
 pub mod node;
 pub mod character_data;
 pub mod text;
+pub mod document_fragment;
 pub mod element;
 pub mod selection;
 pub mod frame_selection;
@@ -110,6 +111,7 @@ pub(crate) use self::{
     node::Node,
     character_data::CharacterData,
     text::Text,
+    document_fragment::DocumentFragment,
     element::Element,
     selection::Selection,
     range::Range,
@@ -322,6 +324,7 @@ impl Realm {
         Node::init(self);
         CharacterData::init(self);
         Text::init(self);
+        DocumentFragment::init(self);
         Element::init(self);
         HTMLFormElement::init(self);
         HTMLFormControlsCollection::init(self);
@@ -495,6 +498,7 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<Node>(context)?;
     global_binding::<CharacterData>(context)?;
     global_binding::<Text>(context)?;
+    global_binding::<DocumentFragment>(context)?;
     global_binding::<Document>(context)?;
     global_binding::<SetTimeout>(context)?;
     global_binding::<SetInterval>(context)?;
