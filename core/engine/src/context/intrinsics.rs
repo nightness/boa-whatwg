@@ -183,6 +183,7 @@ pub struct StandardConstructors {
     character_data: StandardConstructor,
     text: StandardConstructor,
     document_fragment: StandardConstructor,
+    nodelist: StandardConstructor,
     element: StandardConstructor,
     html_form_element: StandardConstructor,
     html_form_controls_collection: StandardConstructor,
@@ -190,6 +191,7 @@ pub struct StandardConstructors {
     selection: StandardConstructor,
     range: StandardConstructor,
     event: StandardConstructor,
+    event_target: StandardConstructor,
     console: StandardConstructor,
     blob: StandardConstructor,
     weak_ref: StandardConstructor,
@@ -302,6 +304,7 @@ impl Default for StandardConstructors {
             character_data: StandardConstructor::default(),
             text: StandardConstructor::default(),
             document_fragment: StandardConstructor::default(),
+            nodelist: StandardConstructor::default(),
             element: StandardConstructor::default(),
             html_form_element: StandardConstructor::default(),
             html_form_controls_collection: StandardConstructor::default(),
@@ -309,6 +312,7 @@ impl Default for StandardConstructors {
             selection: StandardConstructor::default(),
             range: StandardConstructor::default(),
             event: StandardConstructor::default(),
+            event_target: StandardConstructor::default(),
             console: StandardConstructor::default(),
             blob: StandardConstructor::default(),
             weak_ref: StandardConstructor::default(),
@@ -1068,6 +1072,18 @@ impl StandardConstructors {
         &self.document_fragment
     }
 
+    /// Returns the `NodeList` constructor.
+    ///
+    /// More information:
+    ///  - [NodeList API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-nodelist
+    #[inline]
+    #[must_use]
+    pub const fn nodelist(&self) -> &StandardConstructor {
+        &self.nodelist
+    }
+
     /// Returns the `Element` constructor.
     ///
     /// More information:
@@ -1109,6 +1125,18 @@ impl StandardConstructors {
     }
     pub const fn event(&self) -> &StandardConstructor {
         &self.event
+    }
+
+    /// Returns the `EventTarget` constructor.
+    ///
+    /// More information:
+    ///  - [EventTarget API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-eventtarget
+    #[inline]
+    #[must_use]
+    pub const fn event_target(&self) -> &StandardConstructor {
+        &self.event_target
     }
 
     /// Returns the `WeakRef` constructor.
