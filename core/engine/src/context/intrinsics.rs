@@ -179,6 +179,9 @@ pub struct StandardConstructors {
     window: StandardConstructor,
     history: StandardConstructor,
     pageswap_event: StandardConstructor,
+    node: StandardConstructor,
+    character_data: StandardConstructor,
+    text: StandardConstructor,
     element: StandardConstructor,
     html_form_element: StandardConstructor,
     html_form_controls_collection: StandardConstructor,
@@ -294,6 +297,9 @@ impl Default for StandardConstructors {
             window: StandardConstructor::default(),
             history: StandardConstructor::default(),
             pageswap_event: StandardConstructor::default(),
+            node: StandardConstructor::default(),
+            character_data: StandardConstructor::default(),
+            text: StandardConstructor::default(),
             element: StandardConstructor::default(),
             html_form_element: StandardConstructor::default(),
             html_form_controls_collection: StandardConstructor::default(),
@@ -1014,6 +1020,38 @@ impl StandardConstructors {
     #[must_use]
     pub const fn pageswap_event(&self) -> &StandardConstructor {
         &self.pageswap_event
+    }
+
+    /// Returns the `Node` constructor.
+    ///
+    /// More information:
+    ///  - [Node API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-node
+    #[inline]
+    #[must_use]
+    pub const fn node(&self) -> &StandardConstructor {
+        &self.node
+    }
+
+    /// Returns the `CharacterData` constructor.
+    ///
+    /// More information:
+    ///  - [CharacterData API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-characterdata
+    pub const fn character_data(&self) -> &StandardConstructor {
+        &self.character_data
+    }
+
+    /// Returns the `Text` constructor.
+    ///
+    /// More information:
+    ///  - [Text API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-text
+    pub const fn text(&self) -> &StandardConstructor {
+        &self.text
     }
 
     /// Returns the `Element` constructor.
