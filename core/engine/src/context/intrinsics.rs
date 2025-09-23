@@ -180,6 +180,9 @@ pub struct StandardConstructors {
     history: StandardConstructor,
     pageswap_event: StandardConstructor,
     element: StandardConstructor,
+    html_form_element: StandardConstructor,
+    html_form_controls_collection: StandardConstructor,
+    html_input_element: StandardConstructor,
     selection: StandardConstructor,
     range: StandardConstructor,
     event: StandardConstructor,
@@ -292,6 +295,9 @@ impl Default for StandardConstructors {
             history: StandardConstructor::default(),
             pageswap_event: StandardConstructor::default(),
             element: StandardConstructor::default(),
+            html_form_element: StandardConstructor::default(),
+            html_form_controls_collection: StandardConstructor::default(),
+            html_input_element: StandardConstructor::default(),
             selection: StandardConstructor::default(),
             range: StandardConstructor::default(),
             event: StandardConstructor::default(),
@@ -1020,6 +1026,27 @@ impl StandardConstructors {
     #[must_use]
     pub const fn element(&self) -> &StandardConstructor {
         &self.element
+    }
+
+    /// Returns the `HTMLFormElement` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn html_form_element(&self) -> &StandardConstructor {
+        &self.html_form_element
+    }
+
+    /// Returns the `HTMLFormControlsCollection` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn html_form_controls_collection(&self) -> &StandardConstructor {
+        &self.html_form_controls_collection
+    }
+
+    /// Returns the `HTMLInputElement` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn html_input_element(&self) -> &StandardConstructor {
+        &self.html_input_element
     }
 
     pub const fn selection(&self) -> &StandardConstructor {

@@ -9,6 +9,7 @@ pub mod websocket;
 pub mod websocket_stream;
 pub mod document;
 pub mod document_parse;
+pub mod form;
 pub mod window;
 pub mod history;
 pub mod pageswap_event;
@@ -99,6 +100,7 @@ pub(crate) use self::{
     websocket::WebSocket,
     websocket_stream::WebSocketStream,
     document::Document,
+    form::{HTMLFormElement, HTMLFormControlsCollection, HTMLInputElement},
     window::Window,
     history::History,
     pageswap_event::PageSwapEvent,
@@ -312,6 +314,9 @@ impl Realm {
         History::init(self);
         PageSwapEvent::init(self);
         Element::init(self);
+        HTMLFormElement::init(self);
+        HTMLFormControlsCollection::init(self);
+        HTMLInputElement::init(self);
         Selection::init(self);
         Range::init(self);
         Event::init(self);
