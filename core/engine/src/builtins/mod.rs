@@ -503,6 +503,7 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<Event>(context)?;
     global_binding::<EventTarget>(context)?;
     global_binding::<Node>(context)?;
+    global_binding::<Element>(context)?;
     global_binding::<CharacterData>(context)?;
     global_binding::<Text>(context)?;
     global_binding::<DocumentFragment>(context)?;
