@@ -185,6 +185,7 @@ pub struct StandardConstructors {
     document_fragment: StandardConstructor,
     nodelist: StandardConstructor,
     element: StandardConstructor,
+    attr: StandardConstructor,
     html_form_element: StandardConstructor,
     html_form_controls_collection: StandardConstructor,
     html_input_element: StandardConstructor,
@@ -306,6 +307,7 @@ impl Default for StandardConstructors {
             document_fragment: StandardConstructor::default(),
             nodelist: StandardConstructor::default(),
             element: StandardConstructor::default(),
+            attr: StandardConstructor::default(),
             html_form_element: StandardConstructor::default(),
             html_form_controls_collection: StandardConstructor::default(),
             html_input_element: StandardConstructor::default(),
@@ -1094,6 +1096,13 @@ impl StandardConstructors {
     #[must_use]
     pub const fn element(&self) -> &StandardConstructor {
         &self.element
+    }
+
+    /// Returns the `Attr` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn attr(&self) -> &StandardConstructor {
+        &self.attr
     }
 
     /// Returns the `HTMLFormElement` constructor.
