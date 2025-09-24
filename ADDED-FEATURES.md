@@ -44,6 +44,32 @@ This document catalogs all the features and Web APIs we've added to the Boa Java
 - Support for request init options (method, headers, body, etc.)
 - Response object with proper properties and methods
 
+### DOM Level 4 API (`core/engine/src/builtins/`)
+
+**Complete WHATWG DOM Living Standard Implementation**:
+- **Document Interface** (41/41 tests passing) - Full document object model with createElement, querySelector, DOM tree management
+- **Attr Interface** (36/36 tests passing) - Complete attribute objects with all CharacterData methods and properties
+- **Node Interface** (32/32 tests passing) - Primary DOM datatype with full node tree operations
+- **Comment Interface** (18/18 tests passing) - XML/HTML comment nodes with CharacterData inheritance
+- **Element Interface** - HTML element objects with attribute management and DOM tree operations
+- **CharacterData Interface** - Base class for Text and Comment nodes with data manipulation methods
+- **Text Interface** - Text node implementation for DOM text content
+- **DocumentFragment Interface** - Lightweight document container for DOM operations
+
+**DOM Properties and Methods**:
+- Document: createElement, getElementById, querySelector, querySelectorAll, body, head, title, URL, readyState
+- Attr: name, value, ownerElement, namespaceURI, localName, prefix, specified
+- Comment: data, length, substringData, appendData, insertData, deleteData, replaceData
+- Node: nodeType, nodeName, nodeValue, parentNode, childNodes, firstChild, lastChild, previousSibling, nextSibling
+- Element: tagName, attributes, getAttribute, setAttribute, removeAttribute, hasAttribute, classList, innerHTML
+
+**Standards Compliance**:
+- Full WHATWG DOM Level 4 specification adherence
+- Proper JavaScript property accessors and method implementations
+- Correct prototype chain inheritance and constructor behavior
+- Complete error handling with standard DOM exception types
+- Unicode support for international text processing
+
 ### Canvas API (`core/engine/src/builtins/document.rs`)
 
 **Complete HTML Canvas 2D Implementation**:

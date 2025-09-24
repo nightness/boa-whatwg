@@ -20,6 +20,7 @@ pub mod document_fragment;
 pub mod nodelist;
 pub mod element;
 pub mod attr;
+pub mod comment;
 pub mod selection;
 pub mod frame_selection;
 pub mod range;
@@ -118,6 +119,7 @@ pub(crate) use self::{
     nodelist::NodeList,
     element::Element,
     attr::Attr,
+    comment::Comment,
     selection::Selection,
     range::Range,
     event::Event,
@@ -334,6 +336,7 @@ impl Realm {
         NodeList::init(self);
         Element::init(self);
         Attr::init(self);
+        Comment::init(self);
         HTMLFormElement::init(self);
         HTMLFormControlsCollection::init(self);
         HTMLInputElement::init(self);
@@ -508,6 +511,7 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<Node>(context)?;
     global_binding::<Element>(context)?;
     global_binding::<Attr>(context)?;
+    global_binding::<Comment>(context)?;
     global_binding::<CharacterData>(context)?;
     global_binding::<Text>(context)?;
     global_binding::<DocumentFragment>(context)?;
