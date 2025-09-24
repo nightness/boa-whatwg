@@ -4,7 +4,7 @@
 //! https://html.spec.whatwg.org/#the-window-object
 
 use crate::{
-    builtins::{BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder},
+    builtins::{BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder, storage::Storage},
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
     object::{internal_methods::get_prototype_from_constructor, JsObject},
     string::StaticJsStrings,
@@ -46,6 +46,14 @@ impl IntrinsicObject for Window {
             .name(js_string!("get chrome"))
             .build();
 
+        let local_storage_func = BuiltInBuilder::callable(realm, get_local_storage)
+            .name(js_string!("get localStorage"))
+            .build();
+
+        let session_storage_func = BuiltInBuilder::callable(realm, get_session_storage)
+            .name(js_string!("get sessionStorage"))
+            .build();
+
         BuiltInBuilder::from_standard_constructor::<Self>(realm)
             .accessor(
                 js_string!("location"),
@@ -80,6 +88,18 @@ impl IntrinsicObject for Window {
             .accessor(
                 js_string!("chrome"),
                 Some(chrome_func),
+                None,
+                Attribute::CONFIGURABLE,
+            )
+            .accessor(
+                js_string!("localStorage"),
+                Some(local_storage_func),
+                None,
+                Attribute::CONFIGURABLE,
+            )
+            .accessor(
+                js_string!("sessionStorage"),
+                Some(session_storage_func),
                 None,
                 Attribute::CONFIGURABLE,
             )
@@ -1605,4 +1625,28 @@ fn get_chrome(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsRe
     )?;
 
     Ok(chrome.into())
+}
+
+/// `window.localStorage` getter
+fn get_local_storage(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    // Create localStorage instance with Storage prototype
+    let local_storage = Storage::create_local_storage();
+
+    // Set the prototype to the Storage prototype
+    let storage_prototype = context.intrinsics().constructors().storage().prototype();
+    local_storage.set_prototype(Some(storage_prototype));
+
+    Ok(local_storage.into())
+}
+
+/// `window.sessionStorage` getter
+fn get_session_storage(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    // Create sessionStorage instance with Storage prototype
+    let session_storage = Storage::create_session_storage();
+
+    // Set the prototype to the Storage prototype
+    let storage_prototype = context.intrinsics().constructors().storage().prototype();
+    session_storage.set_prototype(Some(storage_prototype));
+
+    Ok(session_storage.into())
 }

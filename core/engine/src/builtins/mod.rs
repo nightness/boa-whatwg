@@ -69,6 +69,7 @@ pub mod uri;
 pub mod weak;
 pub mod weak_map;
 pub mod weak_set;
+pub mod storage;
 
 mod builder;
 
@@ -170,6 +171,7 @@ use crate::{
         weak::WeakRef,
         weak_map::WeakMap,
         weak_set::WeakSet,
+        storage::Storage,
     },
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
     js_string,
@@ -374,6 +376,7 @@ impl Realm {
         WeakRef::init(self);
         WeakMap::init(self);
         WeakSet::init(self);
+        Storage::init(self);
         Atomics::init(self);
 
         #[cfg(feature = "annex-b")]
@@ -541,6 +544,7 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<WeakRef>(context)?;
     global_binding::<WeakMap>(context)?;
     global_binding::<WeakSet>(context)?;
+    global_binding::<Storage>(context)?;
     global_binding::<Atomics>(context)?;
 
     // Add getSelection method to global object (window.getSelection)

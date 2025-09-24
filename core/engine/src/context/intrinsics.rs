@@ -203,6 +203,7 @@ pub struct StandardConstructors {
     weak_ref: StandardConstructor,
     weak_map: StandardConstructor,
     weak_set: StandardConstructor,
+    storage: StandardConstructor,
     #[cfg(feature = "intl")]
     collator: StandardConstructor,
     #[cfg(feature = "intl")]
@@ -330,6 +331,7 @@ impl Default for StandardConstructors {
             weak_ref: StandardConstructor::default(),
             weak_map: StandardConstructor::default(),
             weak_set: StandardConstructor::default(),
+            storage: StandardConstructor::default(),
             #[cfg(feature = "intl")]
             collator: StandardConstructor::default(),
             #[cfg(feature = "intl")]
@@ -1227,6 +1229,16 @@ impl StandardConstructors {
     #[must_use]
     pub const fn weak_set(&self) -> &StandardConstructor {
         &self.weak_set
+    }
+
+    /// Returns the `Storage` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Specification](https://html.spec.whatwg.org/multipage/webstorage.html#the-storage-interface)
+    #[inline]
+    #[must_use]
+    pub const fn storage(&self) -> &StandardConstructor {
+        &self.storage
     }
 
     /// Returns the `Intl.Collator` constructor.

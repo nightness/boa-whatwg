@@ -127,6 +127,35 @@ This document catalogs all the features and Web APIs we've added to the Boa Java
 - Async iterator support with `Symbol.asyncIterator`
 - Full streaming data processing capabilities
 
+### Web Storage API (`core/engine/src/builtins/storage/`)
+
+**Complete WHATWG Storage Implementation**:
+- Full implementation of the Web Storage API standard (https://html.spec.whatwg.org/multipage/webstorage.html)
+- `localStorage` and `sessionStorage` objects accessible via `window`
+- Complete Storage interface with all standard methods:
+  - `getItem(key)` - Retrieve item by key, returns string or null
+  - `setItem(key, value)` - Store item with string conversion
+  - `removeItem(key)` - Remove item by key
+  - `clear()` - Remove all items
+  - `key(index)` - Get key by numeric index
+- Properties:
+  - `length` - Number of items in storage (read-only)
+- **Standards Compliance**:
+  - All values automatically converted to strings per specification
+  - Proper null return for non-existent keys
+  - Independent storage between localStorage and sessionStorage
+  - WHATWG-compliant behavior for all edge cases
+- **Implementation Details**:
+  - Thread-safe storage using `Arc<RwLock<HashMap<String, String>>>`
+  - Separate storage instances for localStorage vs sessionStorage
+  - Proper error handling for all operations
+  - Constructor protection (cannot be called with `new Storage()`)
+- **Integration**:
+  - Added to Window object as non-enumerable properties
+  - Properly integrated with Boa's builtin system
+  - Full garbage collection support with `Trace` and `Finalize`
+  - Comprehensive test coverage (10+ test cases)
+
 ## Enhanced Regular Expression Support
 
 ### RegExp Improvements (`core/engine/src/builtins/regexp/`)
@@ -145,6 +174,7 @@ This document catalogs all the features and Web APIs we've added to the Boa Java
 - `readable_stream` module integrated as core builtin
 - `websocket` module integrated as core builtin
 - `fetch` module integrated as core builtin
+- `storage` module integrated as core builtin
 - Proper intrinsic object registration
 - Standard constructor patterns followed
 
@@ -161,6 +191,7 @@ This document catalogs all the features and Web APIs we've added to the Boa Java
 **Runtime Integration**:
 - WebSocket constructor registered as standard constructor
 - ReadableStream constructor registered as standard constructor
+- Storage constructor registered as standard constructor
 - Fetch function registered as global intrinsic
 - Proper prototype chain setup for all new objects
 
