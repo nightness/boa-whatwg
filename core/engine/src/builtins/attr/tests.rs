@@ -136,21 +136,21 @@ fn attr_property_descriptors() {
     run_test_actions([
         TestAction::run("var attr = new Attr()"),
 
-        // Test property descriptors
-        TestAction::run("var nameDesc = Object.getOwnPropertyDescriptor(attr, 'name')"),
+        // Test property descriptors on prototype (where DOM properties live)
+        TestAction::run("var nameDesc = Object.getOwnPropertyDescriptor(Attr.prototype, 'name')"),
         TestAction::assert_eq("nameDesc !== undefined", true),
         TestAction::assert_eq("nameDesc.enumerable", true),
         TestAction::assert_eq("nameDesc.configurable", true),
         TestAction::assert_eq("typeof nameDesc.get", js_string!("function")),
 
-        TestAction::run("var valueDesc = Object.getOwnPropertyDescriptor(attr, 'value')"),
+        TestAction::run("var valueDesc = Object.getOwnPropertyDescriptor(Attr.prototype, 'value')"),
         TestAction::assert_eq("valueDesc !== undefined", true),
         TestAction::assert_eq("valueDesc.enumerable", true),
         TestAction::assert_eq("valueDesc.configurable", true),
         TestAction::assert_eq("typeof valueDesc.get", js_string!("function")),
         TestAction::assert_eq("typeof valueDesc.set", js_string!("function")),
 
-        TestAction::run("var ownerDesc = Object.getOwnPropertyDescriptor(attr, 'ownerElement')"),
+        TestAction::run("var ownerDesc = Object.getOwnPropertyDescriptor(Attr.prototype, 'ownerElement')"),
         TestAction::assert_eq("ownerDesc !== undefined", true),
         TestAction::assert_eq("ownerDesc.enumerable", true),
         TestAction::assert_eq("ownerDesc.configurable", true),
@@ -162,16 +162,20 @@ fn attr_property_descriptors() {
 fn attr_property_enumeration() {
     run_test_actions([
         TestAction::run("var attr = new Attr()"),
-        TestAction::run("var keys = Object.keys(attr)"),
 
-        // Properties should be enumerable
-        TestAction::assert_eq("keys.includes('name')", true),
-        TestAction::assert_eq("keys.includes('value')", true),
-        TestAction::assert_eq("keys.includes('ownerElement')", true),
-        TestAction::assert_eq("keys.includes('namespaceURI')", true),
-        TestAction::assert_eq("keys.includes('localName')", true),
-        TestAction::assert_eq("keys.includes('prefix')", true),
-        TestAction::assert_eq("keys.includes('specified')", true),
+        // DOM properties are on prototype, not instance - use for...in enumeration
+        TestAction::run("var props = []; for (var prop in attr) { props.push(prop); }"),
+        TestAction::assert_eq("props.includes('name')", true),
+        TestAction::assert_eq("props.includes('value')", true),
+        TestAction::assert_eq("props.includes('ownerElement')", true),
+        TestAction::assert_eq("props.includes('namespaceURI')", true),
+        TestAction::assert_eq("props.includes('localName')", true),
+        TestAction::assert_eq("props.includes('prefix')", true),
+        TestAction::assert_eq("props.includes('specified')", true),
+
+        // Verify properties are accessible but not own properties
+        TestAction::assert_eq("attr.hasOwnProperty('name')", false),
+        TestAction::assert_eq("'name' in attr", true),
     ]);
 }
 
@@ -291,7 +295,7 @@ fn attr_edge_cases() {
         TestAction::assert_eq("attr.value", js_string!("   ")),
 
         TestAction::run("attr.value = 'special chars: \\\"\\n\\t'"),
-        TestAction::assert_eq("attr.value", js_string!("special chars: \"\\n\\t")),
+        TestAction::assert_eq("attr.value", js_string!("special chars: \"\n\t")),
 
         // Test with very long strings
         TestAction::run("attr.value = 'a'.repeat(1000)"),

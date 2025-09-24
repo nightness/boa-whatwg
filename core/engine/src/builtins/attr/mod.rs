@@ -164,7 +164,8 @@ impl Attr {
 
         if let Some(attr_data) = this_obj.downcast_ref::<AttrData>() {
             let new_value = args.get_or_undefined(0).to_string(context)?;
-            attr_data.set_value(new_value.to_std_string_escaped());
+            // Don't escape - preserve the raw string value
+            attr_data.set_value(new_value.to_std_string().unwrap_or_default());
             Ok(JsValue::undefined())
         } else {
             Err(JsNativeError::typ()
