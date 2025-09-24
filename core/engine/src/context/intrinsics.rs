@@ -187,6 +187,7 @@ pub struct StandardConstructors {
     element: StandardConstructor,
     attr: StandardConstructor,
     comment: StandardConstructor,
+    domtokenlist: StandardConstructor,
     processing_instruction: StandardConstructor,
     cdata_section: StandardConstructor,
     html_form_element: StandardConstructor,
@@ -196,6 +197,7 @@ pub struct StandardConstructors {
     range: StandardConstructor,
     event: StandardConstructor,
     event_target: StandardConstructor,
+    custom_event: StandardConstructor,
     console: StandardConstructor,
     blob: StandardConstructor,
     weak_ref: StandardConstructor,
@@ -312,6 +314,7 @@ impl Default for StandardConstructors {
             element: StandardConstructor::default(),
             attr: StandardConstructor::default(),
             comment: StandardConstructor::default(),
+            domtokenlist: StandardConstructor::default(),
             processing_instruction: StandardConstructor::default(),
             cdata_section: StandardConstructor::default(),
             html_form_element: StandardConstructor::default(),
@@ -321,6 +324,7 @@ impl Default for StandardConstructors {
             range: StandardConstructor::default(),
             event: StandardConstructor::default(),
             event_target: StandardConstructor::default(),
+            custom_event: StandardConstructor::default(),
             console: StandardConstructor::default(),
             blob: StandardConstructor::default(),
             weak_ref: StandardConstructor::default(),
@@ -1092,6 +1096,13 @@ impl StandardConstructors {
         &self.nodelist
     }
 
+    /// Returns the `DOMTokenList` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn domtokenlist(&self) -> &StandardConstructor {
+        &self.domtokenlist
+    }
+
     /// Returns the `Element` constructor.
     ///
     /// More information:
@@ -1116,6 +1127,13 @@ impl StandardConstructors {
     #[must_use]
     pub const fn comment(&self) -> &StandardConstructor {
         &self.comment
+    }
+
+    /// Returns the `CustomEvent` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn custom_event(&self) -> &StandardConstructor {
+        &self.custom_event
     }
 
     /// Returns the `ProcessingInstruction` constructor.
@@ -1456,6 +1474,9 @@ pub struct IntrinsicObjects {
     /// [`%eval%`](https://tc39.es/ecma262/#sec-eval-x)
     eval: JsFunction,
 
+    /// [`%fetch%`](https://fetch.spec.whatwg.org/)
+    fetch: JsFunction,
+
     /// URI related functions
     uri_functions: UriFunctions,
 
@@ -1533,6 +1554,7 @@ impl IntrinsicObjects {
             async_generator: JsObject::default(),
             atomics: JsObject::default(),
             eval: JsFunction::empty_intrinsic_function(false),
+            fetch: JsFunction::empty_intrinsic_function(false),
             uri_functions: UriFunctions::default(),
             is_finite: JsFunction::empty_intrinsic_function(false),
             is_nan: JsFunction::empty_intrinsic_function(false),
@@ -1626,6 +1648,13 @@ impl IntrinsicObjects {
     #[must_use]
     pub fn eval(&self) -> JsFunction {
         self.eval.clone()
+    }
+
+    /// Gets the [`%fetch%`][spec] intrinsic function.
+    #[inline]
+    #[must_use]
+    pub fn fetch(&self) -> JsFunction {
+        self.fetch.clone()
     }
 
     /// Gets the URI intrinsic functions.

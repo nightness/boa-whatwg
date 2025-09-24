@@ -101,6 +101,10 @@ impl IntrinsicObject for Element {
             .name(js_string!("get style"))
             .build();
 
+        let class_list_func = BuiltInBuilder::callable(realm, get_class_list)
+            .name(js_string!("get classList"))
+            .build();
+
         BuiltInBuilder::from_standard_constructor::<Self>(realm)
             .accessor(
                 js_string!("tagName"),
@@ -147,6 +151,12 @@ impl IntrinsicObject for Element {
             .accessor(
                 js_string!("style"),
                 Some(style_func),
+                None,
+                Attribute::CONFIGURABLE,
+            )
+            .accessor(
+                js_string!("classList"),
+                Some(class_list_func),
                 None,
                 Attribute::CONFIGURABLE,
             )
@@ -1001,6 +1011,23 @@ fn get_style(this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResu
     } else {
         Err(JsNativeError::typ()
             .with_message("Element.prototype.style called on non-Element object")
+            .into())
+    }
+}
+
+/// `Element.prototype.classList` getter
+fn get_class_list(this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Element.prototype.classList called on non-object")
+    })?;
+
+    if let Some(_element) = this_obj.downcast_ref::<ElementData>() {
+        // Create or return a DOMTokenList bound to this element
+        let list = crate::builtins::DOMTokenList::create_for_element(this_obj.clone(), context)?;
+        Ok(list.into())
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Element.prototype.classList called on non-Element object")
             .into())
     }
 }

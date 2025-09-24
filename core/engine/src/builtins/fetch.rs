@@ -32,8 +32,8 @@ impl IntrinsicObject for Fetch {
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
-        // Get the fetch function from the global bindings
-        intrinsics.constructors().function().constructor()
+        // Return the intrinsic `fetch` object stored in the intrinsics.
+        intrinsics.objects().fetch().into()
     }
 }
 

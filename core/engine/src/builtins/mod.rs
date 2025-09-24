@@ -28,6 +28,8 @@ pub mod frame_selection;
 pub mod range;
 pub mod event;
 pub mod event_target;
+pub mod custom_event;
+pub mod domtokenlist;
 pub mod css;
 pub mod fetch;
 pub mod xmlhttprequest;
@@ -122,6 +124,7 @@ pub(crate) use self::{
     element::Element,
     attr::Attr,
     comment::Comment,
+    domtokenlist::DOMTokenList,
     selection::Selection,
     range::Range,
     event::Event,
@@ -339,6 +342,7 @@ impl Realm {
         Element::init(self);
         Attr::init(self);
         Comment::init(self);
+            domtokenlist::DOMTokenList::init(self);
         processing_instruction::ProcessingInstruction::init(self);
         cdata_section::CDATASection::init(self);
         HTMLFormElement::init(self);
@@ -348,6 +352,7 @@ impl Realm {
         Range::init(self);
         Event::init(self);
         EventTarget::init(self);
+        custom_event::CustomEvent::init(self);
         Fetch::init(self);
         XmlHttpRequest::init(self);
         MutationObserver::init(self);
@@ -512,10 +517,12 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<Range>(context)?;
     global_binding::<Event>(context)?;
     global_binding::<EventTarget>(context)?;
+    global_binding::<custom_event::CustomEvent>(context)?;
     global_binding::<Node>(context)?;
     global_binding::<Element>(context)?;
     global_binding::<Attr>(context)?;
     global_binding::<Comment>(context)?;
+    global_binding::<domtokenlist::DOMTokenList>(context)?;
     global_binding::<processing_instruction::ProcessingInstruction>(context)?;
     global_binding::<cdata_section::CDATASection>(context)?;
     global_binding::<CharacterData>(context)?;

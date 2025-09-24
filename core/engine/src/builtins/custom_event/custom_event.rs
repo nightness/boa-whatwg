@@ -417,8 +417,9 @@ impl BuiltInConstructor for CustomEvent {
                 .unwrap_or(JsValue::undefined())
                 .to_boolean();
 
-            let detail = init_obj.get(js_string!("detail"), context)
-                .unwrap_or(JsValue::null());
+            let detail_val = init_obj.get(js_string!("detail"), context)
+                .unwrap_or(JsValue::undefined());
+            let detail = if detail_val.is_undefined() { JsValue::null() } else { detail_val };
 
             (bubbles, cancelable, detail)
         } else {

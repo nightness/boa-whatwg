@@ -131,7 +131,7 @@ fn function_prototype_apply_on_object() {
 #[test]
 fn closure_capture_clone() {
     run_test_actions([
-        TestAction::inspect_context(|ctx| {
+    TestAction::inspect_context(|ctx| {
             let string = js_string!("Hello");
             let object = JsObject::with_object_proto(ctx.intrinsics());
             object
@@ -192,5 +192,100 @@ fn function_constructor_early_errors_super() {
             JsNativeErrorKind::Syntax,
             "invalid `super` reference",
         ),
+    ]);
+}
+
+// Temporary debug test to inspect the types and values passed to create_dynamic_function.
+// This writes a debug file `engines/boa/debug-create-dynamic.txt` in the workspace so
+// we can inspect the exact JsValue representations observed at runtime.
+#[test]
+fn debug_create_dynamic_function_inspect_args() {
+    use crate::run_test_actions;
+    use crate::TestAction;
+
+    run_test_actions([
+        TestAction::inspect_context(|ctx| {
+            use crate::builtins::function::BuiltInFunctionObject;
+            use crate::js_string;
+            use std::fs::OpenOptions;
+            use std::io::Write;
+
+            // Construct arguments equivalent to Function('super()')
+            let body = crate::js_string!("super()");
+            let args = [crate::JsValue::new(body.clone())];
+
+            // Use the intrinsic function constructor as the `constructor` argument.
+            let constructor = ctx.intrinsics().constructors().function().constructor();
+
+            // Call create_dynamic_function directly and capture the result.
+            let res = BuiltInFunctionObject::create_dynamic_function(
+                constructor,
+                &crate::JsValue::undefined(),
+                &args,
+                false,
+                false,
+                ctx,
+            );
+
+            // Write debugging info to a file in the crate root of engines/boa so it's easy to find.
+            if let Ok(mut f) = OpenOptions::new()
+                .create(true)
+                .write(true)
+                .truncate(true)
+                .open("debug-create-dynamic.txt")
+            {
+                let _ = writeln!(f, "create_dynamic_function result: {:?}\n", res);
+                let _ = writeln!(f, "args[0] (JsValue debug): {:?}\n", args[0]);
+                if let Ok(s) = args[0].to_string(ctx) {
+                    let _ = writeln!(f, "args[0] as string: {:?}\n", s.to_std_string_escaped());
+                }
+            }
+            // inspect_context expects unit return
+            ()
+        }),
+    ]);
+}
+
+// Debug: evaluate the JS string via the engine's normal eval path and write result/error
+#[test]
+fn debug_eval_function_constructor_via_eval() {
+    use crate::run_test_actions;
+    use crate::TestAction;
+
+    run_test_actions([
+        TestAction::inspect_context(|ctx| {
+            use std::fs::OpenOptions;
+            use std::io::Write;
+
+            // Evaluate the JS expression using the engine's normal evaluation path.
+            let code = "Function('super()')()";
+            use boa_parser::Source;
+            let src = Source::from_bytes(code);
+            let res = ctx.eval(src);
+
+            if let Ok(mut f) = OpenOptions::new()
+                .create(true)
+                .write(true)
+                .truncate(true)
+                .open("debug-eval-function-constructor.txt")
+            {
+                let _ = writeln!(f, "eval code = {}", code);
+                let _ = writeln!(f, "result = {:?}", res);
+                // Also capture what `Function` is in the global environment
+                let ty_src = "typeof Function";
+                let ty = ctx.eval(Source::from_bytes(ty_src));
+                let _ = writeln!(f, "typeof Function -> {:?}", ty);
+
+                let to_str_src = "Function.toString()";
+                let to_str = ctx.eval(Source::from_bytes(to_str_src));
+                let _ = writeln!(f, "Function.toString() -> {:?}", to_str);
+
+                let proto_src = "Object.prototype.toString.call(Function)";
+                let proto = ctx.eval(Source::from_bytes(proto_src));
+                let _ = writeln!(f, "Object.prototype.toString.call(Function) -> {:?}", proto);
+            }
+
+            ()
+        }),
     ]);
 }
