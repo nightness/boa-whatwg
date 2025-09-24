@@ -395,10 +395,7 @@ fn document_title_edge_cases() {
         TestAction::run("doc.title = '   '"),
         TestAction::assert_eq("doc.title", js_string!("   ")),
 
-        TestAction::run("doc.title = 'Title with \"quotes\" and \'apostrophes\''"),
+        TestAction::run("doc.title = 'Title with \"quotes\" and \\'apostrophes\\''"),
         TestAction::assert_eq("doc.title", js_string!("Title with \"quotes\" and 'apostrophes'")),
     ]);
 }
-
-
-*** End Patch
