@@ -52,6 +52,7 @@ This document catalogs all the features and Web APIs we've added to the Boa Java
 - **Node Interface** (32/32 tests passing) - Primary DOM datatype with full node tree operations
 - **Comment Interface** (18/18 tests passing) - XML/HTML comment nodes with CharacterData inheritance
 - **ProcessingInstruction Interface** (27/27 tests passing) - XML processing instructions with target and data manipulation
+- **CDATASection Interface** (28/28 tests passing) - XML CDATA sections with unparsed text content handling
 - **Element Interface** - HTML element objects with attribute management and DOM tree operations
 - **CharacterData Interface** - Base class for Text and Comment nodes with data manipulation methods
 - **Text Interface** - Text node implementation for DOM text content
@@ -62,6 +63,7 @@ This document catalogs all the features and Web APIs we've added to the Boa Java
 - Attr: name, value, ownerElement, namespaceURI, localName, prefix, specified
 - Comment: data, length, substringData, appendData, insertData, deleteData, replaceData
 - ProcessingInstruction: target, data, length, substringData, appendData, insertData, deleteData, replaceData
+- CDATASection: data, length, substringData, appendData, insertData, deleteData, replaceData
 - Node: nodeType, nodeName, nodeValue, parentNode, childNodes, firstChild, lastChild, previousSibling, nextSibling
 - Element: tagName, attributes, getAttribute, setAttribute, removeAttribute, hasAttribute, classList, innerHTML
 

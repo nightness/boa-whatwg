@@ -188,6 +188,7 @@ pub struct StandardConstructors {
     attr: StandardConstructor,
     comment: StandardConstructor,
     processing_instruction: StandardConstructor,
+    cdata_section: StandardConstructor,
     html_form_element: StandardConstructor,
     html_form_controls_collection: StandardConstructor,
     html_input_element: StandardConstructor,
@@ -312,6 +313,7 @@ impl Default for StandardConstructors {
             attr: StandardConstructor::default(),
             comment: StandardConstructor::default(),
             processing_instruction: StandardConstructor::default(),
+            cdata_section: StandardConstructor::default(),
             html_form_element: StandardConstructor::default(),
             html_form_controls_collection: StandardConstructor::default(),
             html_input_element: StandardConstructor::default(),
@@ -1121,6 +1123,13 @@ impl StandardConstructors {
     #[must_use]
     pub const fn processing_instruction(&self) -> &StandardConstructor {
         &self.processing_instruction
+    }
+
+    /// Returns the `CDATASection` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn cdata_section(&self) -> &StandardConstructor {
+        &self.cdata_section
     }
 
     /// Returns the `HTMLFormElement` constructor.
