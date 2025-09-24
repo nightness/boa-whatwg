@@ -342,7 +342,7 @@ impl Realm {
         Element::init(self);
         Attr::init(self);
         Comment::init(self);
-            domtokenlist::DOMTokenList::init(self);
+            DOMTokenList::init(self);
         processing_instruction::ProcessingInstruction::init(self);
         cdata_section::CDATASection::init(self);
         HTMLFormElement::init(self);
@@ -522,7 +522,7 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<Element>(context)?;
     global_binding::<Attr>(context)?;
     global_binding::<Comment>(context)?;
-    global_binding::<domtokenlist::DOMTokenList>(context)?;
+    global_binding::<DOMTokenList>(context)?;
     global_binding::<processing_instruction::ProcessingInstruction>(context)?;
     global_binding::<cdata_section::CDATASection>(context)?;
     global_binding::<CharacterData>(context)?;

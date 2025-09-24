@@ -376,89 +376,7 @@ impl BuiltInConstructor for BuiltInFunctionObject {
         args: &[JsValue],
         context: &mut Context,
     ) -> JsResult<JsValue> {
-    println!("*** FUNCTION CONSTRUCTOR CALLED WITH {} ARGS ***", args.len());
-    for (i, arg) in args.iter().enumerate() {
-        println!("*** ARG {}: {:?} ***", i, arg);
-    }
-    // Constructor-level debug: write args and new_target to files so we can inspect
-    // what the evaluation path passes to the Function constructor.
-    {
-        use std::fs::OpenOptions;
-        use std::io::Write;
-        let _ = (|| {
-            let p = "/tmp/boa-function-constructor-debug.txt";
-            if let Ok(mut f) = OpenOptions::new()
-                .create(true)
-                .write(true)
-                .truncate(true)
-                .open(p)
-            {
-                let _ = writeln!(f, "=== function::constructor debug ===");
-                let _ = writeln!(f, "new_target = {:?}", new_target);
-                // active function may be unavailable
-                let active = context
-                    .active_function_object()
-                    .map(|_| "<active_function_present>")
-                    .unwrap_or("<no_active_function>");
-                let _ = writeln!(f, "active_function_present = {}", active);
-                let _ = writeln!(f, "args.len={}", args.len());
-                for (i, arg) in args.iter().enumerate() {
-                    let _ = writeln!(f, "arg[{}] raw = {:?}", i, arg);
-                    if let Ok(s) = arg.to_string(context) {
-                        let _ = writeln!(f, "arg[{}] as_string = {:?}", i, s.to_std_string_escaped());
-                    }
-                }
-            }
-
-            let p2 = "function-constructor-debug.txt"; // crate local (may end up in test CWD)
-            if let Ok(mut f2) = OpenOptions::new()
-                .create(true)
-                .write(true)
-                .truncate(true)
-                .open(p2)
-            {
-                let _ = writeln!(f2, "=== function::constructor debug ===");
-                let _ = writeln!(f2, "new_target = {:?}", new_target);
-                let active = context
-                    .active_function_object()
-                    .map(|_| "<active_function_present>")
-                    .unwrap_or("<no_active_function>");
-                let _ = writeln!(f2, "active_function_present = {}", active);
-                let _ = writeln!(f2, "args.len={}", args.len());
-                for (i, arg) in args.iter().enumerate() {
-                    let _ = writeln!(f2, "arg[{}] raw = {:?}", i, arg);
-                    if let Ok(s) = arg.to_string(context) {
-                        let _ = writeln!(f2, "arg[{}] as_string = {:?}", i, s.to_std_string_escaped());
-                    }
-                }
-            }
-            // Also write to a deterministic path within the workspace so the test runner
-            // and tools can read the debug output reliably.
-            let p3 = "/home/nightness/dev/brainwires-studio/rust/thalora-web-browser/engines/boa/core/engine/function-constructor-debug.txt";
-            if let Ok(mut f3) = OpenOptions::new()
-                .create(true)
-                .write(true)
-                .truncate(true)
-                .open(p3)
-            {
-                let _ = writeln!(f3, "=== function::constructor debug ===");
-                let _ = writeln!(f3, "new_target = {:?}", new_target);
-                let active = context
-                    .active_function_object()
-                    .map(|_| "<active_function_present>")
-                    .unwrap_or("<no_active_function>");
-                let _ = writeln!(f3, "active_function_present = {}", active);
-                let _ = writeln!(f3, "args.len={}", args.len());
-                for (i, arg) in args.iter().enumerate() {
-                    let _ = writeln!(f3, "arg[{}] raw = {:?}", i, arg);
-                    if let Ok(s) = arg.to_string(context) {
-                        let _ = writeln!(f3, "arg[{}] as_string = {:?}", i, s.to_std_string_escaped());
-                    }
-                }
-            }
-            Ok::<(), ()>(())
-        })();
-    }
+    // Normal operation: no debug prints or file IO in production code.
         let active_function = context
             .active_function_object()
             .unwrap_or_else(|| context.intrinsics().constructors().function().constructor());
@@ -482,9 +400,7 @@ impl BuiltInFunctionObject {
         generator: bool,
         context: &mut Context,
     ) -> JsResult<JsObject> {
-    println!("*** CREATE_DYNAMIC_FUNCTION CALLED WITH {} ARGS ***", args.len());
-    // Use stderr for guaranteed visibility in test harness
-    eprintln!("*** CREATE_DYNAMIC_FUNCTION (stderr) CALLED WITH {} ARGS ***", args.len());
+    // No debug prints in production.
         // 1. If newTarget is undefined, set newTarget to constructor.
         let new_target = if new_target.is_undefined() {
             constructor.into()
@@ -550,60 +466,11 @@ impl BuiltInFunctionObject {
         } else {
             (js_string!(), Vec::new())
         };
-        println!("[DBG] extracted body (escaped)='{}'", body.to_std_string_escaped());
-        for (i, arg) in args.iter().enumerate() {
-            println!("[DBG] arg[{}] -> {:?}", i, arg);
-            if let Ok(s) = arg.to_string(context) {
-                println!("[DBG] arg[{}] as string='{}'", i, s.to_std_string_escaped());
-            }
-        }
         // Defensive check over the original argument values as strings. Sometimes
         // transformations between JsString representations and Rust Strings can
         // miss raw occurrences; checking the original JsValue->String conversion
         // ensures we catch 'super' early as required by the spec/tests.
-        // === DEBUG: write args/body to file for inspection ===
-        {
-            use std::fs::OpenOptions;
-            use std::io::Write;
-            // Try both /tmp and crate root to ensure we can inspect outputs from tests.
-            let _ = (|| {
-                let p = "/tmp/boa-function-debug.txt";
-                if let Ok(mut f) = OpenOptions::new()
-                    .create(true)
-                    .write(true)
-                    .truncate(true)
-                    .open(p)
-                {
-                    let _ = writeln!(f, "=== create_dynamic_function debug ===");
-                    let _ = writeln!(f, "args.len={}", args.len());
-                    for (i, arg) in args.iter().enumerate() {
-                        let _ = writeln!(f, "arg[{}] raw = {:?}", i, arg);
-                        if let Ok(s) = arg.to_string(context) {
-                            let _ = writeln!(f, "arg[{}] as_string = {:?}", i, s.to_std_string_escaped());
-                        }
-                    }
-                    let _ = writeln!(f, "extracted_body = {:?}", body.to_std_string_escaped());
-                }
-                let p2 = "boa-function-debug.txt"; // crate root path (engines/boa)
-                if let Ok(mut f2) = OpenOptions::new()
-                    .create(true)
-                    .write(true)
-                    .truncate(true)
-                    .open(p2)
-                {
-                    let _ = writeln!(f2, "=== create_dynamic_function debug ===");
-                    let _ = writeln!(f2, "args.len={}", args.len());
-                    for (i, arg) in args.iter().enumerate() {
-                        let _ = writeln!(f2, "arg[{}] raw = {:?}", i, arg);
-                        if let Ok(s) = arg.to_string(context) {
-                            let _ = writeln!(f2, "arg[{}] as_string = {:?}", i, s.to_std_string_escaped());
-                        }
-                    }
-                    let _ = writeln!(f2, "extracted_body = {:?}", body.to_std_string_escaped());
-                }
-                Ok::<(), ()>(())
-            })();
-        }
+        // No debug file writes here.
         for arg in args {
             let s = match arg.to_string(context) {
                 Ok(s) => s.to_std_string_escaped(),
@@ -632,13 +499,6 @@ impl BuiltInFunctionObject {
         // Some dynamic Function inputs can slip past AST-based early-error checks
         // depending on parsing contexts, so check the raw text here as well.
         let raw_body_text = body.to_std_string_escaped();
-    println!("[DEBUG] create_dynamic_function: param_list count={}", param_list.len());
-    for (i, p) in param_list.iter().enumerate() {
-        println!("[DEBUG] param[{}] escaped='{}'", i, p.to_std_string_escaped());
-    }
-    println!("[DEBUG] create_dynamic_function: raw_body_text='{}'", raw_body_text);
-    println!("[DEBUG] raw bytes (UTF-8): {:?}", raw_body_text.as_bytes());
-    println!("[DEBUG] raw code units (u16): {:?}", body.iter().collect::<Vec<_>>());
         // More robust textual checks: allow whitespace between `super` and the following
         // token so inputs like "super ()" or "super  .foo" are also caught.
         fn raw_has_super_call_or_ref(s: &str) -> (bool, bool) {
