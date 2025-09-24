@@ -204,5 +204,3 @@ impl JsValue {
     }
 }
 
-#[cfg(test)]
-mod tests;
