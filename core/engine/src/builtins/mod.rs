@@ -21,6 +21,7 @@ pub mod nodelist;
 pub mod element;
 pub mod attr;
 pub mod comment;
+pub mod processing_instruction;
 pub mod selection;
 pub mod frame_selection;
 pub mod range;
@@ -337,6 +338,7 @@ impl Realm {
         Element::init(self);
         Attr::init(self);
         Comment::init(self);
+        processing_instruction::ProcessingInstruction::init(self);
         HTMLFormElement::init(self);
         HTMLFormControlsCollection::init(self);
         HTMLInputElement::init(self);
@@ -512,6 +514,7 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<Element>(context)?;
     global_binding::<Attr>(context)?;
     global_binding::<Comment>(context)?;
+    global_binding::<processing_instruction::ProcessingInstruction>(context)?;
     global_binding::<CharacterData>(context)?;
     global_binding::<Text>(context)?;
     global_binding::<DocumentFragment>(context)?;
