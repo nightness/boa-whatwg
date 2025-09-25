@@ -135,7 +135,21 @@ impl LockManager {
     fn acquire_lock(&self, name: String, mode: LockMode) -> bool {
         let mut held = self.held_locks.write().unwrap();
 
-        if self.can_acquire_lock(&name, &mode) {
+        // Check if lock can be acquired while holding the write lock
+        let can_acquire = match held.get(&name) {
+            None => true, // No locks held for this name
+            Some(locks) => {
+                // For shared locks, can acquire if all held locks are also shared
+                if mode == LockMode::Shared {
+                    locks.iter().all(|lock| lock.mode == LockMode::Shared)
+                } else {
+                    // For exclusive locks, cannot acquire if any lock is held
+                    false
+                }
+            }
+        };
+
+        if can_acquire {
             let lock = HeldLock {
                 name: name.clone(),
                 mode,
@@ -363,28 +377,19 @@ impl LockManagerObject {
                 lock_obj.set(js_string!("name"), JsValue::from(JsString::from(name.clone())), false, context).ok();
                 lock_obj.set(js_string!("mode"), JsValue::from(JsString::from(lock_options.mode.to_string())), false, context).ok();
 
-                // Call the callback with the lock
-                let result = if callback.is_callable() {
-                    let callable = callback.as_callable().unwrap();
-                    callable.call(&JsValue::undefined(), &[JsValue::from(lock_obj.clone())], context)
-                } else {
-                    Ok(JsValue::undefined())
-                };
+                // Call the callback with the lock object
+                let result = callback.call(&JsValue::undefined(), &[JsValue::from(lock_obj.clone())], context);
 
+                // Release the lock after callback execution
+                lock_manager.manager.release_lock(&name, &lock_options.mode);
+
+                // Resolve the promise with the callback result
                 match result {
                     Ok(callback_result) => {
-                        // Release the lock after callback execution
-                        lock_manager.manager.release_lock(&name, &lock_options.mode);
-
-                        // Resolve the promise with callback result
                         resolvers.resolve.call(&JsValue::undefined(), &[callback_result], context).ok();
-                    }
-                    Err(error) => {
-                        // Release the lock on error
-                        lock_manager.manager.release_lock(&name, &lock_options.mode);
-
-                        // Reject the promise with JsError
-                        let js_error = error.to_opaque(context);
+                    },
+                    Err(callback_error) => {
+                        let js_error = callback_error.to_opaque(context);
                         resolvers.reject.call(&JsValue::undefined(), &[js_error], context).ok();
                     }
                 }
