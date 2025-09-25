@@ -608,6 +608,7 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<WeakMap>(context)?;
     global_binding::<WeakSet>(context)?;
     global_binding::<Storage>(context)?;
+    global_binding::<WebSocketStream>(context)?;
     global_binding::<Atomics>(context)?;
 
     // Add getSelection method to global object (window.getSelection)
