@@ -54,6 +54,10 @@ impl IntrinsicObject for Window {
             .name(js_string!("get sessionStorage"))
             .build();
 
+        let indexed_db_func = BuiltInBuilder::callable(realm, get_indexed_db)
+            .name(js_string!("get indexedDB"))
+            .build();
+
         BuiltInBuilder::from_standard_constructor::<Self>(realm)
             .accessor(
                 js_string!("location"),
@@ -100,6 +104,12 @@ impl IntrinsicObject for Window {
             .accessor(
                 js_string!("sessionStorage"),
                 Some(session_storage_func),
+                None,
+                Attribute::CONFIGURABLE,
+            )
+            .accessor(
+                js_string!("indexedDB"),
+                Some(indexed_db_func),
                 None,
                 Attribute::CONFIGURABLE,
             )
@@ -674,6 +684,22 @@ fn get_navigator(this: &JsValue, _args: &[JsValue], context: &mut Context) -> Js
                     .enumerable(true)
                     .writable(false)
                     .value(JsValue::null())
+                    .build(),
+                context,
+            )?;
+
+            // Add Web Locks API (navigator.locks)
+            let lock_manager = crate::builtins::web_locks::LockManagerObject::create_lock_manager();
+            let lock_manager_prototype = context.intrinsics().constructors().lock_manager().prototype();
+            lock_manager.set_prototype(Some(lock_manager_prototype));
+
+            navigator.define_property_or_throw(
+                js_string!("locks"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(false)
+                    .enumerable(true)
+                    .writable(false)
+                    .value(lock_manager)
                     .build(),
                 context,
             )?;
@@ -1649,4 +1675,16 @@ fn get_session_storage(_this: &JsValue, _args: &[JsValue], context: &mut Context
     session_storage.set_prototype(Some(storage_prototype));
 
     Ok(session_storage.into())
+}
+
+/// `window.indexedDB` getter
+fn get_indexed_db(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    // Create IndexedDB factory instance
+    let indexed_db = crate::builtins::indexed_db::IdbFactory::create_indexed_db();
+
+    // Set the prototype to the IDBFactory prototype
+    let idb_factory_prototype = context.intrinsics().constructors().idb_factory().prototype();
+    indexed_db.set_prototype(Some(idb_factory_prototype));
+
+    Ok(indexed_db.into())
 }

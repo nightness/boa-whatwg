@@ -204,6 +204,9 @@ pub struct StandardConstructors {
     weak_map: StandardConstructor,
     weak_set: StandardConstructor,
     storage: StandardConstructor,
+    lock_manager: StandardConstructor,
+    idb_factory: StandardConstructor,
+    navigator: StandardConstructor,
     #[cfg(feature = "intl")]
     collator: StandardConstructor,
     #[cfg(feature = "intl")]
@@ -332,6 +335,9 @@ impl Default for StandardConstructors {
             weak_map: StandardConstructor::default(),
             weak_set: StandardConstructor::default(),
             storage: StandardConstructor::default(),
+            lock_manager: StandardConstructor::default(),
+            idb_factory: StandardConstructor::default(),
+            navigator: StandardConstructor::default(),
             #[cfg(feature = "intl")]
             collator: StandardConstructor::default(),
             #[cfg(feature = "intl")]
@@ -1239,6 +1245,38 @@ impl StandardConstructors {
     #[must_use]
     pub const fn storage(&self) -> &StandardConstructor {
         &self.storage
+    }
+
+    /// Returns the `LockManager` constructor.
+    ///
+    /// More information:
+    ///  - [W3C Web Locks API Specification](https://w3c.github.io/web-locks/)
+    #[inline]
+    #[must_use]
+    pub const fn lock_manager(&self) -> &StandardConstructor {
+        &self.lock_manager
+    }
+
+    /// Returns the `IDBFactory` constructor.
+    ///
+    /// More information:
+    ///  - [W3C IndexedDB 3.0 Specification](https://w3c.github.io/IndexedDB/)
+    #[inline]
+    #[must_use]
+    pub const fn idb_factory(&self) -> &StandardConstructor {
+        &self.idb_factory
+    }
+
+    /// Returns the `Navigator` constructor.
+    ///
+    /// More information:
+    ///  - [MDN documentation][mdn]
+    ///
+    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Navigator
+    #[inline]
+    #[must_use]
+    pub const fn navigator(&self) -> &StandardConstructor {
+        &self.navigator
     }
 
     /// Returns the `Intl.Collator` constructor.

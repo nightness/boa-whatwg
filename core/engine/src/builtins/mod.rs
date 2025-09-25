@@ -70,6 +70,9 @@ pub mod weak;
 pub mod weak_map;
 pub mod weak_set;
 pub mod storage;
+pub mod web_locks;
+pub mod indexed_db;
+pub mod navigator;
 
 mod builder;
 
@@ -172,6 +175,9 @@ use crate::{
         weak_map::WeakMap,
         weak_set::WeakSet,
         storage::Storage,
+        web_locks::{LockManagerObject, Lock},
+        indexed_db::IdbFactory,
+        navigator::Navigator,
     },
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
     js_string,
@@ -377,6 +383,8 @@ impl Realm {
         WeakMap::init(self);
         WeakSet::init(self);
         Storage::init(self);
+        web_locks::LockManagerObject::init(self);
+        Navigator::init(self);
         Atomics::init(self);
 
         #[cfg(feature = "annex-b")]
@@ -430,15 +438,70 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
             .configurable(true),
         context,
     )?;
+    // Create an actual Window object instead of just pointing to globalThis
+    let window_constructor = context.intrinsics().constructors().window().constructor();
+    let window_obj = Window::constructor(&window_constructor.clone().into(), &[], context)?;
     global_object.define_property_or_throw(
         js_string!("window"),
         PropertyDescriptor::builder()
-            .value(context.realm().global_this().clone())
+            .value(window_obj.clone())
             .writable(true)
             .enumerable(false)
             .configurable(true),
         context,
     )?;
+
+    // Also expose localStorage and sessionStorage as global properties for convenience
+    if let Some(window_object) = window_obj.as_object() {
+        if let Ok(local_storage) = window_object.get(js_string!("localStorage"), context) {
+            global_object.define_property_or_throw(
+                js_string!("localStorage"),
+                PropertyDescriptor::builder()
+                    .value(local_storage)
+                    .writable(false)
+                    .enumerable(false)
+                    .configurable(true),
+                context,
+            )?;
+        }
+        if let Ok(session_storage) = window_object.get(js_string!("sessionStorage"), context) {
+            global_object.define_property_or_throw(
+                js_string!("sessionStorage"),
+                PropertyDescriptor::builder()
+                    .value(session_storage)
+                    .writable(false)
+                    .enumerable(false)
+                    .configurable(true),
+                context,
+            )?;
+        }
+
+        // Also expose navigator as global for convenience
+        if let Ok(navigator) = window_object.get(js_string!("navigator"), context) {
+            global_object.define_property_or_throw(
+                js_string!("navigator"),
+                PropertyDescriptor::builder()
+                    .value(navigator)
+                    .writable(false)
+                    .enumerable(false)
+                    .configurable(true),
+                context,
+            )?;
+        }
+
+        // Also expose indexedDB as global for convenience
+        if let Ok(indexed_db) = window_object.get(js_string!("indexedDB"), context) {
+            global_object.define_property_or_throw(
+                js_string!("indexedDB"),
+                PropertyDescriptor::builder()
+                    .value(indexed_db)
+                    .writable(false)
+                    .enumerable(false)
+                    .configurable(true),
+                context,
+            )?;
+        }
+    }
     let restricted = PropertyDescriptor::builder()
         .writable(false)
         .enumerable(false)
