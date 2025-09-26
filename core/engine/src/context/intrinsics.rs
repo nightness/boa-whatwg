@@ -187,6 +187,7 @@ pub struct StandardConstructors {
     text: StandardConstructor,
     document_fragment: StandardConstructor,
     shadow_root: StandardConstructor,
+    html_slot_element: StandardConstructor,
     nodelist: StandardConstructor,
     element: StandardConstructor,
     attr: StandardConstructor,
@@ -322,6 +323,7 @@ impl Default for StandardConstructors {
             text: StandardConstructor::default(),
             document_fragment: StandardConstructor::default(),
             shadow_root: StandardConstructor::default(),
+            html_slot_element: StandardConstructor::default(),
             nodelist: StandardConstructor::default(),
             element: StandardConstructor::default(),
             attr: StandardConstructor::default(),
@@ -1146,6 +1148,18 @@ impl StandardConstructors {
     #[must_use]
     pub const fn shadow_root(&self) -> &StandardConstructor {
         &self.shadow_root
+    }
+
+    /// Returns the `HTMLSlotElement` constructor.
+    ///
+    /// More information:
+    ///  - [HTMLSlotElement API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-htmlslotelement
+    #[inline]
+    #[must_use]
+    pub const fn html_slot_element(&self) -> &StandardConstructor {
+        &self.html_slot_element
     }
 
     /// Returns the `NodeList` constructor.

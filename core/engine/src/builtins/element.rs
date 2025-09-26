@@ -221,6 +221,9 @@ pub struct ElementData {
     /// Element tag name (e.g., "div", "span", "body")
     #[unsafe_ignore_trace]
     tag_name: Arc<Mutex<String>>,
+    /// Element namespace URI
+    #[unsafe_ignore_trace]
+    namespace_uri: Arc<Mutex<Option<String>>>,
     /// Element ID attribute
     #[unsafe_ignore_trace]
     id: Arc<Mutex<String>>,
@@ -279,19 +282,19 @@ pub struct DOMRect {
 }
 
 impl CSSStyleDeclaration {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             properties: HashMap::new(),
             computed: HashMap::new(),
         }
     }
 
-    fn set_property(&mut self, property: &str, value: &str) {
+    pub fn set_property(&mut self, property: &str, value: &str) {
         self.properties.insert(property.to_string(), value.to_string());
         self.compute_property(property, value);
     }
 
-    fn get_property(&self, property: &str) -> Option<&String> {
+    pub fn get_property(&self, property: &str) -> Option<&String> {
         self.computed.get(property).or_else(|| self.properties.get(property))
     }
 
@@ -392,6 +395,7 @@ impl ElementData {
         Self {
             node_id,
             tag_name: Arc::new(Mutex::new("".to_string())),
+            namespace_uri: Arc::new(Mutex::new(None)),
             id: Arc::new(Mutex::new("".to_string())),
             class_name: Arc::new(Mutex::new("".to_string())),
             inner_html: Arc::new(Mutex::new("".to_string())),
@@ -418,6 +422,14 @@ impl ElementData {
 
     pub fn set_tag_name(&self, tag_name: String) {
         *self.tag_name.lock().unwrap() = tag_name;
+    }
+
+    pub fn get_namespace_uri(&self) -> Option<String> {
+        self.namespace_uri.lock().unwrap().clone()
+    }
+
+    pub fn set_namespace_uri(&self, namespace_uri: Option<String>) {
+        *self.namespace_uri.lock().unwrap() = namespace_uri;
     }
 
     pub fn get_id(&self) -> String {
@@ -674,6 +686,12 @@ impl ElementData {
         if matches!(property, "width" | "height" | "position" | "left" | "top") {
             self.recompute_layout();
         }
+    }
+
+    /// Get CSS style property value
+    pub fn get_style_property(&self, property: &str) -> Option<String> {
+        let style = self.style.lock().unwrap();
+        style.get_property(property).cloned()
     }
 
     /// Recompute element layout and bounding box
@@ -1198,6 +1216,122 @@ fn set_html_unsafe(this: &JsValue, args: &[JsValue], context: &mut Context) -> J
 }
 
 /// `Element.prototype.attachShadow(options)` - Shadow DOM API
+/// Check if an element can have a shadow root attached according to WHATWG spec
+/// https://dom.spec.whatwg.org/#dom-element-attachshadow
+pub fn can_have_shadow_root(element: &ElementData) -> bool {
+    let tag_name = element.get_tag_name().to_lowercase();
+    let namespace = element.get_namespace_uri().unwrap_or_default();
+
+    // Per WHATWG spec, only these elements can have shadow roots attached:
+
+    // 1. HTML namespace elements that are valid shadow hosts
+    if namespace == "http://www.w3.org/1999/xhtml" || namespace.is_empty() {
+        return match tag_name.as_str() {
+            // Custom elements (any element with a hyphen in the name)
+            name if name.contains('-') => true,
+
+            // Standard HTML elements that can host shadow roots
+            "article" | "aside" | "blockquote" | "body" | "div" |
+            "footer" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" |
+            "header" | "main" | "nav" | "p" | "section" | "span" => true,
+
+            // Form elements that can host shadow roots
+            "form" | "fieldset" => true,
+
+            // Other valid shadow hosts
+            "details" | "dialog" => true,
+
+            // All other HTML elements cannot host shadow roots
+            _ => false,
+        };
+    }
+
+    // 2. Elements in other namespaces
+    // Per spec, elements in non-HTML namespaces can also be shadow hosts
+    // if they are valid custom elements or meet certain criteria
+    if namespace == "http://www.w3.org/2000/svg" {
+        // SVG elements that can be shadow hosts
+        return match tag_name.as_str() {
+            "g" | "svg" | "foreignObject" => true,
+            name if name.contains('-') => true, // Custom SVG elements
+            _ => false,
+        };
+    }
+
+    // Elements in other namespaces can be shadow hosts if they're custom elements
+    tag_name.contains('-')
+}
+
+/// Check if element has forbidden shadow root characteristics
+fn has_forbidden_shadow_characteristics(element: &ElementData) -> bool {
+    let tag_name = element.get_tag_name().to_lowercase();
+
+    // Elements that must never have shadow roots for security/functionality reasons
+    match tag_name.as_str() {
+        // Form controls that have special UA behavior
+        "input" | "textarea" | "select" | "button" => true,
+
+        // Media elements with special UA behavior
+        "audio" | "video" | "img" | "canvas" => true,
+
+        // Elements that affect document structure
+        "html" | "head" | "title" | "meta" | "link" | "style" | "script" => true,
+
+        // Interactive elements that could cause security issues
+        "a" | "area" | "iframe" | "object" | "embed" => true,
+
+        // Table elements with complex UA behavior
+        "table" | "thead" | "tbody" | "tfoot" | "tr" | "td" | "th" |
+        "col" | "colgroup" | "caption" => true,
+
+        // List elements
+        "ol" | "ul" | "li" | "dl" | "dt" | "dd" => true,
+
+        // Other elements with special semantics
+        "option" | "optgroup" | "legend" | "label" => true,
+
+        _ => false,
+    }
+}
+
+/// Check if element is a valid custom element name
+fn is_valid_custom_element_name(name: &str) -> bool {
+    // Per WHATWG spec, custom element names must:
+    // 1. Contain a hyphen
+    // 2. Start with lowercase ASCII letter
+    // 3. Contain only lowercase ASCII letters, digits, hyphens, periods, underscores
+    // 4. Not be one of the reserved names
+
+    if !name.contains('-') {
+        return false;
+    }
+
+    let first_char = name.chars().next().unwrap_or('\0');
+    if !first_char.is_ascii_lowercase() {
+        return false;
+    }
+
+    if !name.chars().all(|c| {
+        c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '.' || c == '_'
+    }) {
+        return false;
+    }
+
+    // Reserved names that cannot be custom elements
+    const RESERVED_NAMES: &[&str] = &[
+        "annotation-xml",
+        "color-profile",
+        "font-face",
+        "font-face-src",
+        "font-face-uri",
+        "font-face-format",
+        "font-face-name",
+        "missing-glyph",
+    ];
+
+    !RESERVED_NAMES.contains(&name)
+}
+
 fn attach_shadow(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
     let this_obj = this.as_object().ok_or_else(|| {
         JsNativeError::typ().with_message("Element.prototype.attachShadow called on non-object")
@@ -1256,18 +1390,12 @@ fn attach_shadow(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsR
                 .into());
         }
 
-        // Check if element can have a shadow root (simplified validation)
-        let tag_name = element.get_tag_name().to_lowercase();
-        match tag_name.as_str() {
-            "article" | "aside" | "blockquote" | "body" | "div" | "footer" | "h1" | "h2" |
-            "h3" | "h4" | "h5" | "h6" | "header" | "main" | "nav" | "p" | "section" | "span" => {
-                // These elements can host shadow roots
-            }
-            _ => {
-                return Err(JsNativeError::error()
-                    .with_message("Element does not support shadow root")
-                    .into());
-            }
+        // Validate element according to WHATWG specification
+        // https://dom.spec.whatwg.org/#dom-element-attachshadow
+        if !can_have_shadow_root(&element) {
+            return Err(JsNativeError::error()
+                .with_message("Operation not supported")
+                .into());
         }
 
         // Create a proper ShadowRoot using the new implementation

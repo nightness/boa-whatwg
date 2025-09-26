@@ -20,6 +20,7 @@ use boa_gc::{Finalize, Trace};
 use boa_gc::GcRefCell;
 use std::collections::HashMap;
 use super::node::{NodeData, NodeType};
+use super::element::CSSStyleDeclaration;
 
 /// DocumentFragment data structure for lightweight document containers
 #[derive(Debug, Trace, Finalize, JsData)]
@@ -29,6 +30,9 @@ pub struct DocumentFragmentData {
     // DocumentFragment-specific properties
     children: GcRefCell<Vec<JsObject>>,
     element_children: GcRefCell<Vec<JsObject>>,
+    // CSS style properties for shadow DOM scoping
+    #[unsafe_ignore_trace]
+    style: std::sync::Arc<std::sync::Mutex<CSSStyleDeclaration>>,
 }
 
 impl DocumentFragmentData {
@@ -39,6 +43,7 @@ impl DocumentFragmentData {
             node_data,
             children: GcRefCell::new(Vec::new()),
             element_children: GcRefCell::new(Vec::new()),
+            style: std::sync::Arc::new(std::sync::Mutex::new(CSSStyleDeclaration::new())),
         }
     }
 
@@ -128,6 +133,18 @@ impl DocumentFragmentData {
     /// Get reference to underlying node data
     pub fn node_data(&self) -> &NodeData {
         &self.node_data
+    }
+
+    /// Set CSS style property
+    pub fn set_style_property(&self, property: String, value: String) {
+        let mut style = self.style.lock().unwrap();
+        style.set_property(&property, &value);
+    }
+
+    /// Get CSS style property
+    pub fn get_style_property(&self, property: &str) -> Option<String> {
+        let style = self.style.lock().unwrap();
+        style.get_property(property).cloned()
     }
 }
 

@@ -18,6 +18,11 @@ pub mod character_data;
 pub mod text;
 pub mod document_fragment;
 pub mod shadow_root;
+pub mod html_slot_element;
+pub mod shadow_tree_traversal;
+pub mod shadow_css_scoping;
+pub mod declarative_shadow_dom;
+pub mod slotchange_event;
 pub mod nodelist;
 pub mod element;
 pub mod attr;
@@ -126,6 +131,7 @@ pub(crate) use self::{
     text::Text,
     document_fragment::DocumentFragment,
     shadow_root::ShadowRoot,
+    html_slot_element::HTMLSlotElement,
     nodelist::NodeList,
     element::Element,
     attr::Attr,
@@ -352,6 +358,7 @@ impl Realm {
         Text::init(self);
         DocumentFragment::init(self);
         ShadowRoot::init(self);
+        HTMLSlotElement::init(self);
         NodeList::init(self);
         Element::init(self);
         Attr::init(self);
@@ -601,6 +608,7 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<Text>(context)?;
     global_binding::<DocumentFragment>(context)?;
     global_binding::<ShadowRoot>(context)?;
+    global_binding::<HTMLSlotElement>(context)?;
     global_binding::<NodeList>(context)?;
     global_binding::<Document>(context)?;
     global_binding::<SetTimeout>(context)?;
