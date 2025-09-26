@@ -58,7 +58,7 @@ fn test_response_properties() {
     let result = context.eval(Source::from_bytes("let r = new Response('test', { status: 201 }); r.status")).unwrap();
     assert_eq!(result, JsValue::from(201));
 
-    let result = context.eval(Source::from_bytes("let r = new Response('test', { status: 201 }); r.ok")).unwrap();
+    let result = context.eval(Source::from_bytes("let r2 = new Response('test', { status: 201 }); r2.ok")).unwrap();
     assert_eq!(result, JsValue::from(true));
 }
 
@@ -70,7 +70,7 @@ fn test_response_text_method() {
     let result = context.eval(Source::from_bytes("let r = new Response('test'); typeof r.text")).unwrap();
     assert_eq!(result, JsValue::from(JsString::from("function")));
 
-    let result = context.eval(Source::from_bytes("let r = new Response('test'); r.text() instanceof Promise")).unwrap();
+    let result = context.eval(Source::from_bytes("let r2 = new Response('test'); r2.text() instanceof Promise")).unwrap();
     assert_eq!(result, JsValue::from(true));
 }
 
@@ -82,7 +82,7 @@ fn test_response_json_method() {
     let result = context.eval(Source::from_bytes("let r = new Response('{}'); typeof r.json")).unwrap();
     assert_eq!(result, JsValue::from(JsString::from("function")));
 
-    let result = context.eval(Source::from_bytes("let r = new Response('{}'); r.json() instanceof Promise")).unwrap();
+    let result = context.eval(Source::from_bytes("let r2 = new Response('{}'); r2.json() instanceof Promise")).unwrap();
     assert_eq!(result, JsValue::from(true));
 }
 

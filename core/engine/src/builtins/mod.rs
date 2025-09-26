@@ -337,6 +337,9 @@ impl Realm {
         WebSocket::init(self);
         WebSocketStream::init(self);
         AbortController::init(self);
+        Request::init(self);
+        Response::init(self);
+        Headers::init(self);
         Document::init(self);
         document_parse::setup_parse_html_unsafe(self);
         Window::init(self);

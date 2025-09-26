@@ -15,6 +15,7 @@ use crate::{
     Context, JsArgs, JsNativeError, JsResult, js_string,
     realm::Realm, JsData, JsString,
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
+    property::Attribute,
     job::NativeAsyncJob
 };
 use boa_gc::{Finalize, Trace};
@@ -313,9 +314,47 @@ pub(crate) struct Response;
 
 impl IntrinsicObject for Response {
     fn init(realm: &Realm) {
+        // Create getter functions
+        let status_getter = BuiltInBuilder::callable(realm, Self::get_status)
+            .name(js_string!("get status"))
+            .build();
+        let status_text_getter = BuiltInBuilder::callable(realm, Self::get_status_text)
+            .name(js_string!("get statusText"))
+            .build();
+        let ok_getter = BuiltInBuilder::callable(realm, Self::get_ok)
+            .name(js_string!("get ok"))
+            .build();
+        let url_getter = BuiltInBuilder::callable(realm, Self::get_url)
+            .name(js_string!("get url"))
+            .build();
+
         BuiltInBuilder::from_standard_constructor::<Self>(realm)
             .method(Self::text, js_string!("text"), 0)
             .method(Self::json, js_string!("json"), 0)
+            .accessor(
+                js_string!("status"),
+                Some(status_getter),
+                None,
+                Attribute::READONLY | Attribute::CONFIGURABLE,
+            )
+            .accessor(
+                js_string!("statusText"),
+                Some(status_text_getter),
+                None,
+                Attribute::READONLY | Attribute::CONFIGURABLE,
+            )
+            .accessor(
+                js_string!("ok"),
+                Some(ok_getter),
+                None,
+                Attribute::READONLY | Attribute::CONFIGURABLE,
+            )
+            .accessor(
+                js_string!("url"),
+                Some(url_getter),
+                None,
+                Attribute::READONLY | Attribute::CONFIGURABLE,
+            )
             .build();
     }
 
@@ -360,18 +399,26 @@ impl BuiltInConstructor for Response {
         };
 
         // Parse status and statusText from init
-        let (status, status_text) = if !init.is_undefined() {
+        let (status, status_text) = if !init.is_undefined() && !init.is_null() {
             if let Some(init_obj) = init.as_object() {
-                let status = if let Ok(status_val) = init_obj.get(js_string!("status"), context) {
-                    status_val.to_number(context)? as u16
-                } else {
-                    200
+                let status = match init_obj.get(js_string!("status"), context) {
+                    Ok(status_val) if !status_val.is_undefined() => {
+                        match status_val.to_number(context) {
+                            Ok(num) => num as u16,
+                            Err(_) => 200,
+                        }
+                    }
+                    _ => 200,
                 };
 
-                let status_text = if let Ok(status_text_val) = init_obj.get(js_string!("statusText"), context) {
-                    status_text_val.to_string(context)?.to_std_string_escaped()
-                } else {
-                    "OK".to_string()
+                let status_text = match init_obj.get(js_string!("statusText"), context) {
+                    Ok(status_text_val) if !status_text_val.is_undefined() => {
+                        match status_text_val.to_string(context) {
+                            Ok(s) => s.to_std_string_escaped(),
+                            Err(_) => "OK".to_string(),
+                        }
+                    }
+                    _ => if status >= 200 && status < 300 { "OK".to_string() } else { "".to_string() },
                 };
 
                 (status, status_text)
@@ -397,17 +444,62 @@ impl BuiltInConstructor for Response {
             response_data,
         );
 
-        // Set properties on the Response instance
-        response_obj.set(js_string!("status"), JsValue::from(status), false, context)?;
-        response_obj.set(js_string!("statusText"), JsValue::from(js_string!(status_text)), false, context)?;
-        response_obj.set(js_string!("ok"), JsValue::from(status >= 200 && status < 300), false, context)?;
-        response_obj.set(js_string!("url"), JsValue::from(js_string!("")), false, context)?;
-
         Ok(response_obj.into())
     }
 }
 
 impl Response {
+    /// `get Response.prototype.status` getter
+    fn get_status(this: &JsValue, _: &[JsValue], _: &mut Context) -> JsResult<JsValue> {
+        let this_obj = this.as_object().ok_or_else(|| {
+            JsNativeError::typ().with_message("Response.prototype.status getter called on non-object")
+        })?;
+
+        if let Some(data) = this_obj.downcast_ref::<ResponseData>() {
+            Ok(JsValue::from(data.status))
+        } else {
+            Ok(JsValue::undefined())
+        }
+    }
+
+    /// `get Response.prototype.statusText` getter
+    fn get_status_text(this: &JsValue, _: &[JsValue], _: &mut Context) -> JsResult<JsValue> {
+        let this_obj = this.as_object().ok_or_else(|| {
+            JsNativeError::typ().with_message("Response.prototype.statusText getter called on non-object")
+        })?;
+
+        if let Some(data) = this_obj.downcast_ref::<ResponseData>() {
+            Ok(JsValue::from(js_string!(data.status_text.clone())))
+        } else {
+            Ok(JsValue::undefined())
+        }
+    }
+
+    /// `get Response.prototype.ok` getter
+    fn get_ok(this: &JsValue, _: &[JsValue], _: &mut Context) -> JsResult<JsValue> {
+        let this_obj = this.as_object().ok_or_else(|| {
+            JsNativeError::typ().with_message("Response.prototype.ok getter called on non-object")
+        })?;
+
+        if let Some(data) = this_obj.downcast_ref::<ResponseData>() {
+            Ok(JsValue::from(data.status >= 200 && data.status < 300))
+        } else {
+            Ok(JsValue::undefined())
+        }
+    }
+
+    /// `get Response.prototype.url` getter
+    fn get_url(this: &JsValue, _: &[JsValue], _: &mut Context) -> JsResult<JsValue> {
+        let this_obj = this.as_object().ok_or_else(|| {
+            JsNativeError::typ().with_message("Response.prototype.url getter called on non-object")
+        })?;
+
+        if let Some(data) = this_obj.downcast_ref::<ResponseData>() {
+            Ok(JsValue::from(js_string!(data.url.clone())))
+        } else {
+            Ok(JsValue::undefined())
+        }
+    }
 
     /// `Response.prototype.text()` method
     fn text(this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
