@@ -159,7 +159,7 @@ use crate::{
         async_generator_function::AsyncGeneratorFunction,
         atomics::Atomics,
         error::r#type::ThrowTypeError,
-        fetch::Fetch,
+        fetch::{Fetch, Request, Response, Headers},
         timers::{SetTimeout, SetInterval, ClearTimeout, ClearInterval},
         generator::Generator,
         generator_function::GeneratorFunction,
@@ -609,6 +609,11 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<WeakSet>(context)?;
     global_binding::<Storage>(context)?;
     global_binding::<WebSocketStream>(context)?;
+    global_binding::<WebSocket>(context)?;
+    global_binding::<Fetch>(context)?;
+    global_binding::<Request>(context)?;
+    global_binding::<Response>(context)?;
+    global_binding::<Headers>(context)?;
     global_binding::<Atomics>(context)?;
 
     // Add getSelection method to global object (window.getSelection)

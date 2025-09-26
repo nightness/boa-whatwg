@@ -5,6 +5,9 @@
 //!
 //! This implements the complete WebSocket interface with real networking
 
+#[cfg(test)]
+mod tests;
+
 use crate::{
     builtins::{BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder},
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},

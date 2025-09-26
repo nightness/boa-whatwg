@@ -5,6 +5,9 @@
 //!
 //! This implements the complete Fetch interface with real HTTP networking
 
+#[cfg(test)]
+mod tests;
+
 use crate::{
     builtins::{IntrinsicObject, BuiltInBuilder, BuiltInObject, Json},
     object::{JsObject, builtins::JsPromise, PROTOTYPE},
