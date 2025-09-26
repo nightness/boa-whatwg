@@ -186,6 +186,7 @@ pub struct StandardConstructors {
     character_data: StandardConstructor,
     text: StandardConstructor,
     document_fragment: StandardConstructor,
+    shadow_root: StandardConstructor,
     nodelist: StandardConstructor,
     element: StandardConstructor,
     attr: StandardConstructor,
@@ -320,6 +321,7 @@ impl Default for StandardConstructors {
             character_data: StandardConstructor::default(),
             text: StandardConstructor::default(),
             document_fragment: StandardConstructor::default(),
+            shadow_root: StandardConstructor::default(),
             nodelist: StandardConstructor::default(),
             element: StandardConstructor::default(),
             attr: StandardConstructor::default(),
@@ -1132,6 +1134,18 @@ impl StandardConstructors {
     #[must_use]
     pub const fn document_fragment(&self) -> &StandardConstructor {
         &self.document_fragment
+    }
+
+    /// Returns the `ShadowRoot` constructor.
+    ///
+    /// More information:
+    ///  - [ShadowRoot API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-shadowroot
+    #[inline]
+    #[must_use]
+    pub const fn shadow_root(&self) -> &StandardConstructor {
+        &self.shadow_root
     }
 
     /// Returns the `NodeList` constructor.

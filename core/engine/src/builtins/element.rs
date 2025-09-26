@@ -1206,75 +1206,109 @@ fn attach_shadow(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsR
     if let Some(element) = this_obj.downcast_ref::<ElementData>() {
         let options = args.get_or_undefined(0);
 
-        // Parse options object to get mode ('open' or 'closed')
-        let mode = if let Some(options_obj) = options.as_object() {
-            if let Ok(mode_value) = options_obj.get(js_string!("mode"), context) {
-                mode_value.to_string(context)?.to_std_string_escaped()
+        // Parse options object according to WHATWG spec
+        let shadow_init = if let Some(options_obj) = options.as_object() {
+            let mode = if let Ok(mode_value) = options_obj.get(js_string!("mode"), context) {
+                let mode_str = mode_value.to_string(context)?.to_std_string_escaped();
+                crate::builtins::shadow_root::ShadowRootMode::from_string(&mode_str)
+                    .ok_or_else(|| JsNativeError::typ()
+                        .with_message("attachShadow mode must be 'open' or 'closed'"))?
             } else {
-                "open".to_string()
+                return Err(JsNativeError::typ()
+                    .with_message("attachShadow options must include a mode")
+                    .into());
+            };
+
+            let clonable = if let Ok(clonable_value) = options_obj.get(js_string!("clonable"), context) {
+                clonable_value.to_boolean()
+            } else {
+                false
+            };
+
+            let serializable = if let Ok(serializable_value) = options_obj.get(js_string!("serializable"), context) {
+                serializable_value.to_boolean()
+            } else {
+                false
+            };
+
+            let delegates_focus = if let Ok(delegates_focus_value) = options_obj.get(js_string!("delegatesFocus"), context) {
+                delegates_focus_value.to_boolean()
+            } else {
+                false
+            };
+
+            crate::builtins::shadow_root::ShadowRootInit {
+                mode,
+                clonable,
+                serializable,
+                delegates_focus,
             }
         } else {
-            "open".to_string()
+            return Err(JsNativeError::typ()
+                .with_message("attachShadow requires an options object")
+                .into());
         };
 
-        // Validate mode
-        if mode != "open" && mode != "closed" {
-            return Err(JsNativeError::typ()
-                .with_message("attachShadow mode must be 'open' or 'closed'")
+        // Check if element already has a shadow root
+        if element.get_shadow_root().is_some() {
+            return Err(JsNativeError::error()
+                .with_message("Element already has a shadow root")
                 .into());
         }
 
-        // Create a shadow root object
-        let shadow_root = JsObject::default();
+        // Check if element can have a shadow root (simplified validation)
+        let tag_name = element.get_tag_name().to_lowercase();
+        match tag_name.as_str() {
+            "article" | "aside" | "blockquote" | "body" | "div" | "footer" | "h1" | "h2" |
+            "h3" | "h4" | "h5" | "h6" | "header" | "main" | "nav" | "p" | "section" | "span" => {
+                // These elements can host shadow roots
+            }
+            _ => {
+                return Err(JsNativeError::error()
+                    .with_message("Element does not support shadow root")
+                    .into());
+            }
+        }
 
-        // Add mode property to shadow root
-        shadow_root.define_property_or_throw(
-            js_string!("mode"),
-            crate::property::PropertyDescriptorBuilder::new()
-                .value(js_string!(mode.as_str()))
-                .writable(false)
-                .enumerable(true)
-                .configurable(false)
-                .build(),
+        // Create a proper ShadowRoot using the new implementation
+        let shadow_root = crate::builtins::shadow_root::ShadowRoot::create_shadow_root(
+            shadow_init.mode.clone(),
+            &shadow_init,
             context,
         )?;
 
-        // Add host property pointing back to the element
-        shadow_root.define_property_or_throw(
-            js_string!("host"),
-            crate::property::PropertyDescriptorBuilder::new()
-                .value(this_obj.clone())
-                .writable(false)
-                .enumerable(true)
-                .configurable(false)
-                .build(),
-            context,
-        )?;
+        // Set the host element for the shadow root
+        if let Some(shadow_data) = shadow_root.downcast_ref::<crate::builtins::shadow_root::ShadowRootData>() {
+            shadow_data.set_host(this_obj.clone());
+        }
 
-        // Set shadowRoot property on the element (if mode is 'open')
-        if mode == "open" {
-            this_obj.define_property_or_throw(
-                js_string!("shadowRoot"),
-                crate::property::PropertyDescriptorBuilder::new()
-                    .value(shadow_root.clone())
-                    .writable(false)
-                    .enumerable(true)
-                    .configurable(false)
-                    .build(),
-                context,
-            )?;
-        } else {
-            // For 'closed' mode, shadowRoot property should be null
-            this_obj.define_property_or_throw(
-                js_string!("shadowRoot"),
-                crate::property::PropertyDescriptorBuilder::new()
-                    .value(JsValue::null())
-                    .writable(false)
-                    .enumerable(true)
-                    .configurable(false)
-                    .build(),
-                context,
-            )?;
+        // Set shadowRoot property on the element according to mode
+        match shadow_init.mode {
+            crate::builtins::shadow_root::ShadowRootMode::Open => {
+                this_obj.define_property_or_throw(
+                    js_string!("shadowRoot"),
+                    crate::property::PropertyDescriptorBuilder::new()
+                        .value(shadow_root.clone())
+                        .writable(false)
+                        .enumerable(false)
+                        .configurable(true)
+                        .build(),
+                    context,
+                )?;
+            }
+            crate::builtins::shadow_root::ShadowRootMode::Closed => {
+                // For 'closed' mode, shadowRoot property should be null
+                this_obj.define_property_or_throw(
+                    js_string!("shadowRoot"),
+                    crate::property::PropertyDescriptorBuilder::new()
+                        .value(JsValue::null())
+                        .writable(false)
+                        .enumerable(false)
+                        .configurable(true)
+                        .build(),
+                    context,
+                )?;
+            }
         }
 
         // Store the shadow root internally in element data
