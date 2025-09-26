@@ -168,6 +168,10 @@ impl IntrinsicObject for Element {
             .method(remove_child, js_string!("removeChild"), 1)
             .method(set_html, js_string!("setHTML"), 1)
             .method(set_html_unsafe, js_string!("setHTMLUnsafe"), 1)
+            // EventTarget methods - CRITICAL for form automation
+            .method(add_event_listener, js_string!("addEventListener"), 2)
+            .method(remove_event_listener, js_string!("removeEventListener"), 2)
+            .method(dispatch_event, js_string!("dispatchEvent"), 1)
             // TEMPORARILY DISABLED: attachShadow method causes form interaction failures
             // See detailed comments in builtins/mod.rs around ShadowRoot::init() for full explanation
             // .method(attach_shadow, js_string!("attachShadow"), 1)  // <-- DISABLED
@@ -196,6 +200,8 @@ impl BuiltInConstructor for Element {
         _args: &[JsValue],
         context: &mut Context,
     ) -> JsResult<JsValue> {
+        eprintln!("DEBUG: Element constructor called!");
+
         let prototype = get_prototype_from_constructor(
             new_target,
             StandardConstructors::element,
@@ -209,6 +215,13 @@ impl BuiltInConstructor for Element {
             prototype,
             element_data,
         );
+
+        // Check if dispatchEvent method exists on the created element
+        if let Ok(dispatch_event) = element.get(js_string!("dispatchEvent"), context) {
+            eprintln!("DEBUG: dispatchEvent found on element: {:?}", dispatch_event.type_of());
+        } else {
+            eprintln!("DEBUG: dispatchEvent NOT found on element!");
+        }
 
         Ok(element.into())
     }
@@ -1457,6 +1470,89 @@ fn attach_shadow(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsR
     } else {
         Err(JsNativeError::typ()
             .with_message("Element.prototype.attachShadow called on non-Element object")
+            .into())
+    }
+}
+
+/// `Element.prototype.addEventListener(type, listener[, options])`
+/// JavaScript wrapper for EventTarget functionality
+fn add_event_listener(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Element.prototype.addEventListener called on non-object")
+    })?;
+
+    if let Some(element) = this_obj.downcast_ref::<ElementData>() {
+        let event_type = args.get_or_undefined(0).to_string(context)?;
+        let listener = args.get_or_undefined(1);
+
+        element.add_event_listener(event_type.to_std_string_escaped(), listener.clone());
+        Ok(JsValue::undefined())
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Element.prototype.addEventListener called on non-Element object")
+            .into())
+    }
+}
+
+/// `Element.prototype.removeEventListener(type, listener[, options])`
+/// JavaScript wrapper for EventTarget functionality
+fn remove_event_listener(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Element.prototype.removeEventListener called on non-object")
+    })?;
+
+    if let Some(element) = this_obj.downcast_ref::<ElementData>() {
+        let event_type = args.get_or_undefined(0).to_string(context)?;
+        let listener = args.get_or_undefined(1);
+
+        element.remove_event_listener(&event_type.to_std_string_escaped(), &listener);
+        Ok(JsValue::undefined())
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Element.prototype.removeEventListener called on non-Element object")
+            .into())
+    }
+}
+
+/// `Element.prototype.dispatchEvent(event)`
+/// JavaScript wrapper for EventTarget functionality
+fn dispatch_event(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_obj = this.as_object().ok_or_else(|| {
+        JsNativeError::typ().with_message("Element.prototype.dispatchEvent called on non-object")
+    })?;
+
+    if let Some(element) = this_obj.downcast_ref::<ElementData>() {
+        let event = args.get_or_undefined(0);
+
+        // Get event type from event object
+        if event.is_object() {
+            if let Some(event_obj) = event.as_object() {
+                // Get the 'type' property from the event object
+                let event_type_value = event_obj.get(js_string!("type"), context)
+                    .unwrap_or(JsValue::undefined());
+
+                if !event_type_value.is_undefined() {
+                    let event_type = event_type_value.to_string(context)?;
+                    element.dispatch_event(&event_type.to_std_string_escaped(), &event, context)?;
+                    Ok(JsValue::from(true)) // Return true (event was dispatched successfully)
+                } else {
+                    Err(JsNativeError::typ()
+                        .with_message("Event object must have a 'type' property")
+                        .into())
+                }
+            } else {
+                Err(JsNativeError::typ()
+                    .with_message("dispatchEvent requires an Event object")
+                    .into())
+            }
+        } else {
+            Err(JsNativeError::typ()
+                .with_message("dispatchEvent requires an Event object")
+                .into())
+        }
+    } else {
+        Err(JsNativeError::typ()
+            .with_message("Element.prototype.dispatchEvent called on non-Element object")
             .into())
     }
 }
