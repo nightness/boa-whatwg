@@ -168,7 +168,9 @@ impl IntrinsicObject for Element {
             .method(remove_child, js_string!("removeChild"), 1)
             .method(set_html, js_string!("setHTML"), 1)
             .method(set_html_unsafe, js_string!("setHTMLUnsafe"), 1)
-            .method(attach_shadow, js_string!("attachShadow"), 1)
+            // TEMPORARILY DISABLED: attachShadow method causes form interaction failures
+            // See detailed comments in builtins/mod.rs around ShadowRoot::init() for full explanation
+            // .method(attach_shadow, js_string!("attachShadow"), 1)  // <-- DISABLED
             .build();
     }
 
@@ -652,12 +654,21 @@ impl ElementData {
 
     /// Attach shadow root for Shadow DOM API
     pub fn attach_shadow_root(&self, shadow_root: JsObject) {
-        *self.shadow_root.lock().unwrap() = Some(shadow_root);
+        if let Ok(mut guard) = self.shadow_root.try_lock() {
+            *guard = Some(shadow_root);
+        } else {
+            eprintln!("WARNING: Shadow DOM mutex was locked, skipping shadow root attachment");
+        }
     }
 
     /// Get shadow root (returns None if no shadow root or mode is 'closed')
     pub fn get_shadow_root(&self) -> Option<JsObject> {
-        self.shadow_root.lock().unwrap().clone()
+        if let Ok(guard) = self.shadow_root.try_lock() {
+            guard.clone()
+        } else {
+            eprintln!("WARNING: Shadow DOM mutex was locked, returning None");
+            None
+        }
     }
 
     /// Dispatch event on this element

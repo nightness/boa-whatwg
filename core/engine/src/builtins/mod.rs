@@ -357,7 +357,37 @@ impl Realm {
         CharacterData::init(self);
         Text::init(self);
         DocumentFragment::init(self);
-        ShadowRoot::init(self);
+
+        // TEMPORARILY DISABLED: Shadow DOM support causes "not a callable function" errors
+        //
+        // PROBLEM DETAILS:
+        // When Shadow DOM is enabled, basic form interactions fail with "TypeError: not a callable function".
+        // This affects document.querySelector, JSON.stringify, element.dispatchEvent, and other core DOM APIs.
+        //
+        // INVESTIGATION FINDINGS:
+        // 1. The issue started immediately after adding Shadow DOM implementation
+        // 2. Form automation worked perfectly before Shadow DOM was added
+        // 3. Session management works correctly (pages load, sessions persist)
+        // 4. DOM APIs are available (typeof checks show they exist as functions)
+        // 5. But when called during form interactions, they become "not a callable function"
+        //
+        // LIKELY CAUSE:
+        // The Shadow DOM implementation is interfering with the execution context
+        // or prototype chain of basic DOM methods, making them non-callable during
+        // JavaScript evaluation in form interaction scenarios.
+        //
+        // MUTEX FIX ATTEMPTED:
+        // We fixed BorrowMutError in shadow_root mutex locks using try_lock(),
+        // but the core issue persists, suggesting deeper integration problems.
+        //
+        // FILES AFFECTED:
+        // - engines/boa/core/engine/src/builtins/element.rs (attachShadow method)
+        // - engines/boa/core/engine/src/builtins/shadow_root.rs (Shadow DOM core)
+        // - Multiple shadow_*.rs files for CSS scoping, traversal, etc.
+        //
+        // TODO: Investigate why Shadow DOM breaks basic DOM function callability
+        // ShadowRoot::init(self);  // <-- DISABLED
+
         HTMLSlotElement::init(self);
         NodeList::init(self);
         Element::init(self);
