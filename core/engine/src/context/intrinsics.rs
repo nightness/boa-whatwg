@@ -170,6 +170,9 @@ pub struct StandardConstructors {
     readable_stream: StandardConstructor,
     websocket: StandardConstructor,
     websocket_stream: StandardConstructor,
+    request: StandardConstructor,
+    response: StandardConstructor,
+    headers: StandardConstructor,
     abort_controller: StandardConstructor,
     xmlhttprequest: StandardConstructor,
     mutation_observer: StandardConstructor,
@@ -301,6 +304,9 @@ impl Default for StandardConstructors {
             readable_stream: StandardConstructor::default(),
             websocket: StandardConstructor::default(),
             websocket_stream: StandardConstructor::default(),
+            request: StandardConstructor::default(),
+            response: StandardConstructor::default(),
+            headers: StandardConstructor::default(),
             abort_controller: StandardConstructor::default(),
             xmlhttprequest: StandardConstructor::default(),
             mutation_observer: StandardConstructor::default(),
@@ -938,6 +944,42 @@ impl StandardConstructors {
     #[must_use]
     pub const fn websocket_stream(&self) -> &StandardConstructor {
         &self.websocket_stream
+    }
+
+    /// Returns the `Request` constructor.
+    ///
+    /// More information:
+    ///  - [Fetch API reference][spec]
+    ///
+    /// [spec]: https://fetch.spec.whatwg.org/#request-class
+    #[inline]
+    #[must_use]
+    pub const fn request(&self) -> &StandardConstructor {
+        &self.request
+    }
+
+    /// Returns the `Response` constructor.
+    ///
+    /// More information:
+    ///  - [Fetch API reference][spec]
+    ///
+    /// [spec]: https://fetch.spec.whatwg.org/#response-class
+    #[inline]
+    #[must_use]
+    pub const fn response(&self) -> &StandardConstructor {
+        &self.response
+    }
+
+    /// Returns the `Headers` constructor.
+    ///
+    /// More information:
+    ///  - [Fetch API reference][spec]
+    ///
+    /// [spec]: https://fetch.spec.whatwg.org/#headers-class
+    #[inline]
+    #[must_use]
+    pub const fn headers(&self) -> &StandardConstructor {
+        &self.headers
     }
 
     /// Returns the `AbortController` constructor.

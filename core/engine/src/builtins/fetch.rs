@@ -9,12 +9,12 @@
 mod tests;
 
 use crate::{
-    builtins::{IntrinsicObject, BuiltInBuilder, BuiltInObject, Json},
-    object::{JsObject, builtins::JsPromise, PROTOTYPE},
+    builtins::{IntrinsicObject, BuiltInBuilder, BuiltInObject, BuiltInConstructor, Json},
+    object::{JsObject, builtins::JsPromise, PROTOTYPE, internal_methods::get_prototype_from_constructor},
     value::JsValue,
     Context, JsArgs, JsNativeError, JsResult, js_string,
     realm::Realm, JsData, JsString,
-    context::intrinsics::Intrinsics,
+    context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
     job::NativeAsyncJob
 };
 use boa_gc::{Finalize, Trace};
@@ -239,14 +239,12 @@ pub(crate) struct Request;
 
 impl IntrinsicObject for Request {
     fn init(realm: &Realm) {
-        BuiltInBuilder::callable_with_intrinsic::<Self>(realm, Self::constructor)
-            .name(js_string!("Request"))
-            .length(1)
+        BuiltInBuilder::from_standard_constructor::<Self>(realm)
             .build();
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
-        intrinsics.constructors().function().constructor()
+        intrinsics.constructors().request().constructor()
     }
 }
 
@@ -254,13 +252,27 @@ impl BuiltInObject for Request {
     const NAME: JsString = js_string!("Request");
 }
 
-impl Request {
+impl BuiltInConstructor for Request {
+    const LENGTH: usize = 1;
+    const P: usize = 0;
+    const SP: usize = 0;
 
+    const STANDARD_CONSTRUCTOR: fn(&StandardConstructors) -> &StandardConstructor =
+        StandardConstructors::request;
+
+    /// `new Request(input, init)`
     fn constructor(
-        _new_target: &JsValue,
+        new_target: &JsValue,
         args: &[JsValue],
         context: &mut Context,
     ) -> JsResult<JsValue> {
+        // If NewTarget is undefined, throw a TypeError
+        if new_target.is_undefined() {
+            return Err(JsNativeError::typ()
+                .with_message("Request constructor requires 'new'")
+                .into());
+        }
+
         let input = args.get_or_undefined(0);
         let init = args.get_or_undefined(1);
 
@@ -268,28 +280,31 @@ impl Request {
         let url = input.to_string(context)?.to_std_string_escaped();
 
         // Validate URL
-        Url::parse(&url).map_err(|_| {
-            JsNativeError::typ().with_message(format!("Invalid URL: {}", url))
-        })?;
+        if Url::parse(&url).is_err() {
+            return Err(JsNativeError::typ()
+                .with_message("Invalid URL")
+                .into());
+        }
 
-        // Parse options
-        let (method, headers, body) = if !init.is_undefined() {
-            parse_fetch_init(init, context)?
-        } else {
-            ("GET".to_string(), HashMap::new(), None)
-        };
-
-        // Create Request object
+        // Create the Request object
+        let proto = get_prototype_from_constructor(new_target, StandardConstructors::request, context)?;
         let request_data = RequestData {
             url,
-            method,
-            headers,
-            body,
+            method: "GET".to_string(),
+            headers: HashMap::new(),
+            body: None,
         };
+        let request_obj = JsObject::from_proto_and_data_with_shared_shape(
+            context.root_shape(),
+            proto,
+            request_data,
+        );
 
-        let request_obj = JsObject::from_proto_and_data(None, request_data);
         Ok(request_obj.into())
     }
+}
+
+impl Request {
 }
 
 /// JavaScript `Response` constructor implementation.
@@ -298,41 +313,14 @@ pub(crate) struct Response;
 
 impl IntrinsicObject for Response {
     fn init(realm: &Realm) {
-        let constructor = BuiltInBuilder::callable_with_intrinsic::<Self>(realm, Self::constructor)
-            .name(js_string!("Response"))
-            .length(0)
+        BuiltInBuilder::from_standard_constructor::<Self>(realm)
+            .method(Self::text, js_string!("text"), 0)
+            .method(Self::json, js_string!("json"), 0)
             .build();
-
-        // Add methods to the prototype
-        let mut context = Context::default();
-        let prototype = constructor
-            .get(PROTOTYPE, &mut context)
-            .expect("Response constructor should have a prototype")
-            .as_object()
-            .expect("Response prototype should be an object")
-            .clone();
-
-        let text_fn = BuiltInBuilder::callable(realm, Self::text)
-            .name(js_string!("text"))
-            .length(0)
-            .build();
-
-        let json_fn = BuiltInBuilder::callable(realm, Self::json)
-            .name(js_string!("json"))
-            .length(0)
-            .build();
-
-        prototype
-            .set(js_string!("text"), text_fn, false, &mut context)
-            .expect("Failed to set text method");
-
-        prototype
-            .set(js_string!("json"), json_fn, false, &mut context)
-            .expect("Failed to set json method");
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
-        intrinsics.constructors().function().constructor()
+        intrinsics.constructors().response().constructor()
     }
 }
 
@@ -340,13 +328,27 @@ impl BuiltInObject for Response {
     const NAME: JsString = js_string!("Response");
 }
 
-impl Response {
+impl BuiltInConstructor for Response {
+    const LENGTH: usize = 0;
+    const P: usize = 0;
+    const SP: usize = 0;
 
+    const STANDARD_CONSTRUCTOR: fn(&StandardConstructors) -> &StandardConstructor =
+        StandardConstructors::response;
+
+    /// `new Response(body, init)`
     fn constructor(
-        _new_target: &JsValue,
+        new_target: &JsValue,
         args: &[JsValue],
         context: &mut Context,
     ) -> JsResult<JsValue> {
+        // If NewTarget is undefined, throw a TypeError
+        if new_target.is_undefined() {
+            return Err(JsNativeError::typ()
+                .with_message("Response constructor requires 'new'")
+                .into());
+        }
+
         let body = args.get_or_undefined(0);
         let init = args.get_or_undefined(1);
 
@@ -357,60 +359,45 @@ impl Response {
             None
         };
 
-        // Parse init options
-        let (status, status_text, headers) = if !init.is_undefined() {
-            let init_obj = init.as_object().ok_or_else(|| {
-                JsNativeError::typ().with_message("Response init must be an object")
-            })?;
+        // Parse status and statusText from init
+        let (status, status_text) = if !init.is_undefined() {
+            if let Some(init_obj) = init.as_object() {
+                let status = if let Ok(status_val) = init_obj.get(js_string!("status"), context) {
+                    status_val.to_number(context)? as u16
+                } else {
+                    200
+                };
 
-            let status = if let Ok(status_val) = init_obj.get(js_string!("status"), context) {
-                status_val.to_number(context)? as u16
+                let status_text = if let Ok(status_text_val) = init_obj.get(js_string!("statusText"), context) {
+                    status_text_val.to_string(context)?.to_std_string_escaped()
+                } else {
+                    "OK".to_string()
+                };
+
+                (status, status_text)
             } else {
-                200
-            };
-
-            let status_text = if let Ok(status_text_val) = init_obj.get(js_string!("statusText"), context) {
-                status_text_val.to_string(context)?.to_std_string_escaped()
-            } else {
-                "OK".to_string()
-            };
-
-            // Parse headers
-            let mut headers = HashMap::new();
-            if let Ok(headers_val) = init_obj.get(js_string!("headers"), context) {
-                if let Some(headers_obj) = headers_val.as_object() {
-                    if let Some(headers_data) = headers_obj.downcast_ref::<HeadersData>() {
-                        headers.extend(headers_data.headers.clone());
-                    } else {
-                        // Plain object with headers
-                        for property_key in headers_obj.own_property_keys(context)? {
-                            let key_name = property_key.to_string();
-                            if let Ok(value) = headers_obj.get(property_key, context) {
-                                let value_str = value.to_string(context)?.to_std_string_escaped();
-                                headers.insert(key_name, value_str);
-                            }
-                        }
-                    }
-                }
+                (200, "OK".to_string())
             }
-
-            (status, status_text, headers)
         } else {
-            (200, "OK".to_string(), HashMap::new())
+            (200, "OK".to_string())
         };
 
-        // Create Response object
+        // Create the Response object
+        let proto = get_prototype_from_constructor(new_target, StandardConstructors::response, context)?;
         let response_data = ResponseData {
             body: body_text,
             status,
             status_text: status_text.clone(),
-            headers,
+            headers: HashMap::new(),
             url: String::new(),
         };
+        let response_obj = JsObject::from_proto_and_data_with_shared_shape(
+            context.root_shape(),
+            proto,
+            response_data,
+        );
 
-        let response_obj = JsObject::from_proto_and_data(None, response_data);
-
-        // Add properties to the Response object
+        // Set properties on the Response instance
         response_obj.set(js_string!("status"), JsValue::from(status), false, context)?;
         response_obj.set(js_string!("statusText"), JsValue::from(js_string!(status_text)), false, context)?;
         response_obj.set(js_string!("ok"), JsValue::from(status >= 200 && status < 300), false, context)?;
@@ -418,6 +405,9 @@ impl Response {
 
         Ok(response_obj.into())
     }
+}
+
+impl Response {
 
     /// `Response.prototype.text()` method
     fn text(this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
@@ -471,14 +461,12 @@ pub(crate) struct Headers;
 
 impl IntrinsicObject for Headers {
     fn init(realm: &Realm) {
-        BuiltInBuilder::callable_with_intrinsic::<Self>(realm, Self::constructor)
-            .name(js_string!("Headers"))
-            .length(0)
+        BuiltInBuilder::from_standard_constructor::<Self>(realm)
             .build();
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
-        intrinsics.constructors().function().constructor()
+        intrinsics.constructors().headers().constructor()
     }
 }
 
@@ -486,21 +474,46 @@ impl BuiltInObject for Headers {
     const NAME: JsString = js_string!("Headers");
 }
 
-impl Headers {
+impl BuiltInConstructor for Headers {
+    const LENGTH: usize = 0;
+    const P: usize = 0;
+    const SP: usize = 0;
 
+    const STANDARD_CONSTRUCTOR: fn(&StandardConstructors) -> &StandardConstructor =
+        StandardConstructors::headers;
+
+    /// `new Headers(init)`
     fn constructor(
-        _new_target: &JsValue,
-        _args: &[JsValue],
-        _context: &mut Context,
+        new_target: &JsValue,
+        args: &[JsValue],
+        context: &mut Context,
     ) -> JsResult<JsValue> {
-        // Create Headers object
+        // If NewTarget is undefined, throw a TypeError
+        if new_target.is_undefined() {
+            return Err(JsNativeError::typ()
+                .with_message("Headers constructor requires 'new'")
+                .into());
+        }
+
+        let _init = args.get_or_undefined(0);
+        // TODO: Parse init parameter (can be array of [name, value] pairs, object, or another Headers)
+
+        // Create the Headers object
+        let proto = get_prototype_from_constructor(new_target, StandardConstructors::headers, context)?;
         let headers_data = HeadersData {
             headers: HashMap::new(),
         };
+        let headers_obj = JsObject::from_proto_and_data_with_shared_shape(
+            context.root_shape(),
+            proto,
+            headers_data,
+        );
 
-        let headers_obj = JsObject::from_proto_and_data(None, headers_data);
         Ok(headers_obj.into())
     }
+}
+
+impl Headers {
 }
 
 /// Internal data for Request instances
