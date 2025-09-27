@@ -58,6 +58,10 @@ impl IntrinsicObject for Window {
             .name(js_string!("get indexedDB"))
             .build();
 
+        let get_selection_func = BuiltInBuilder::callable(realm, get_selection)
+            .name(js_string!("getSelection"))
+            .build();
+
         BuiltInBuilder::from_standard_constructor::<Self>(realm)
             .accessor(
                 js_string!("location"),
@@ -127,21 +131,13 @@ impl IntrinsicObject for Window {
             .method(remove_event_listener, js_string!("removeEventListener"), 2)
             .method(dispatch_event, js_string!("dispatchEvent"), 1)
             .method(match_media, js_string!("matchMedia"), 1)
-            // Minimal, safe bypass API exposed as a window method
-            .method(google_bypass, js_string!("__google_bypass"), 0)
+            .method(get_selection, js_string!("getSelection"), 0)
             .build();
-        // eprintln!("🚀 Window initialization completed (minimal __google_bypass installed)");
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
         Self::STANDARD_CONSTRUCTOR(intrinsics.constructors()).constructor()
     }
-}
-
-/// Minimal native function used as a safe bypass shim.
-fn google_bypass(_this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
-    // Return true; do NOT access any other runtime state here to avoid recursion.
-    Ok(true.into())
 }
 
 impl BuiltInObject for Window {
@@ -553,7 +549,7 @@ fn get_navigator(this: &JsValue, _args: &[JsValue], context: &mut Context) -> Js
                     .configurable(false)
                     .enumerable(true)
                     .writable(false)
-                    .value(JsString::from("Win32"))
+                    .value(JsString::from("MacIntel"))
                     .build(),
                 context,
             )?;
@@ -583,6 +579,18 @@ fn get_navigator(this: &JsValue, _args: &[JsValue], context: &mut Context) -> Js
                     .enumerable(true)
                     .writable(false)
                     .value(languages_array)
+                    .build(),
+                context,
+            )?;
+
+            // Add onLine property
+            navigator.define_property_or_throw(
+                js_string!("onLine"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(false)
+                    .enumerable(true)
+                    .writable(false)
+                    .value(true)
                     .build(),
                 context,
             )?;
@@ -1679,12 +1687,33 @@ fn get_session_storage(_this: &JsValue, _args: &[JsValue], context: &mut Context
 
 /// `window.indexedDB` getter
 fn get_indexed_db(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
-    // Create IndexedDB factory instance
-    let indexed_db = crate::builtins::indexed_db::IdbFactory::create_indexed_db();
+    // Create IndexedDB factory instance with proper prototype
+    use crate::builtins::indexed_db::IdbFactory;
 
-    // Set the prototype to the IDBFactory prototype
+    let factory_data = IdbFactory::new();
     let idb_factory_prototype = context.intrinsics().constructors().idb_factory().prototype();
-    indexed_db.set_prototype(Some(idb_factory_prototype));
+
+    // Create object with the correct prototype that has the methods
+    let indexed_db = JsObject::from_proto_and_data(
+        Some(idb_factory_prototype),
+        factory_data,
+    );
 
     Ok(indexed_db.into())
+}
+
+fn get_selection(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    // Create a new Selection instance using the Selection constructor
+    use crate::builtins::selection::Selection;
+    use crate::builtins::IntrinsicObject;
+
+    let selection_constructor = Selection::get(context.intrinsics());
+    let selection_args = [];
+    let selection_instance = Selection::constructor(
+        &selection_constructor.clone().into(),
+        &selection_args,
+        context,
+    )?;
+
+    Ok(selection_instance)
 }

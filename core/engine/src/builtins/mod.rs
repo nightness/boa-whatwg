@@ -357,6 +357,7 @@ impl Realm {
         CharacterData::init(self);
         Text::init(self);
         DocumentFragment::init(self);
+        indexed_db::IdbFactory::init(self);
 
         // TEMPORARILY DISABLED: Shadow DOM support causes "not a callable function" errors
         //
@@ -386,7 +387,7 @@ impl Realm {
         // - Multiple shadow_*.rs files for CSS scoping, traversal, etc.
         //
         // TODO: Investigate why Shadow DOM breaks basic DOM function callability
-        // ShadowRoot::init(self);  // <-- DISABLED
+        ShadowRoot::init(self);
 
         HTMLSlotElement::init(self);
         NodeList::init(self);
