@@ -473,6 +473,77 @@ impl ShadowRoot {
             shadow_data,
         );
 
+        // Manually install properties using the ShadowRoot constructor logic
+        // This ensures the properties are available even if prototype setup is incomplete
+        use crate::property::{Attribute, PropertyDescriptorBuilder};
+
+        let mode_get_func = BuiltInBuilder::callable(context.realm(), ShadowRootData::get_mode_accessor)
+            .name(js_string!("get mode"))
+            .build();
+        let clonable_get_func = BuiltInBuilder::callable(context.realm(), ShadowRootData::get_clonable_accessor)
+            .name(js_string!("get clonable"))
+            .build();
+        let serializable_get_func = BuiltInBuilder::callable(context.realm(), ShadowRootData::get_serializable_accessor)
+            .name(js_string!("get serializable"))
+            .build();
+        let delegates_focus_get_func = BuiltInBuilder::callable(context.realm(), ShadowRootData::get_delegates_focus_accessor)
+            .name(js_string!("get delegatesFocus"))
+            .build();
+        let host_get_func = BuiltInBuilder::callable(context.realm(), ShadowRootData::get_host_accessor)
+            .name(js_string!("get host"))
+            .build();
+
+        // Install accessors directly on the instance
+        shadow_obj.define_property_or_throw(
+            js_string!("mode"),
+            PropertyDescriptorBuilder::new()
+                .get(mode_get_func)
+                .configurable(true)
+                .enumerable(false)
+                .build(),
+            context,
+        )?;
+
+        shadow_obj.define_property_or_throw(
+            js_string!("clonable"),
+            PropertyDescriptorBuilder::new()
+                .get(clonable_get_func)
+                .configurable(true)
+                .enumerable(false)
+                .build(),
+            context,
+        )?;
+
+        shadow_obj.define_property_or_throw(
+            js_string!("serializable"),
+            PropertyDescriptorBuilder::new()
+                .get(serializable_get_func)
+                .configurable(true)
+                .enumerable(false)
+                .build(),
+            context,
+        )?;
+
+        shadow_obj.define_property_or_throw(
+            js_string!("delegatesFocus"),
+            PropertyDescriptorBuilder::new()
+                .get(delegates_focus_get_func)
+                .configurable(true)
+                .enumerable(false)
+                .build(),
+            context,
+        )?;
+
+        shadow_obj.define_property_or_throw(
+            js_string!("host"),
+            PropertyDescriptorBuilder::new()
+                .get(host_get_func)
+                .configurable(true)
+                .enumerable(false)
+                .build(),
+            context,
+        )?;
+
         Ok(shadow_obj)
     }
 }

@@ -172,9 +172,7 @@ impl IntrinsicObject for Element {
             .method(add_event_listener, js_string!("addEventListener"), 2)
             .method(remove_event_listener, js_string!("removeEventListener"), 2)
             .method(dispatch_event, js_string!("dispatchEvent"), 1)
-            // TEMPORARILY DISABLED: attachShadow method causes form interaction failures
-            // See detailed comments in builtins/mod.rs around ShadowRoot::init() for full explanation
-            // .method(attach_shadow, js_string!("attachShadow"), 1)  // <-- DISABLED
+            .method(attach_shadow, js_string!("attachShadow"), 1)
             .build();
     }
 
@@ -1372,117 +1370,128 @@ fn attach_shadow(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsR
         JsNativeError::typ().with_message("Element.prototype.attachShadow called on non-object")
     })?;
 
-    if let Some(element) = this_obj.downcast_ref::<ElementData>() {
-        let options = args.get_or_undefined(0);
+    // First, check if this is an ElementData and perform validation
+    let (shadow_init, has_shadow_root, can_have_shadow) = {
+        if let Some(element) = this_obj.downcast_ref::<ElementData>() {
+            let options = args.get_or_undefined(0);
 
-        // Parse options object according to WHATWG spec
-        let shadow_init = if let Some(options_obj) = options.as_object() {
-            let mode = if let Ok(mode_value) = options_obj.get(js_string!("mode"), context) {
-                let mode_str = mode_value.to_string(context)?.to_std_string_escaped();
-                crate::builtins::shadow_root::ShadowRootMode::from_string(&mode_str)
-                    .ok_or_else(|| JsNativeError::typ()
-                        .with_message("attachShadow mode must be 'open' or 'closed'"))?
+            // Parse options object according to WHATWG spec
+            let shadow_init = if let Some(options_obj) = options.as_object() {
+                let mode = if let Ok(mode_value) = options_obj.get(js_string!("mode"), context) {
+                    let mode_str = mode_value.to_string(context)?.to_std_string_escaped();
+                    crate::builtins::shadow_root::ShadowRootMode::from_string(&mode_str)
+                        .ok_or_else(|| JsNativeError::typ()
+                            .with_message("attachShadow mode must be 'open' or 'closed'"))?
+                } else {
+                    return Err(JsNativeError::typ()
+                        .with_message("attachShadow options must include a mode")
+                        .into());
+                };
+
+                let clonable = if let Ok(clonable_value) = options_obj.get(js_string!("clonable"), context) {
+                    clonable_value.to_boolean()
+                } else {
+                    false
+                };
+
+                let serializable = if let Ok(serializable_value) = options_obj.get(js_string!("serializable"), context) {
+                    serializable_value.to_boolean()
+                } else {
+                    false
+                };
+
+                let delegates_focus = if let Ok(delegates_focus_value) = options_obj.get(js_string!("delegatesFocus"), context) {
+                    delegates_focus_value.to_boolean()
+                } else {
+                    false
+                };
+
+                crate::builtins::shadow_root::ShadowRootInit {
+                    mode,
+                    clonable,
+                    serializable,
+                    delegates_focus,
+                }
             } else {
                 return Err(JsNativeError::typ()
-                    .with_message("attachShadow options must include a mode")
+                    .with_message("attachShadow requires an options object")
                     .into());
             };
 
-            let clonable = if let Ok(clonable_value) = options_obj.get(js_string!("clonable"), context) {
-                clonable_value.to_boolean()
-            } else {
-                false
-            };
+            // Check if element already has a shadow root
+            let has_shadow_root = element.get_shadow_root().is_some();
 
-            let serializable = if let Ok(serializable_value) = options_obj.get(js_string!("serializable"), context) {
-                serializable_value.to_boolean()
-            } else {
-                false
-            };
+            // Validate element according to WHATWG specification
+            let can_have_shadow = can_have_shadow_root(&element);
 
-            let delegates_focus = if let Ok(delegates_focus_value) = options_obj.get(js_string!("delegatesFocus"), context) {
-                delegates_focus_value.to_boolean()
-            } else {
-                false
-            };
-
-            crate::builtins::shadow_root::ShadowRootInit {
-                mode,
-                clonable,
-                serializable,
-                delegates_focus,
-            }
+            (shadow_init, has_shadow_root, can_have_shadow)
         } else {
             return Err(JsNativeError::typ()
-                .with_message("attachShadow requires an options object")
-                .into());
-        };
-
-        // Check if element already has a shadow root
-        if element.get_shadow_root().is_some() {
-            return Err(JsNativeError::error()
-                .with_message("Element already has a shadow root")
+                .with_message("Element.prototype.attachShadow called on non-Element object")
                 .into());
         }
+    }; // Release the borrow here
 
-        // Validate element according to WHATWG specification
-        // https://dom.spec.whatwg.org/#dom-element-attachshadow
-        if !can_have_shadow_root(&element) {
-            return Err(JsNativeError::error()
-                .with_message("Operation not supported")
-                .into());
-        }
-
-        // Create a proper ShadowRoot using the new implementation
-        let shadow_root = crate::builtins::shadow_root::ShadowRoot::create_shadow_root(
-            shadow_init.mode.clone(),
-            &shadow_init,
-            context,
-        )?;
-
-        // Set the host element for the shadow root
-        if let Some(shadow_data) = shadow_root.downcast_ref::<crate::builtins::shadow_root::ShadowRootData>() {
-            shadow_data.set_host(this_obj.clone());
-        }
-
-        // Set shadowRoot property on the element according to mode
-        match shadow_init.mode {
-            crate::builtins::shadow_root::ShadowRootMode::Open => {
-                this_obj.define_property_or_throw(
-                    js_string!("shadowRoot"),
-                    crate::property::PropertyDescriptorBuilder::new()
-                        .value(shadow_root.clone())
-                        .writable(false)
-                        .enumerable(false)
-                        .configurable(true)
-                        .build(),
-                    context,
-                )?;
-            }
-            crate::builtins::shadow_root::ShadowRootMode::Closed => {
-                // For 'closed' mode, shadowRoot property should be null
-                this_obj.define_property_or_throw(
-                    js_string!("shadowRoot"),
-                    crate::property::PropertyDescriptorBuilder::new()
-                        .value(JsValue::null())
-                        .writable(false)
-                        .enumerable(false)
-                        .configurable(true)
-                        .build(),
-                    context,
-                )?;
-            }
-        }
-
-        // Store the shadow root internally in element data
-        element.attach_shadow_root(shadow_root.clone());
-
-        Ok(shadow_root.into())
-    } else {
-        Err(JsNativeError::typ()
-            .with_message("Element.prototype.attachShadow called on non-Element object")
-            .into())
+    // Now perform validation without holding any borrows
+    if has_shadow_root {
+        return Err(JsNativeError::error()
+            .with_message("Element already has a shadow root")
+            .into());
     }
+
+    if !can_have_shadow {
+        return Err(JsNativeError::error()
+            .with_message("Operation not supported")
+            .into());
+    }
+
+    // Create a proper ShadowRoot using the new implementation
+    let shadow_root = crate::builtins::shadow_root::ShadowRoot::create_shadow_root(
+        shadow_init.mode.clone(),
+        &shadow_init,
+        context,
+    )?;
+
+    // Set the host element for the shadow root
+    if let Some(shadow_data) = shadow_root.downcast_ref::<crate::builtins::shadow_root::ShadowRootData>() {
+        shadow_data.set_host(this_obj.clone());
+    }
+
+    // Set shadowRoot property on the element according to mode
+    match shadow_init.mode {
+        crate::builtins::shadow_root::ShadowRootMode::Open => {
+            this_obj.define_property_or_throw(
+                js_string!("shadowRoot"),
+                crate::property::PropertyDescriptorBuilder::new()
+                    .value(shadow_root.clone())
+                    .writable(false)
+                    .enumerable(false)
+                    .configurable(true)
+                    .build(),
+                context,
+            )?;
+        }
+        crate::builtins::shadow_root::ShadowRootMode::Closed => {
+            // For 'closed' mode, shadowRoot property should be null
+            this_obj.define_property_or_throw(
+                js_string!("shadowRoot"),
+                crate::property::PropertyDescriptorBuilder::new()
+                    .value(JsValue::null())
+                    .writable(false)
+                    .enumerable(false)
+                    .configurable(true)
+                    .build(),
+                context,
+            )?;
+        }
+    }
+
+    // Store the shadow root internally in element data (get a fresh borrow)
+    if let Some(element) = this_obj.downcast_ref::<ElementData>() {
+        element.attach_shadow_root(shadow_root.clone());
+    }
+
+    Ok(shadow_root.into())
 }
 
 /// `Element.prototype.addEventListener(type, listener[, options])`

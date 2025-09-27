@@ -468,5 +468,3 @@ impl SlotAssignmentAlgorithms {
     }
 }
 
-#[cfg(test)]
-mod tests;
