@@ -360,6 +360,42 @@ fn run_test_actions_with(actions: impl IntoIterator<Item = TestAction>, context:
     for action in actions.into_iter().map(|a| a.0) {
         match action {
             Inner::RunHarness => {
+                // Create global DOM objects for testing
+                use crate::builtins::{Document, Window, IntrinsicObject, BuiltInConstructor};
+                use crate::builtins::shadow_root::ShadowRoot;
+
+                // Create a global document instance
+                let document_constructor = Document::get(context.intrinsics());
+                let document_args = [];
+                let document_instance = Document::constructor(
+                    &document_constructor.clone().into(),
+                    &document_args,
+                    context,
+                ).expect("failed to create document instance");
+
+                context.global_object()
+                    .set(js_string!("document"), document_instance, false, context)
+                    .expect("failed to set global document");
+
+                // Create a global window instance
+                let window_constructor = Window::get(context.intrinsics());
+                let window_args = [];
+                let window_instance = Window::constructor(
+                    &window_constructor.clone().into(),
+                    &window_args,
+                    context,
+                ).expect("failed to create window instance");
+
+                context.global_object()
+                    .set(js_string!("window"), window_instance, false, context)
+                    .expect("failed to set global window");
+
+                // Create global ShadowRoot constructor for testing
+                let shadow_root_constructor = ShadowRoot::get(context.intrinsics());
+                context.global_object()
+                    .set(js_string!("ShadowRoot"), shadow_root_constructor, false, context)
+                    .expect("failed to set global ShadowRoot");
+
                 // add utility functions for testing
                 // TODO: extract to a file
                 forward_val(

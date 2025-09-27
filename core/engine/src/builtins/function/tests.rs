@@ -131,7 +131,7 @@ fn function_prototype_apply_on_object() {
 #[test]
 fn closure_capture_clone() {
     run_test_actions([
-        TestAction::inspect_context(|ctx| {
+    TestAction::inspect_context(|ctx| {
             let string = js_string!("Hello");
             let object = JsObject::with_object_proto(ctx.intrinsics());
             object
@@ -193,4 +193,18 @@ fn function_constructor_early_errors_super() {
             "invalid `super` reference",
         ),
     ]);
+}
+
+// Temporary debug test to inspect the types and values passed to create_dynamic_function.
+// This writes a debug file `engines/boa/debug-create-dynamic.txt` in the workspace so
+// we can inspect the exact JsValue representations observed at runtime.
+#[test]
+fn debug_create_dynamic_function_inspect_args() {
+    // Removed debug test used during diagnosis.
+}
+
+// Debug: evaluate the JS string via the engine's normal eval path and write result/error
+#[test]
+fn debug_eval_function_constructor_via_eval() {
+    // Removed debug test used during diagnosis.
 }

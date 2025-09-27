@@ -1,0 +1,6 @@
+=== function::constructor debug ===
+new_target = JsValue(Undefined)
+active_function_present = <active_function_present>
+args.len=1
+arg[0] raw = JsValue(String("super.a"))
+arg[0] as_string = "super.a"

@@ -4,7 +4,7 @@
 //! https://html.spec.whatwg.org/#the-window-object
 
 use crate::{
-    builtins::{BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder},
+    builtins::{BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder, storage::Storage},
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
     object::{internal_methods::get_prototype_from_constructor, JsObject},
     string::StaticJsStrings,
@@ -46,6 +46,22 @@ impl IntrinsicObject for Window {
             .name(js_string!("get chrome"))
             .build();
 
+        let local_storage_func = BuiltInBuilder::callable(realm, get_local_storage)
+            .name(js_string!("get localStorage"))
+            .build();
+
+        let session_storage_func = BuiltInBuilder::callable(realm, get_session_storage)
+            .name(js_string!("get sessionStorage"))
+            .build();
+
+        let indexed_db_func = BuiltInBuilder::callable(realm, get_indexed_db)
+            .name(js_string!("get indexedDB"))
+            .build();
+
+        let get_selection_func = BuiltInBuilder::callable(realm, get_selection)
+            .name(js_string!("getSelection"))
+            .build();
+
         BuiltInBuilder::from_standard_constructor::<Self>(realm)
             .accessor(
                 js_string!("location"),
@@ -83,6 +99,24 @@ impl IntrinsicObject for Window {
                 None,
                 Attribute::CONFIGURABLE,
             )
+            .accessor(
+                js_string!("localStorage"),
+                Some(local_storage_func),
+                None,
+                Attribute::CONFIGURABLE,
+            )
+            .accessor(
+                js_string!("sessionStorage"),
+                Some(session_storage_func),
+                None,
+                Attribute::CONFIGURABLE,
+            )
+            .accessor(
+                js_string!("indexedDB"),
+                Some(indexed_db_func),
+                None,
+                Attribute::CONFIGURABLE,
+            )
             .property(
                 js_string!("innerWidth"),
                 1366, // Standard desktop width
@@ -97,21 +131,13 @@ impl IntrinsicObject for Window {
             .method(remove_event_listener, js_string!("removeEventListener"), 2)
             .method(dispatch_event, js_string!("dispatchEvent"), 1)
             .method(match_media, js_string!("matchMedia"), 1)
-            // Minimal, safe bypass API exposed as a window method
-            .method(google_bypass, js_string!("__google_bypass"), 0)
+            .method(get_selection, js_string!("getSelection"), 0)
             .build();
-        // eprintln!("🚀 Window initialization completed (minimal __google_bypass installed)");
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
         Self::STANDARD_CONSTRUCTOR(intrinsics.constructors()).constructor()
     }
-}
-
-/// Minimal native function used as a safe bypass shim.
-fn google_bypass(_this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
-    // Return true; do NOT access any other runtime state here to avoid recursion.
-    Ok(true.into())
 }
 
 impl BuiltInObject for Window {
@@ -523,7 +549,7 @@ fn get_navigator(this: &JsValue, _args: &[JsValue], context: &mut Context) -> Js
                     .configurable(false)
                     .enumerable(true)
                     .writable(false)
-                    .value(JsString::from("Win32"))
+                    .value(JsString::from("MacIntel"))
                     .build(),
                 context,
             )?;
@@ -553,6 +579,18 @@ fn get_navigator(this: &JsValue, _args: &[JsValue], context: &mut Context) -> Js
                     .enumerable(true)
                     .writable(false)
                     .value(languages_array)
+                    .build(),
+                context,
+            )?;
+
+            // Add onLine property
+            navigator.define_property_or_throw(
+                js_string!("onLine"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(false)
+                    .enumerable(true)
+                    .writable(false)
+                    .value(true)
                     .build(),
                 context,
             )?;
@@ -654,6 +692,22 @@ fn get_navigator(this: &JsValue, _args: &[JsValue], context: &mut Context) -> Js
                     .enumerable(true)
                     .writable(false)
                     .value(JsValue::null())
+                    .build(),
+                context,
+            )?;
+
+            // Add Web Locks API (navigator.locks)
+            let lock_manager = crate::builtins::web_locks::LockManagerObject::create_lock_manager();
+            let lock_manager_prototype = context.intrinsics().constructors().lock_manager().prototype();
+            lock_manager.set_prototype(Some(lock_manager_prototype));
+
+            navigator.define_property_or_throw(
+                js_string!("locks"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(false)
+                    .enumerable(true)
+                    .writable(false)
+                    .value(lock_manager)
                     .build(),
                 context,
             )?;
@@ -1605,4 +1659,61 @@ fn get_chrome(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsRe
     )?;
 
     Ok(chrome.into())
+}
+
+/// `window.localStorage` getter
+fn get_local_storage(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    // Create localStorage instance with Storage prototype
+    let local_storage = Storage::create_local_storage();
+
+    // Set the prototype to the Storage prototype
+    let storage_prototype = context.intrinsics().constructors().storage().prototype();
+    local_storage.set_prototype(Some(storage_prototype));
+
+    Ok(local_storage.into())
+}
+
+/// `window.sessionStorage` getter
+fn get_session_storage(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    // Create sessionStorage instance with Storage prototype
+    let session_storage = Storage::create_session_storage();
+
+    // Set the prototype to the Storage prototype
+    let storage_prototype = context.intrinsics().constructors().storage().prototype();
+    session_storage.set_prototype(Some(storage_prototype));
+
+    Ok(session_storage.into())
+}
+
+/// `window.indexedDB` getter
+fn get_indexed_db(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    // Create IndexedDB factory instance with proper prototype
+    use crate::builtins::indexed_db::IdbFactory;
+
+    let factory_data = IdbFactory::new();
+    let idb_factory_prototype = context.intrinsics().constructors().idb_factory().prototype();
+
+    // Create object with the correct prototype that has the methods
+    let indexed_db = JsObject::from_proto_and_data(
+        Some(idb_factory_prototype),
+        factory_data,
+    );
+
+    Ok(indexed_db.into())
+}
+
+fn get_selection(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    // Create a new Selection instance using the Selection constructor
+    use crate::builtins::selection::Selection;
+    use crate::builtins::IntrinsicObject;
+
+    let selection_constructor = Selection::get(context.intrinsics());
+    let selection_args = [];
+    let selection_instance = Selection::constructor(
+        &selection_constructor.clone().into(),
+        &selection_args,
+        context,
+    )?;
+
+    Ok(selection_instance)
 }

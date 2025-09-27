@@ -1,0 +1,6 @@
+create_dynamic_function result: Err(JsError { inner: Native(JsNativeError { kind: Syntax, message: "invalid `super` call", cause: None, .. }), backtrace: None })
+
+args[0] (JsValue debug): JsValue(String("super()"))
+
+args[0] as string: "super()"
+

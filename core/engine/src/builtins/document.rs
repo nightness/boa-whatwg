@@ -430,11 +430,19 @@ fn create_element(this: &JsValue, args: &[JsValue], context: &mut Context) -> Js
         let tag_name = args.get_or_undefined(0).to_string(context)?;
         let tag_name_upper = tag_name.to_std_string_escaped().to_uppercase();
 
-        // Create a new element
-        let element = JsObject::default();
+        // Create a proper Element object using Element constructor pattern
+        let element_constructor = context.intrinsics().constructors().element().constructor();
+        let element = crate::builtins::element::Element::constructor(
+            &element_constructor.clone().into(),
+            &[],
+            context,
+        )?;
 
-        // Add tagName property
-        element.define_property_or_throw(
+        // Get the Element object from the JsValue
+        let element_obj = element.as_object().unwrap();
+
+        // Add tagName property (this should be done by ElementData, but make it explicit)
+        element_obj.define_property_or_throw(
             js_string!("tagName"),
             PropertyDescriptorBuilder::new()
                 .configurable(false)
@@ -445,9 +453,14 @@ fn create_element(this: &JsValue, args: &[JsValue], context: &mut Context) -> Js
             context,
         )?;
 
+        // Set the tag name in the element data
+        if let Some(element_data) = element_obj.downcast_ref::<crate::builtins::element::ElementData>() {
+            element_data.set_tag_name(tag_name_upper.clone());
+        }
+
         // Add style property as empty object
         let style_obj = JsObject::default();
-        element.define_property_or_throw(
+        element_obj.define_property_or_throw(
             js_string!("style"),
             PropertyDescriptorBuilder::new()
                 .configurable(true)
@@ -489,7 +502,7 @@ fn create_element(this: &JsValue, args: &[JsValue], context: &mut Context) -> Js
             )?;
 
             // Add elements collection to form
-            element.define_property_or_throw(
+            element_obj.define_property_or_throw(
                 js_string!("elements"),
                 PropertyDescriptorBuilder::new()
                     .configurable(true)
@@ -514,7 +527,7 @@ fn create_element(this: &JsValue, args: &[JsValue], context: &mut Context) -> Js
             .name(js_string!("getAttribute"))
             .build();
 
-            element.define_property_or_throw(
+            element_obj.define_property_or_throw(
                 js_string!("getAttribute"),
                 PropertyDescriptorBuilder::new()
                     .configurable(true)
@@ -529,7 +542,7 @@ fn create_element(this: &JsValue, args: &[JsValue], context: &mut Context) -> Js
         // Add Button-specific functionality for <button> elements
         if tag_name_upper == "BUTTON" {
             // Add button-specific properties
-            element.define_property_or_throw(
+            element_obj.define_property_or_throw(
                 js_string!("type"),
                 PropertyDescriptorBuilder::new()
                     .configurable(true)
@@ -540,7 +553,7 @@ fn create_element(this: &JsValue, args: &[JsValue], context: &mut Context) -> Js
                 context,
             )?;
 
-            element.define_property_or_throw(
+            element_obj.define_property_or_throw(
                 js_string!("value"),
                 PropertyDescriptorBuilder::new()
                     .configurable(true)
@@ -555,7 +568,7 @@ fn create_element(this: &JsValue, args: &[JsValue], context: &mut Context) -> Js
         // Add Canvas-specific functionality for <canvas> elements
         if tag_name_upper == "CANVAS" {
             // Add width and height properties with default values
-            element.define_property_or_throw(
+            element_obj.define_property_or_throw(
                 js_string!("width"),
                 PropertyDescriptorBuilder::new()
                     .configurable(true)
@@ -566,7 +579,7 @@ fn create_element(this: &JsValue, args: &[JsValue], context: &mut Context) -> Js
                 context,
             )?;
 
-            element.define_property_or_throw(
+            element_obj.define_property_or_throw(
                 js_string!("height"),
                 PropertyDescriptorBuilder::new()
                     .configurable(true)
@@ -582,7 +595,7 @@ fn create_element(this: &JsValue, args: &[JsValue], context: &mut Context) -> Js
                 .name(js_string!("getContext"))
                 .build();
 
-            element.define_property_or_throw(
+            element_obj.define_property_or_throw(
                 js_string!("getContext"),
                 PropertyDescriptorBuilder::new()
                     .configurable(true)
@@ -598,7 +611,7 @@ fn create_element(this: &JsValue, args: &[JsValue], context: &mut Context) -> Js
                 .name(js_string!("toDataURL"))
                 .build();
 
-            element.define_property_or_throw(
+            element_obj.define_property_or_throw(
                 js_string!("toDataURL"),
                 PropertyDescriptorBuilder::new()
                     .configurable(true)
@@ -610,7 +623,7 @@ fn create_element(this: &JsValue, args: &[JsValue], context: &mut Context) -> Js
             )?;
         }
 
-        Ok(element.into())
+        Ok(element)
     } else {
         Err(JsNativeError::typ()
             .with_message("Document.prototype.createElement called on non-Document object")
@@ -641,6 +654,7 @@ fn get_element_by_id(this: &JsValue, args: &[JsValue], context: &mut Context) ->
 
 /// `Document.prototype.querySelector(selector)`
 fn query_selector(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    eprintln!("DEBUG: query_selector called!");
 
     let this_obj = this.as_object().ok_or_else(|| {
         JsNativeError::typ().with_message("Document.prototype.querySelector called on non-object")
@@ -649,15 +663,18 @@ fn query_selector(this: &JsValue, args: &[JsValue], context: &mut Context) -> Js
     if let Some(document) = this_obj.downcast_ref::<DocumentData>() {
         let selector = args.get_or_undefined(0).to_string(context)?;
         let selector_str = selector.to_std_string_escaped();
+        eprintln!("DEBUG: query_selector selector: {}", selector_str);
 
         // Get the HTML content from the document
         let html_content = document.get_html_content();
+        eprintln!("DEBUG: query_selector HTML content length: {}", html_content.len());
 
         // Use real DOM implementation with scraper library
         if let Some(element) = create_real_element_from_html(context, &selector_str, &html_content)? {
             return Ok(element.into());
         }
 
+        eprintln!("DEBUG: query_selector returning null - no element found");
         Ok(JsValue::null())
     } else {
         Err(JsNativeError::typ()
@@ -673,7 +690,18 @@ fn create_real_element_from_html(context: &mut Context, selector: &str, html_con
 
     if let Ok(css_selector) = scraper::Selector::parse(selector) {
         if let Some(element_ref) = document.select(&css_selector).next() {
-            let element_obj = context.intrinsics().constructors().object().constructor();
+            eprintln!("DEBUG: querySelector creating element using Element constructor");
+
+            // Actually construct a new Element instance using the Element constructor
+            let element_constructor = context.intrinsics().constructors().element().constructor();
+            let element_obj = element_constructor.construct(&[], Some(&element_constructor), context)?;
+
+            eprintln!("DEBUG: Element created, checking for dispatchEvent...");
+            if let Ok(dispatch_event) = element_obj.get(js_string!("dispatchEvent"), context) {
+                eprintln!("DEBUG: dispatchEvent found on created element: {:?}", dispatch_event.type_of());
+            } else {
+                eprintln!("DEBUG: dispatchEvent NOT found on created element!");
+            }
 
             // Set real properties from the actual HTML element
             let tag_name = element_ref.value().name().to_uppercase();
@@ -789,7 +817,7 @@ fn create_all_real_elements_from_html(context: &mut Context, selector: &str, htm
 
     if let Ok(css_selector) = scraper::Selector::parse(selector) {
         for element_ref in document.select(&css_selector) {
-            let element_obj = context.intrinsics().constructors().object().constructor();
+            let element_obj = context.intrinsics().constructors().element().constructor();
 
             // Set real properties from the actual HTML element
             let tag_name = element_ref.value().name().to_uppercase();
@@ -1524,3 +1552,6 @@ fn create_webgl_context(context: &mut Context, is_webgl2: bool) -> JsResult<JsVa
 
     Ok(JsValue::from(gl_context))
 }
+
+#[cfg(test)]
+mod tests;

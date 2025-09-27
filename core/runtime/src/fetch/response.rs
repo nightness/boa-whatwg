@@ -166,14 +166,34 @@ impl JsResponse {
     }
 
     #[boa(constructor)]
-    fn constructor(_body: Option<JsValue>, _options: JsResponseOptions) -> Self {
-        Self::basic(js_string!(""), http::Response::new(Vec::new()))
+    fn constructor(_body: Option<JsValue>, options: JsResponseOptions) -> Self {
+        let mut response = http::Response::new(Vec::new());
+
+        // Set status if provided
+        if let Some(status) = options.status {
+            if let Ok(status_code) = StatusCode::from_u16(status) {
+                *response.status_mut() = status_code;
+            }
+        }
+
+        // Set status text if provided (note: HTTP library may override this)
+        // if let Some(status_text) = options.status_text {
+        //     // StatusCode doesn't allow custom status text in http crate
+        // }
+
+        Self::basic(js_string!(""), response)
     }
 
     #[boa(getter)]
     fn status(&self) -> u16 {
         // 0 is a special case for error responses.
         self.status.map_or(0, |s| s.as_u16())
+    }
+
+    #[boa(getter)]
+    fn ok(&self) -> bool {
+        // Response is ok if status is in the range 200-299
+        self.status.map_or(false, |s| s.is_success())
     }
 
     #[boa(getter)]

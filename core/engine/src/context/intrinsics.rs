@@ -170,6 +170,9 @@ pub struct StandardConstructors {
     readable_stream: StandardConstructor,
     websocket: StandardConstructor,
     websocket_stream: StandardConstructor,
+    request: StandardConstructor,
+    response: StandardConstructor,
+    headers: StandardConstructor,
     abort_controller: StandardConstructor,
     xmlhttprequest: StandardConstructor,
     mutation_observer: StandardConstructor,
@@ -183,8 +186,15 @@ pub struct StandardConstructors {
     character_data: StandardConstructor,
     text: StandardConstructor,
     document_fragment: StandardConstructor,
+    shadow_root: StandardConstructor,
+    html_slot_element: StandardConstructor,
     nodelist: StandardConstructor,
     element: StandardConstructor,
+    attr: StandardConstructor,
+    comment: StandardConstructor,
+    domtokenlist: StandardConstructor,
+    processing_instruction: StandardConstructor,
+    cdata_section: StandardConstructor,
     html_form_element: StandardConstructor,
     html_form_controls_collection: StandardConstructor,
     html_input_element: StandardConstructor,
@@ -192,11 +202,16 @@ pub struct StandardConstructors {
     range: StandardConstructor,
     event: StandardConstructor,
     event_target: StandardConstructor,
+    custom_event: StandardConstructor,
     console: StandardConstructor,
     blob: StandardConstructor,
     weak_ref: StandardConstructor,
     weak_map: StandardConstructor,
     weak_set: StandardConstructor,
+    storage: StandardConstructor,
+    lock_manager: StandardConstructor,
+    idb_factory: StandardConstructor,
+    navigator: StandardConstructor,
     #[cfg(feature = "intl")]
     collator: StandardConstructor,
     #[cfg(feature = "intl")]
@@ -291,6 +306,9 @@ impl Default for StandardConstructors {
             readable_stream: StandardConstructor::default(),
             websocket: StandardConstructor::default(),
             websocket_stream: StandardConstructor::default(),
+            request: StandardConstructor::default(),
+            response: StandardConstructor::default(),
+            headers: StandardConstructor::default(),
             abort_controller: StandardConstructor::default(),
             xmlhttprequest: StandardConstructor::default(),
             mutation_observer: StandardConstructor::default(),
@@ -304,8 +322,15 @@ impl Default for StandardConstructors {
             character_data: StandardConstructor::default(),
             text: StandardConstructor::default(),
             document_fragment: StandardConstructor::default(),
+            shadow_root: StandardConstructor::default(),
+            html_slot_element: StandardConstructor::default(),
             nodelist: StandardConstructor::default(),
             element: StandardConstructor::default(),
+            attr: StandardConstructor::default(),
+            comment: StandardConstructor::default(),
+            domtokenlist: StandardConstructor::default(),
+            processing_instruction: StandardConstructor::default(),
+            cdata_section: StandardConstructor::default(),
             html_form_element: StandardConstructor::default(),
             html_form_controls_collection: StandardConstructor::default(),
             html_input_element: StandardConstructor::default(),
@@ -313,11 +338,16 @@ impl Default for StandardConstructors {
             range: StandardConstructor::default(),
             event: StandardConstructor::default(),
             event_target: StandardConstructor::default(),
+            custom_event: StandardConstructor::default(),
             console: StandardConstructor::default(),
             blob: StandardConstructor::default(),
             weak_ref: StandardConstructor::default(),
             weak_map: StandardConstructor::default(),
             weak_set: StandardConstructor::default(),
+            storage: StandardConstructor::default(),
+            lock_manager: StandardConstructor::default(),
+            idb_factory: StandardConstructor::default(),
+            navigator: StandardConstructor::default(),
             #[cfg(feature = "intl")]
             collator: StandardConstructor::default(),
             #[cfg(feature = "intl")]
@@ -920,6 +950,42 @@ impl StandardConstructors {
         &self.websocket_stream
     }
 
+    /// Returns the `Request` constructor.
+    ///
+    /// More information:
+    ///  - [Fetch API reference][spec]
+    ///
+    /// [spec]: https://fetch.spec.whatwg.org/#request-class
+    #[inline]
+    #[must_use]
+    pub const fn request(&self) -> &StandardConstructor {
+        &self.request
+    }
+
+    /// Returns the `Response` constructor.
+    ///
+    /// More information:
+    ///  - [Fetch API reference][spec]
+    ///
+    /// [spec]: https://fetch.spec.whatwg.org/#response-class
+    #[inline]
+    #[must_use]
+    pub const fn response(&self) -> &StandardConstructor {
+        &self.response
+    }
+
+    /// Returns the `Headers` constructor.
+    ///
+    /// More information:
+    ///  - [Fetch API reference][spec]
+    ///
+    /// [spec]: https://fetch.spec.whatwg.org/#headers-class
+    #[inline]
+    #[must_use]
+    pub const fn headers(&self) -> &StandardConstructor {
+        &self.headers
+    }
+
     /// Returns the `AbortController` constructor.
     ///
     /// More information:
@@ -1072,6 +1138,30 @@ impl StandardConstructors {
         &self.document_fragment
     }
 
+    /// Returns the `ShadowRoot` constructor.
+    ///
+    /// More information:
+    ///  - [ShadowRoot API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-shadowroot
+    #[inline]
+    #[must_use]
+    pub const fn shadow_root(&self) -> &StandardConstructor {
+        &self.shadow_root
+    }
+
+    /// Returns the `HTMLSlotElement` constructor.
+    ///
+    /// More information:
+    ///  - [HTMLSlotElement API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-htmlslotelement
+    #[inline]
+    #[must_use]
+    pub const fn html_slot_element(&self) -> &StandardConstructor {
+        &self.html_slot_element
+    }
+
     /// Returns the `NodeList` constructor.
     ///
     /// More information:
@@ -1084,6 +1174,13 @@ impl StandardConstructors {
         &self.nodelist
     }
 
+    /// Returns the `DOMTokenList` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn domtokenlist(&self) -> &StandardConstructor {
+        &self.domtokenlist
+    }
+
     /// Returns the `Element` constructor.
     ///
     /// More information:
@@ -1094,6 +1191,41 @@ impl StandardConstructors {
     #[must_use]
     pub const fn element(&self) -> &StandardConstructor {
         &self.element
+    }
+
+    /// Returns the `Attr` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn attr(&self) -> &StandardConstructor {
+        &self.attr
+    }
+
+    /// Returns the `Comment` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn comment(&self) -> &StandardConstructor {
+        &self.comment
+    }
+
+    /// Returns the `CustomEvent` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn custom_event(&self) -> &StandardConstructor {
+        &self.custom_event
+    }
+
+    /// Returns the `ProcessingInstruction` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn processing_instruction(&self) -> &StandardConstructor {
+        &self.processing_instruction
+    }
+
+    /// Returns the `CDATASection` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn cdata_section(&self) -> &StandardConstructor {
+        &self.cdata_section
     }
 
     /// Returns the `HTMLFormElement` constructor.
@@ -1173,6 +1305,48 @@ impl StandardConstructors {
     #[must_use]
     pub const fn weak_set(&self) -> &StandardConstructor {
         &self.weak_set
+    }
+
+    /// Returns the `Storage` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Specification](https://html.spec.whatwg.org/multipage/webstorage.html#the-storage-interface)
+    #[inline]
+    #[must_use]
+    pub const fn storage(&self) -> &StandardConstructor {
+        &self.storage
+    }
+
+    /// Returns the `LockManager` constructor.
+    ///
+    /// More information:
+    ///  - [W3C Web Locks API Specification](https://w3c.github.io/web-locks/)
+    #[inline]
+    #[must_use]
+    pub const fn lock_manager(&self) -> &StandardConstructor {
+        &self.lock_manager
+    }
+
+    /// Returns the `IDBFactory` constructor.
+    ///
+    /// More information:
+    ///  - [W3C IndexedDB 3.0 Specification](https://w3c.github.io/IndexedDB/)
+    #[inline]
+    #[must_use]
+    pub const fn idb_factory(&self) -> &StandardConstructor {
+        &self.idb_factory
+    }
+
+    /// Returns the `Navigator` constructor.
+    ///
+    /// More information:
+    ///  - [MDN documentation][mdn]
+    ///
+    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Navigator
+    #[inline]
+    #[must_use]
+    pub const fn navigator(&self) -> &StandardConstructor {
+        &self.navigator
     }
 
     /// Returns the `Intl.Collator` constructor.
@@ -1420,6 +1594,9 @@ pub struct IntrinsicObjects {
     /// [`%eval%`](https://tc39.es/ecma262/#sec-eval-x)
     eval: JsFunction,
 
+    /// [`%fetch%`](https://fetch.spec.whatwg.org/)
+    fetch: JsFunction,
+
     /// URI related functions
     uri_functions: UriFunctions,
 
@@ -1497,6 +1674,7 @@ impl IntrinsicObjects {
             async_generator: JsObject::default(),
             atomics: JsObject::default(),
             eval: JsFunction::empty_intrinsic_function(false),
+            fetch: JsFunction::empty_intrinsic_function(false),
             uri_functions: UriFunctions::default(),
             is_finite: JsFunction::empty_intrinsic_function(false),
             is_nan: JsFunction::empty_intrinsic_function(false),
@@ -1590,6 +1768,13 @@ impl IntrinsicObjects {
     #[must_use]
     pub fn eval(&self) -> JsFunction {
         self.eval.clone()
+    }
+
+    /// Gets the [`%fetch%`][spec] intrinsic function.
+    #[inline]
+    #[must_use]
+    pub fn fetch(&self) -> JsFunction {
+        self.fetch.clone()
     }
 
     /// Gets the URI intrinsic functions.

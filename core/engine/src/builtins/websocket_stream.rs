@@ -79,7 +79,13 @@ impl BuiltInConstructor for WebSocketStream {
 
         let url = args.get_or_undefined(0);
 
-        // Validate URL
+        // Validate URL - must be provided and not undefined
+        if url.is_undefined() {
+            return Err(JsNativeError::typ()
+                .with_message("WebSocketStream constructor requires a URL argument")
+                .into());
+        }
+
         let url_string = url.to_string(context)?;
         if url_string.is_empty() {
             return Err(JsNativeError::typ()
@@ -183,3 +189,6 @@ fn close(this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<
             .into())
     }
 }
+
+#[cfg(test)]
+mod tests;
