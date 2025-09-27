@@ -362,6 +362,7 @@ fn run_test_actions_with(actions: impl IntoIterator<Item = TestAction>, context:
             Inner::RunHarness => {
                 // Create global DOM objects for testing
                 use crate::builtins::{Document, Window, IntrinsicObject, BuiltInConstructor};
+                use crate::builtins::shadow_root::ShadowRoot;
 
                 // Create a global document instance
                 let document_constructor = Document::get(context.intrinsics());
@@ -388,6 +389,12 @@ fn run_test_actions_with(actions: impl IntoIterator<Item = TestAction>, context:
                 context.global_object()
                     .set(js_string!("window"), window_instance, false, context)
                     .expect("failed to set global window");
+
+                // Create global ShadowRoot constructor for testing
+                let shadow_root_constructor = ShadowRoot::get(context.intrinsics());
+                context.global_object()
+                    .set(js_string!("ShadowRoot"), shadow_root_constructor, false, context)
+                    .expect("failed to set global ShadowRoot");
 
                 // add utility functions for testing
                 // TODO: extract to a file

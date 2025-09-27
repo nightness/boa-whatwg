@@ -469,7 +469,7 @@ impl ShadowRoot {
 
         let shadow_obj = JsObject::from_proto_and_data_with_shared_shape(
             context.root_shape(),
-            context.intrinsics().constructors().shadow_root().prototype(),
+            context.intrinsics().constructors().document_fragment().prototype(),
             shadow_data,
         );
 
@@ -491,6 +491,9 @@ impl ShadowRoot {
             .build();
         let host_get_func = BuiltInBuilder::callable(context.realm(), ShadowRootData::get_host_accessor)
             .name(js_string!("get host"))
+            .build();
+        let get_html_func = BuiltInBuilder::callable(context.realm(), ShadowRootData::get_html)
+            .name(js_string!("getHTML"))
             .build();
 
         // Install accessors directly on the instance
@@ -540,6 +543,17 @@ impl ShadowRoot {
                 .get(host_get_func)
                 .configurable(true)
                 .enumerable(false)
+                .build(),
+            context,
+        )?;
+
+        shadow_obj.define_property_or_throw(
+            js_string!("getHTML"),
+            PropertyDescriptorBuilder::new()
+                .value(get_html_func)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true)
                 .build(),
             context,
         )?;
