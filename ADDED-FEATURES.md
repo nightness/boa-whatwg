@@ -193,6 +193,11 @@ This document catalogs all the features and Web APIs we've added to the Boa Java
   - Properly integrated with Boa's builtin system
   - Full garbage collection support with `Trace` and `Finalize`
   - Comprehensive test coverage (10+ test cases)
+=======
+**Full Inheritance Support**:
+- Symbol.asyncIterator properly inherits from prototype to instances
+- Fixed inheritance issues through proper BuiltInBuilder configuration
+- Complete standards compliance for async iteration support
 
 ## Enhanced Regular Expression Support
 
