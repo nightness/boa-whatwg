@@ -263,7 +263,21 @@ impl IdbFactory {
                     .with_message("'this' is not an IDBFactory object")
             })?;
 
-        let name = args.get_or_undefined(0).to_string(context)?.to_std_string_escaped();
+        // Validate that name argument is provided
+        if args.is_empty() {
+            return Err(JsNativeError::typ()
+                .with_message("Failed to execute 'open' on 'IDBFactory': 1 argument required, but only 0 present.")
+                .into());
+        }
+
+        let name_arg = args.get_or_undefined(0);
+        if name_arg.is_undefined() {
+            return Err(JsNativeError::typ()
+                .with_message("Failed to execute 'open' on 'IDBFactory': The database name provided is undefined.")
+                .into());
+        }
+
+        let name = name_arg.to_string(context)?.to_std_string_escaped();
         let version = if args.len() > 1 {
             args.get_or_undefined(1).to_u32(context)?
         } else {
@@ -315,7 +329,21 @@ impl IdbFactory {
                     .with_message("'this' is not an IDBFactory object")
             })?;
 
-        let _name = args.get_or_undefined(0).to_string(context)?.to_std_string_escaped();
+        // Validate that name argument is provided
+        if args.is_empty() {
+            return Err(JsNativeError::typ()
+                .with_message("Failed to execute 'deleteDatabase' on 'IDBFactory': 1 argument required, but only 0 present.")
+                .into());
+        }
+
+        let name_arg = args.get_or_undefined(0);
+        if name_arg.is_undefined() {
+            return Err(JsNativeError::typ()
+                .with_message("Failed to execute 'deleteDatabase' on 'IDBFactory': The database name provided is undefined.")
+                .into());
+        }
+
+        let _name = name_arg.to_string(context)?.to_std_string_escaped();
 
         // Create success request
         let request_obj = Self::create_success_request(JsValue::undefined(), context);
@@ -337,8 +365,23 @@ impl IdbFactory {
 
     /// `indexedDB.cmp(first, second)`
     fn cmp(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        // Validate that both arguments are provided
+        if args.len() < 2 {
+            let error_msg = format!("Failed to execute 'cmp' on 'IDBFactory': 2 arguments required, but only {} present.", args.len());
+            return Err(JsNativeError::typ()
+                .with_message(error_msg)
+                .into());
+        }
+
         let first = args.get_or_undefined(0);
         let second = args.get_or_undefined(1);
+
+        // Validate that arguments are not undefined
+        if first.is_undefined() || second.is_undefined() {
+            return Err(JsNativeError::error()
+                .with_message("Failed to execute 'cmp' on 'IDBFactory': The parameter is not a valid key.")
+                .into());
+        }
 
         // Basic comparison implementation
         if first.is_number() && second.is_number() {
