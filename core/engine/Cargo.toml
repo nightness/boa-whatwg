@@ -141,6 +141,9 @@ url = "2.4"
 reqwest = { version = "0.11", features = ["json", "stream"] }
 scraper = "0.20"
 
+# Worker API deps
+crossbeam-channel = "0.5"
+
 # intl deps
 boa_icu_provider = { workspace = true, features = ["std"], optional = true }
 sys-locale = { workspace = true, optional = true }

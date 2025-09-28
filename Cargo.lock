@@ -242,6 +242,7 @@ dependencies = [
  "cfg-if",
  "cow-utils",
  "criterion",
+ "crossbeam-channel",
  "dashmap",
  "dynify",
  "either",

@@ -7,6 +7,7 @@ pub mod async_function;
 pub mod readable_stream;
 pub mod websocket;
 pub mod websocket_stream;
+pub mod worker;
 pub mod document;
 pub mod document_parse;
 pub mod form;
@@ -121,6 +122,7 @@ pub(crate) use self::{
     readable_stream::ReadableStream,
     websocket::WebSocket,
     websocket_stream::WebSocketStream,
+    worker::Worker,
     document::Document,
     form::{HTMLFormElement, HTMLFormControlsCollection, HTMLInputElement},
     window::Window,
@@ -344,6 +346,7 @@ impl Realm {
         ReadableStream::init(self);
         WebSocket::init(self);
         WebSocketStream::init(self);
+        Worker::init(self);
         AbortController::init(self);
         Request::init(self);
         Response::init(self);
@@ -617,6 +620,7 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<Promise>(context)?;
     global_binding::<ReadableStream>(context)?;
     global_binding::<WebSocket>(context)?;
+    global_binding::<Worker>(context)?;
     global_binding::<AbortController>(context)?;
     global_binding::<XmlHttpRequest>(context)?;
     global_binding::<MutationObserver>(context)?;

@@ -170,6 +170,7 @@ pub struct StandardConstructors {
     readable_stream: StandardConstructor,
     websocket: StandardConstructor,
     websocket_stream: StandardConstructor,
+    worker: StandardConstructor,
     request: StandardConstructor,
     response: StandardConstructor,
     headers: StandardConstructor,
@@ -306,6 +307,7 @@ impl Default for StandardConstructors {
             readable_stream: StandardConstructor::default(),
             websocket: StandardConstructor::default(),
             websocket_stream: StandardConstructor::default(),
+            worker: StandardConstructor::default(),
             request: StandardConstructor::default(),
             response: StandardConstructor::default(),
             headers: StandardConstructor::default(),
@@ -948,6 +950,18 @@ impl StandardConstructors {
     #[must_use]
     pub const fn websocket_stream(&self) -> &StandardConstructor {
         &self.websocket_stream
+    }
+
+    /// Returns the `Worker` constructor.
+    ///
+    /// More information:
+    ///  - [Worker spec][spec]
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/workers.html
+    #[inline]
+    #[must_use]
+    pub const fn worker(&self) -> &StandardConstructor {
+        &self.worker
     }
 
     /// Returns the `Request` constructor.

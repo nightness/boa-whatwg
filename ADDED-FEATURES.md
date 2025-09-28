@@ -30,6 +30,28 @@ This document catalogs all the features and Web APIs we've added to the Boa Java
   - `onclose`
 - Real async networking with proper connection lifecycle
 
+### Worker API (`core/engine/src/builtins/worker.rs`)
+
+**Complete WHATWG Worker Implementation**:
+- Native Boa builtin with real JavaScript execution contexts
+- Full WHATWG Worker standard compliance (https://html.spec.whatwg.org/multipage/workers.html)
+- Real worker thread management (not mocked)
+- Properties and methods:
+  - `scriptURL` getter - Returns the URL of the worker script
+  - `postMessage()` method for message passing with structured cloning
+  - `terminate()` method for worker lifecycle management
+- Constructor validation:
+  - Requires `new` keyword (throws TypeError if called directly)
+  - URL validation (throws SyntaxError for invalid URLs)
+  - Options parsing for worker type and name
+- Real worker execution:
+  - Isolated JavaScript contexts using separate Boa instances
+  - Thread-safe message passing using crossbeam-channel
+  - Structured cloning for data transfer
+  - Proper error propagation between contexts
+- Event-driven architecture ready for onmessage/onerror handlers
+- Foundation for SharedWorker and WorkerGlobalScope implementations
+
 ### Fetch API (`core/engine/src/builtins/fetch.rs`)
 
 **Complete HTTP Client Implementation**:
@@ -211,6 +233,7 @@ This document catalogs all the features and Web APIs we've added to the Boa Java
 **Added to Core Builtins**:
 - `readable_stream` module integrated as core builtin
 - `websocket` module integrated as core builtin
+- `worker` module integrated as core builtin
 - `fetch` module integrated as core builtin
 - `storage` module integrated as core builtin
 - Proper intrinsic object registration
@@ -221,6 +244,7 @@ This document catalogs all the features and Web APIs we've added to the Boa Java
 **New External Dependencies**:
 - `reqwest` - Modern HTTP client for Fetch API
 - `tokio-tungstenite` - WebSocket implementation
+- `crossbeam-channel` - Thread-safe message passing for Worker API
 - `futures-util` - Async utilities for streaming
 - `url` - URL parsing and validation
 
@@ -228,6 +252,7 @@ This document catalogs all the features and Web APIs we've added to the Boa Java
 
 **Runtime Integration**:
 - WebSocket constructor registered as standard constructor
+- Worker constructor registered as standard constructor
 - ReadableStream constructor registered as standard constructor
 - Storage constructor registered as standard constructor
 - Fetch function registered as global intrinsic
