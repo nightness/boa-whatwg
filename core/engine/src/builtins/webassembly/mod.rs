@@ -19,7 +19,7 @@ pub(crate) mod table;
 pub(crate) mod global;
 #[cfg(feature = "webassembly")]
 pub(crate) mod runtime;
-
+#[cfg(feature = "webassembly")]
 #[cfg(test)]
 mod tests;
 
@@ -65,38 +65,53 @@ pub(crate) struct WebAssembly;
 #[cfg(feature = "webassembly")]
 impl IntrinsicObject for WebAssembly {
     fn init(realm: &Realm) {
-        // Initialize the WebAssembly global object with all standard methods
-        let webassembly_obj = BuiltInBuilder::new(realm)
+        // Initialize all WebAssembly constructors first
+        WebAssemblyModule::init(realm);
+        WebAssemblyInstance::init(realm);
+        WebAssemblyMemory::init(realm);
+        WebAssemblyTable::init(realm);
+        WebAssemblyGlobal::init(realm);
+
+        // Create the WebAssembly global object with static methods
+        let webassembly_obj = BuiltInBuilder::callable(realm, Self::not_callable)
             .static_method(Self::validate, js_string!("validate"), 1)
             .static_method(Self::compile, js_string!("compile"), 1)
             .static_method(Self::instantiate, js_string!("instantiate"), 1)
             .static_method(Self::compile_streaming, js_string!("compileStreaming"), 1)
             .static_method(Self::instantiate_streaming, js_string!("instantiateStreaming"), 1)
+            .property(
+                js_string!("Module"),
+                WebAssemblyModule::get(realm.intrinsics()),
+                Attribute::WRITABLE | Attribute::CONFIGURABLE,
+            )
+            .property(
+                js_string!("Instance"),
+                WebAssemblyInstance::get(realm.intrinsics()),
+                Attribute::WRITABLE | Attribute::CONFIGURABLE,
+            )
+            .property(
+                js_string!("Memory"),
+                WebAssemblyMemory::get(realm.intrinsics()),
+                Attribute::WRITABLE | Attribute::CONFIGURABLE,
+            )
+            .property(
+                js_string!("Table"),
+                WebAssemblyTable::get(realm.intrinsics()),
+                Attribute::WRITABLE | Attribute::CONFIGURABLE,
+            )
+            .property(
+                js_string!("Global"),
+                WebAssemblyGlobal::get(realm.intrinsics()),
+                Attribute::WRITABLE | Attribute::CONFIGURABLE,
+            )
             .build();
 
-        // Register constructors as properties of the WebAssembly object
-        let module_constructor = WebAssemblyModule::get(realm.intrinsics());
-        webassembly_obj.set(js_string!("Module"), module_constructor, false, &mut realm.context()).unwrap();
-
-        let instance_constructor = WebAssemblyInstance::get(realm.intrinsics());
-        webassembly_obj.set(js_string!("Instance"), instance_constructor, false, &mut realm.context()).unwrap();
-
-        let memory_constructor = WebAssemblyMemory::get(realm.intrinsics());
-        webassembly_obj.set(js_string!("Memory"), memory_constructor, false, &mut realm.context()).unwrap();
-
-        let table_constructor = WebAssemblyTable::get(realm.intrinsics());
-        webassembly_obj.set(js_string!("Table"), table_constructor, false, &mut realm.context()).unwrap();
-
-        let global_constructor = WebAssemblyGlobal::get(realm.intrinsics());
-        webassembly_obj.set(js_string!("Global"), global_constructor, false, &mut realm.context()).unwrap();
-
-        // Register the WebAssembly object as a global
-        realm.context().register_global_property(js_string!("WebAssembly"), webassembly_obj, Attribute::WRITABLE | Attribute::CONFIGURABLE).unwrap();
+        realm.register_global_property(js_string!("WebAssembly"), webassembly_obj, Attribute::WRITABLE | Attribute::CONFIGURABLE)
+            .expect("WebAssembly object could not be initialized");
     }
 
     fn get(_intrinsics: &Intrinsics) -> JsObject {
-        // WebAssembly is not a constructor, so we return an empty object
-        // The actual object is created in init()
+        // This should not be called as WebAssembly is not a constructor
         JsObject::default()
     }
 }
@@ -108,6 +123,16 @@ impl BuiltInObject for WebAssembly {
 
 #[cfg(feature = "webassembly")]
 impl WebAssembly {
+    /// Helper function for WebAssembly object which is not callable
+    fn not_callable(
+        _this: &JsValue,
+        _args: &[JsValue],
+        _context: &mut Context,
+    ) -> JsResult<JsValue> {
+        Err(JsNativeError::typ()
+            .with_message("WebAssembly is not a function")
+            .into())
+    }
     /// `WebAssembly.validate(bytes)`
     ///
     /// Validates the given typed array of WebAssembly binary code, returning
@@ -175,7 +200,7 @@ impl WebAssembly {
 
         // Check if first argument is a Module or bytes
         if let Some(module_obj) = first_arg.as_object() {
-            if module_obj.is_instance_of(&WebAssemblyModule::get(context.intrinsics())) {
+            if module_obj.is::<module::WebAssemblyModuleData>() {
                 // Instantiate from existing module
                 match WebAssemblyInstance::from_module(module_obj.clone(), import_object, context) {
                     Ok(instance_obj) => {
