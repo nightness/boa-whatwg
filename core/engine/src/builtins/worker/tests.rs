@@ -115,3 +115,82 @@ fn worker_terminate_basic() {
     let value = result.unwrap();
     assert_eq!(value, JsValue::from(JsString::from("success")));
 }
+
+#[test]
+fn worker_has_onmessage_property() {
+    let mut context = Context::default();
+
+    let result = context.eval(Source::from_bytes(
+        "let worker = new Worker('https://example.com/worker.js'); worker.onmessage"
+    ));
+    assert!(result.is_ok());
+
+    let value = result.unwrap();
+    // Should be null initially
+    assert!(value.is_null());
+}
+
+#[test]
+fn worker_has_onerror_property() {
+    let mut context = Context::default();
+
+    let result = context.eval(Source::from_bytes(
+        "let worker = new Worker('https://example.com/worker.js'); worker.onerror"
+    ));
+    assert!(result.is_ok());
+
+    let value = result.unwrap();
+    // Should be null initially
+    assert!(value.is_null());
+}
+
+#[test]
+fn worker_has_onmessageerror_property() {
+    let mut context = Context::default();
+
+    let result = context.eval(Source::from_bytes(
+        "let worker = new Worker('https://example.com/worker.js'); worker.onmessageerror"
+    ));
+    assert!(result.is_ok());
+
+    let value = result.unwrap();
+    // Should be null initially
+    assert!(value.is_null());
+}
+
+#[test]
+fn worker_can_set_onmessage_handler() {
+    let mut context = Context::default();
+
+    let result = context.eval(Source::from_bytes(
+        "let worker = new Worker('https://example.com/worker.js'); worker.onmessage = function() {}; typeof worker.onmessage"
+    ));
+    assert!(result.is_ok());
+
+    let value = result.unwrap();
+    assert_eq!(value, JsValue::from(JsString::from("function")));
+}
+
+#[test]
+fn worker_can_set_onerror_handler() {
+    let mut context = Context::default();
+
+    let result = context.eval(Source::from_bytes(
+        "let worker = new Worker('https://example.com/worker.js'); worker.onerror = function() {}; typeof worker.onerror"
+    ));
+    assert!(result.is_ok());
+
+    let value = result.unwrap();
+    assert_eq!(value, JsValue::from(JsString::from("function")));
+}
+
+#[test]
+fn worker_name_property() {
+    let mut context = Context::default();
+
+    let result = context.eval(Source::from_bytes("Worker.name"));
+    assert!(result.is_ok());
+
+    let value = result.unwrap();
+    assert_eq!(value, JsValue::from(JsString::from("Worker")));
+}

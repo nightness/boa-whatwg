@@ -8,9 +8,11 @@ pub mod readable_stream;
 pub mod websocket;
 pub mod websocket_stream;
 pub mod worker;
+pub mod worker_events;
 pub mod shared_worker;
 pub mod service_worker;
 pub mod worklet;
+pub mod message_channel;
 pub mod message_port;
 pub mod document;
 pub mod document_parse;
@@ -130,6 +132,7 @@ pub(crate) use self::{
     shared_worker::SharedWorker,
     service_worker::ServiceWorker,
     worklet::Worklet,
+    message_channel::MessageChannel,
     document::Document,
     form::{HTMLFormElement, HTMLFormControlsCollection, HTMLInputElement},
     window::Window,
@@ -357,6 +360,7 @@ impl Realm {
         SharedWorker::init(self);
         ServiceWorker::init(self);
         Worklet::init(self);
+        MessageChannel::init(self);
         AbortController::init(self);
         Request::init(self);
         Response::init(self);

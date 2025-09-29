@@ -9,7 +9,7 @@
 mod tests;
 
 use crate::{
-    builtins::{BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder},
+    builtins::{BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder, worker_events},
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
     object::{internal_methods::get_prototype_from_constructor, JsObject},
     string::StaticJsStrings,
@@ -181,6 +181,9 @@ impl BuiltInConstructor for ServiceWorker {
             proto,
             service_worker_data,
         );
+
+        // Add event handler properties
+        worker_events::add_worker_event_handlers(&service_worker_obj, context)?;
 
         // Start service worker registration process
         Self::start_registration(&service_worker_obj, context)?;
