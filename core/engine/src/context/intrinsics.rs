@@ -171,6 +171,9 @@ pub struct StandardConstructors {
     websocket: StandardConstructor,
     websocket_stream: StandardConstructor,
     worker: StandardConstructor,
+    shared_worker: StandardConstructor,
+    service_worker: StandardConstructor,
+    worklet: StandardConstructor,
     request: StandardConstructor,
     response: StandardConstructor,
     headers: StandardConstructor,
@@ -308,6 +311,9 @@ impl Default for StandardConstructors {
             websocket: StandardConstructor::default(),
             websocket_stream: StandardConstructor::default(),
             worker: StandardConstructor::default(),
+            shared_worker: StandardConstructor::default(),
+            service_worker: StandardConstructor::default(),
+            worklet: StandardConstructor::default(),
             request: StandardConstructor::default(),
             response: StandardConstructor::default(),
             headers: StandardConstructor::default(),
@@ -962,6 +968,42 @@ impl StandardConstructors {
     #[must_use]
     pub const fn worker(&self) -> &StandardConstructor {
         &self.worker
+    }
+
+    /// Returns the `SharedWorker` constructor.
+    ///
+    /// More information:
+    ///  - [SharedWorker spec][spec]
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/workers.html#shared-workers
+    #[inline]
+    #[must_use]
+    pub const fn shared_worker(&self) -> &StandardConstructor {
+        &self.shared_worker
+    }
+
+    /// Returns the `ServiceWorker` constructor.
+    ///
+    /// More information:
+    ///  - [ServiceWorker spec][spec]
+    ///
+    /// [spec]: https://w3c.github.io/ServiceWorker/
+    #[inline]
+    #[must_use]
+    pub const fn service_worker(&self) -> &StandardConstructor {
+        &self.service_worker
+    }
+
+    /// Returns the `Worklet` constructor.
+    ///
+    /// More information:
+    ///  - [Worklet spec][spec]
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/worklets.html
+    #[inline]
+    #[must_use]
+    pub const fn worklet(&self) -> &StandardConstructor {
+        &self.worklet
     }
 
     /// Returns the `Request` constructor.
