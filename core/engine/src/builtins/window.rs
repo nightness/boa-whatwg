@@ -735,6 +735,22 @@ fn get_navigator(this: &JsValue, _args: &[JsValue], context: &mut Context) -> Js
                     .build(),
                 context,
             )?;
+
+            // Add Storage API (navigator.storage)
+            use crate::builtins::storage_manager::StorageManager;
+            let storage_manager = StorageManager::create_storage_manager();
+            let storage_manager_prototype = context.intrinsics().constructors().storage_manager().prototype();
+            storage_manager.set_prototype(Some(storage_manager_prototype));
+            navigator.define_property_or_throw(
+                js_string!("storage"),
+                PropertyDescriptorBuilder::new()
+                    .configurable(false)
+                    .enumerable(true)
+                    .writable(false)
+                    .value(storage_manager)
+                    .build(),
+                context,
+            )?;
         }
 
         Ok(navigator.into())

@@ -309,3 +309,99 @@ fn test_storage_data_types() {
     let result = context.eval(Source::from_bytes("localStorage.getItem('undefined')")).unwrap();
     assert_eq!(result, JsValue::from(JsString::from("undefined")));
 }
+
+/// Test storage persistence across context restarts
+#[test]
+fn test_storage_persistence() {
+    use std::fs;
+    use std::path::PathBuf;
+
+    // Clean up any existing test data
+    let mut test_path = std::env::temp_dir();
+    test_path.push("boa_web_storage");
+    test_path.push("localStorage.json");
+    if test_path.exists() {
+        fs::remove_file(&test_path).ok();
+    }
+
+    // First context: set some data
+    {
+        let mut context = Context::default();
+        context.eval(Source::from_bytes("localStorage.setItem('persistent_key', 'persistent_value')")).unwrap();
+        context.eval(Source::from_bytes("localStorage.setItem('number_key', '12345')")).unwrap();
+
+        // Verify data is set
+        let result = context.eval(Source::from_bytes("localStorage.getItem('persistent_key')")).unwrap();
+        assert_eq!(result, JsValue::from(JsString::from("persistent_value")));
+    }
+
+    // Verify file was created
+    assert!(test_path.exists(), "Storage file should be created");
+
+    // Second context: data should persist
+    {
+        let mut context = Context::default();
+
+        // Data should still be there
+        let result = context.eval(Source::from_bytes("localStorage.getItem('persistent_key')")).unwrap();
+        assert_eq!(result, JsValue::from(JsString::from("persistent_value")));
+
+        let result = context.eval(Source::from_bytes("localStorage.getItem('number_key')")).unwrap();
+        assert_eq!(result, JsValue::from(JsString::from("12345")));
+
+        // Verify length
+        let result = context.eval(Source::from_bytes("localStorage.length")).unwrap();
+        assert_eq!(result, JsValue::from(2));
+    }
+
+    // Clean up
+    fs::remove_file(&test_path).ok();
+}
+
+/// Test that localStorage and sessionStorage have separate persistence
+#[test]
+fn test_storage_type_separation_with_persistence() {
+    use std::fs;
+
+    // Clean up any existing test data
+    let mut local_path = std::env::temp_dir();
+    local_path.push("boa_web_storage");
+    local_path.push("localStorage.json");
+
+    let mut session_path = std::env::temp_dir();
+    session_path.push("boa_web_storage");
+    session_path.push("sessionStorage.json");
+
+    if local_path.exists() {
+        fs::remove_file(&local_path).ok();
+    }
+    if session_path.exists() {
+        fs::remove_file(&session_path).ok();
+    }
+
+    // Set data in both storages
+    {
+        let mut context = Context::default();
+        context.eval(Source::from_bytes("localStorage.setItem('type', 'local')")).unwrap();
+        context.eval(Source::from_bytes("sessionStorage.setItem('type', 'session')")).unwrap();
+    }
+
+    // Verify both files exist
+    assert!(local_path.exists(), "localStorage file should exist");
+    assert!(session_path.exists(), "sessionStorage file should exist");
+
+    // Verify data persists separately
+    {
+        let mut context = Context::default();
+
+        let local_result = context.eval(Source::from_bytes("localStorage.getItem('type')")).unwrap();
+        assert_eq!(local_result, JsValue::from(JsString::from("local")));
+
+        let session_result = context.eval(Source::from_bytes("sessionStorage.getItem('type')")).unwrap();
+        assert_eq!(session_result, JsValue::from(JsString::from("session")));
+    }
+
+    // Clean up
+    fs::remove_file(&local_path).ok();
+    fs::remove_file(&session_path).ok();
+}

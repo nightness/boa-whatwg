@@ -219,6 +219,8 @@ pub struct StandardConstructors {
     weak_map: StandardConstructor,
     weak_set: StandardConstructor,
     storage: StandardConstructor,
+    storage_event: StandardConstructor,
+    storage_manager: StandardConstructor,
     lock_manager: StandardConstructor,
     idb_factory: StandardConstructor,
     navigator: StandardConstructor,
@@ -365,6 +367,8 @@ impl Default for StandardConstructors {
             weak_map: StandardConstructor::default(),
             weak_set: StandardConstructor::default(),
             storage: StandardConstructor::default(),
+            storage_event: StandardConstructor::default(),
+            storage_manager: StandardConstructor::default(),
             lock_manager: StandardConstructor::default(),
             idb_factory: StandardConstructor::default(),
             navigator: StandardConstructor::default(),
@@ -1450,6 +1454,26 @@ impl StandardConstructors {
     #[must_use]
     pub const fn storage(&self) -> &StandardConstructor {
         &self.storage
+    }
+
+    /// Returns the `StorageEvent` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Specification](https://html.spec.whatwg.org/multipage/webstorage.html#the-storageevent-interface)
+    #[inline]
+    #[must_use]
+    pub const fn storage_event(&self) -> &StandardConstructor {
+        &self.storage_event
+    }
+
+    /// Returns the `StorageManager` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Storage Standard](https://storage.spec.whatwg.org/)
+    #[inline]
+    #[must_use]
+    pub const fn storage_manager(&self) -> &StandardConstructor {
+        &self.storage_manager
     }
 
     /// Returns the `LockManager` constructor.

@@ -92,6 +92,8 @@ pub mod weak;
 pub mod weak_map;
 pub mod weak_set;
 pub mod storage;
+pub mod storage_event;
+pub mod storage_manager;
 pub mod web_locks;
 pub mod indexed_db;
 pub mod navigator;
@@ -461,6 +463,8 @@ impl Realm {
         WeakMap::init(self);
         WeakSet::init(self);
         Storage::init(self);
+        storage_event::StorageEvent::init(self);
+        storage_manager::StorageManager::init(self);
         web_locks::LockManagerObject::init(self);
         Navigator::init(self);
         Atomics::init(self);
