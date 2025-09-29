@@ -11,6 +11,8 @@ pub mod transform_stream;
 pub mod queuing_strategy;
 pub mod websocket;
 pub mod websocket_stream;
+#[cfg(feature = "webassembly")]
+pub mod webassembly;
 pub mod worker;
 pub mod worker_error;
 pub mod worker_events;

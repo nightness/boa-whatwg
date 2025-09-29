@@ -27,6 +27,9 @@ jsvalue-enum = []
 deser = ["boa_interner/serde", "boa_ast/serde"]
 either = ["dep:either", "boa_gc/either"]
 
+# Enable WebAssembly API support with wasmtime
+webassembly = ["dep:wasmtime", "dep:wasmtime-wasi", "dep:wasmparser"]
+
 # Enables the `Intl` builtin object and bundles a default ICU4X data provider.
 # Prefer this over `intl` if you just want to enable `Intl` without dealing with the
 # generation of ICU4X data.
@@ -135,6 +138,11 @@ time.workspace = true
 hashbrown.workspace = true
 either = { workspace = true, optional = true }
 static_assertions.workspace = true
+
+# WebAssembly runtime - Complete implementation with wasmtime
+wasmtime = { version = "21.0", features = ["component-model", "async", "runtime", "cranelift", "cache", "pooling-allocator"], optional = true }
+wasmtime-wasi = { version = "21.0", optional = true }
+wasmparser = { version = "0.121", optional = true }
 
 # WebSocket and Fetch deps
 tokio = { version = "1.0", features = ["full"] }

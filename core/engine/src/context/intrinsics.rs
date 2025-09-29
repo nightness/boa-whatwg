@@ -174,6 +174,17 @@ pub struct StandardConstructors {
     byte_length_queuing_strategy: StandardConstructor,
     websocket: StandardConstructor,
     websocket_stream: StandardConstructor,
+    // WebAssembly API constructors
+    #[cfg(feature = "webassembly")]
+    webassembly_module: StandardConstructor,
+    #[cfg(feature = "webassembly")]
+    webassembly_instance: StandardConstructor,
+    #[cfg(feature = "webassembly")]
+    webassembly_memory: StandardConstructor,
+    #[cfg(feature = "webassembly")]
+    webassembly_table: StandardConstructor,
+    #[cfg(feature = "webassembly")]
+    webassembly_global: StandardConstructor,
     worker: StandardConstructor,
     shared_worker: StandardConstructor,
     service_worker: StandardConstructor,
@@ -334,6 +345,17 @@ impl Default for StandardConstructors {
             byte_length_queuing_strategy: StandardConstructor::default(),
             websocket: StandardConstructor::default(),
             websocket_stream: StandardConstructor::default(),
+            // WebAssembly API constructors
+            #[cfg(feature = "webassembly")]
+            webassembly_module: StandardConstructor::default(),
+            #[cfg(feature = "webassembly")]
+            webassembly_instance: StandardConstructor::default(),
+            #[cfg(feature = "webassembly")]
+            webassembly_memory: StandardConstructor::default(),
+            #[cfg(feature = "webassembly")]
+            webassembly_table: StandardConstructor::default(),
+            #[cfg(feature = "webassembly")]
+            webassembly_global: StandardConstructor::default(),
             worker: StandardConstructor::default(),
             shared_worker: StandardConstructor::default(),
             service_worker: StandardConstructor::default(),
@@ -1020,6 +1042,71 @@ impl StandardConstructors {
     #[must_use]
     pub const fn websocket_stream(&self) -> &StandardConstructor {
         &self.websocket_stream
+    }
+
+    /// Returns the `WebAssembly.Module` constructor.
+    ///
+    /// More information:
+    ///  - [WebAssembly.Module spec][spec]
+    ///
+    /// [spec]: https://webassembly.github.io/spec/js-api/#modules
+    #[cfg(feature = "webassembly")]
+    #[inline]
+    #[must_use]
+    pub const fn webassembly_module(&self) -> &StandardConstructor {
+        &self.webassembly_module
+    }
+
+    /// Returns the `WebAssembly.Instance` constructor.
+    ///
+    /// More information:
+    ///  - [WebAssembly.Instance spec][spec]
+    ///
+    /// [spec]: https://webassembly.github.io/spec/js-api/#instances
+    #[cfg(feature = "webassembly")]
+    #[inline]
+    #[must_use]
+    pub const fn webassembly_instance(&self) -> &StandardConstructor {
+        &self.webassembly_instance
+    }
+
+    /// Returns the `WebAssembly.Memory` constructor.
+    ///
+    /// More information:
+    ///  - [WebAssembly.Memory spec][spec]
+    ///
+    /// [spec]: https://webassembly.github.io/spec/js-api/#memories
+    #[cfg(feature = "webassembly")]
+    #[inline]
+    #[must_use]
+    pub const fn webassembly_memory(&self) -> &StandardConstructor {
+        &self.webassembly_memory
+    }
+
+    /// Returns the `WebAssembly.Table` constructor.
+    ///
+    /// More information:
+    ///  - [WebAssembly.Table spec][spec]
+    ///
+    /// [spec]: https://webassembly.github.io/spec/js-api/#tables
+    #[cfg(feature = "webassembly")]
+    #[inline]
+    #[must_use]
+    pub const fn webassembly_table(&self) -> &StandardConstructor {
+        &self.webassembly_table
+    }
+
+    /// Returns the `WebAssembly.Global` constructor.
+    ///
+    /// More information:
+    ///  - [WebAssembly.Global spec][spec]
+    ///
+    /// [spec]: https://webassembly.github.io/spec/js-api/#globals
+    #[cfg(feature = "webassembly")]
+    #[inline]
+    #[must_use]
+    pub const fn webassembly_global(&self) -> &StandardConstructor {
+        &self.webassembly_global
     }
 
     /// Returns the `Worker` constructor.
