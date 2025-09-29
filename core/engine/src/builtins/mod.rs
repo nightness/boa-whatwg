@@ -8,12 +8,15 @@ pub mod readable_stream;
 pub mod websocket;
 pub mod websocket_stream;
 pub mod worker;
+pub mod worker_error;
 pub mod worker_events;
+pub mod worker_navigator;
 pub mod worker_script_loader;
 pub mod worker_global_scope;
 pub mod structured_clone;
 pub mod shared_worker;
 pub mod service_worker;
+pub mod service_worker_container;
 pub mod worklet;
 pub mod message_channel;
 pub mod message_port;
@@ -135,6 +138,7 @@ pub(crate) use self::{
     worker::Worker,
     shared_worker::SharedWorker,
     service_worker::ServiceWorker,
+    service_worker_container::ServiceWorkerContainer,
     worklet::Worklet,
     message_channel::MessageChannel,
     document::Document,

@@ -38,7 +38,10 @@ pub enum StructuredCloneValue {
     Map(Vec<(StructuredCloneValue, StructuredCloneValue)>),
     Set(Vec<StructuredCloneValue>),
     ArrayBuffer(Vec<u8>),
-    // TODO: Add more types as needed (TypedArrays, etc.)
+    // Transferable objects - these are moved, not copied
+    TransferredArrayBuffer { data: Vec<u8>, detach_key: Option<String> },
+    TransferredMessagePort { port_id: usize },
+    // TODO: Add more transferable types (OffscreenCanvas, ReadableStream, etc.)
 }
 
 /// Transfer list for transferable objects
@@ -56,6 +59,61 @@ impl TransferList {
 
     pub fn add(&mut self, object: JsObject) {
         self.objects.push(object);
+    }
+
+    /// Check if an object is in the transfer list
+    pub fn contains(&self, object: &JsObject) -> bool {
+        self.objects.iter().any(|obj| JsObject::equals(obj, object))
+    }
+
+    /// Create a TransferList from a JavaScript array
+    pub fn from_js_array(array: &JsValue, context: &mut Context) -> JsResult<Self> {
+        let mut transfer_list = TransferList::new();
+
+        if array.is_undefined() || array.is_null() {
+            return Ok(transfer_list);
+        }
+
+        if let Some(array_obj) = array.as_object() {
+            if array_obj.is_array() {
+                let array = JsArray::from_object(array_obj.clone())?;
+                let length = array.length(context)?;
+
+                for i in 0..length {
+                    let element = array.get(i, context)?;
+                    if let Some(obj) = element.as_object() {
+                        // Verify the object is actually transferable
+                        if Self::is_transferable_object(&obj) {
+                            transfer_list.add(obj.clone());
+                        } else {
+                            return Err(JsNativeError::typ()
+                                .with_message("Object is not transferable")
+                                .into());
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(transfer_list)
+    }
+
+    /// Check if an object is transferable according to WHATWG specification
+    fn is_transferable_object(obj: &JsObject) -> bool {
+        // Check for ArrayBuffer
+        if obj.downcast_ref::<crate::builtins::array_buffer::ArrayBuffer>().is_some() {
+            return true;
+        }
+
+        // TODO: Add checks for other transferable types:
+        // - MessagePort
+        // - OffscreenCanvas
+        // - ReadableStream
+        // - WritableStream
+        // - TransformStream
+        // - etc.
+
+        false
     }
 }
 
@@ -135,30 +193,87 @@ impl StructuredClone {
         memory: &mut HashSet<*const u8>,
         transfer_list: Option<&TransferList>,
     ) -> JsResult<StructuredCloneValue> {
-        // Check if this is a transferable object
+        // Check if this object is in the transfer list
         if let Some(transfer_list) = transfer_list {
-            for transferable in &transfer_list.objects {
-                if std::ptr::eq(
-                    obj.as_ref() as *const _,
-                    transferable.as_ref() as *const _
-                ) {
-                    return Err(JsNativeError::typ()
-                        .with_message("Object is not transferable")
-                        .into());
-                }
+            if transfer_list.contains(obj) {
+                return Self::transfer_object(obj, context);
             }
         }
 
-        // Handle specific object types
+        // Handle specific object types for cloning (not transferring)
         if obj.is_array() {
             Self::clone_array(obj, context, memory, transfer_list)
         } else if let Some(date_data) = obj.downcast_ref::<Date>() {
             Self::clone_date(&*date_data, context)
         } else if let Some(regexp_data) = obj.downcast_ref::<RegExp>() {
             Self::clone_regexp(&*regexp_data, context)
+        } else if let Some(array_buffer) = obj.downcast_ref::<crate::builtins::array_buffer::ArrayBuffer>() {
+            // ArrayBuffer that's not being transferred should be cloned
+            Self::clone_array_buffer(&*array_buffer, context)
         } else {
             // Handle plain objects
             Self::clone_plain_object(obj, context, memory, transfer_list)
+        }
+    }
+
+    /// Transfer an object (move ownership, don't clone)
+    fn transfer_object(
+        obj: &JsObject,
+        context: &mut Context,
+    ) -> JsResult<StructuredCloneValue> {
+        // Handle ArrayBuffer transfer
+        if let Some(array_buffer) = obj.downcast_ref::<crate::builtins::array_buffer::ArrayBuffer>() {
+            return Self::transfer_array_buffer(obj, &*array_buffer, context);
+        }
+
+        // TODO: Handle other transferable types
+        // - MessagePort
+        // - OffscreenCanvas
+        // - ReadableStream
+        // - WritableStream
+        // - TransformStream
+
+        Err(JsNativeError::typ()
+            .with_message("Object is not transferable")
+            .into())
+    }
+
+    /// Transfer an ArrayBuffer (detach the original)
+    fn transfer_array_buffer(
+        obj: &JsObject,
+        array_buffer: &crate::builtins::array_buffer::ArrayBuffer,
+        _context: &mut Context,
+    ) -> JsResult<StructuredCloneValue> {
+        // Extract the data from the ArrayBuffer
+        if let Some(bytes) = array_buffer.bytes() {
+            let data = bytes.to_vec();
+
+            // Detach the original ArrayBuffer by setting its data to None
+            // This is the key behavior of transferable objects - the original becomes unusable
+            // For now, we'll skip the detachment since it requires more complex ArrayBuffer internals
+            eprintln!("Note: ArrayBuffer detachment after transfer not yet implemented");
+
+            Ok(StructuredCloneValue::TransferredArrayBuffer {
+                data,
+                detach_key: None, // TODO: Handle detach keys properly
+            })
+        } else {
+            Err(JsNativeError::typ()
+                .with_message("ArrayBuffer is already detached")
+                .into())
+        }
+    }
+
+    /// Clone an ArrayBuffer (copy the data)
+    fn clone_array_buffer(
+        array_buffer: &crate::builtins::array_buffer::ArrayBuffer,
+        _context: &mut Context,
+    ) -> JsResult<StructuredCloneValue> {
+        if let Some(bytes) = array_buffer.bytes() {
+            Ok(StructuredCloneValue::ArrayBuffer(bytes.to_vec()))
+        } else {
+            // Detached ArrayBuffer
+            Ok(StructuredCloneValue::ArrayBuffer(Vec::new()))
         }
     }
 
@@ -262,9 +377,16 @@ impl StructuredClone {
                 eprintln!("Warning: Set deserialization not implemented");
                 Ok(JsValue::undefined())
             }
-            StructuredCloneValue::ArrayBuffer(_data) => {
-                // TODO: Deserialize ArrayBuffer objects
-                eprintln!("Warning: ArrayBuffer deserialization not implemented");
+            StructuredCloneValue::ArrayBuffer(data) => {
+                Self::deserialize_array_buffer(data, context)
+            }
+            StructuredCloneValue::TransferredArrayBuffer { data, detach_key: _ } => {
+                // For transferred ArrayBuffers, create a new one with the transferred data
+                Self::deserialize_array_buffer(data, context)
+            }
+            StructuredCloneValue::TransferredMessagePort { port_id: _ } => {
+                // TODO: Deserialize MessagePort objects
+                eprintln!("Warning: MessagePort deserialization not implemented");
                 Ok(JsValue::undefined())
             }
         }
@@ -321,6 +443,24 @@ impl StructuredClone {
         Ok(regexp_constructor.construct(&args, new_target, context)?.into())
     }
 
+    /// Deserialize an ArrayBuffer object
+    fn deserialize_array_buffer(data: &[u8], context: &mut Context) -> JsResult<JsValue> {
+        // Create a new ArrayBuffer with the data
+        let array_buffer = crate::builtins::array_buffer::ArrayBuffer::from_data(
+            data.to_vec(),
+            JsValue::undefined()
+        );
+
+        // Create a JavaScript ArrayBuffer object
+        let array_buffer_constructor = context.intrinsics().constructors().array_buffer().constructor();
+        let array_buffer_obj = JsObject::from_proto_and_data(
+            Some(array_buffer_constructor.get(js_string!("prototype"), context)?.as_object().unwrap().clone()),
+            array_buffer
+        );
+
+        Ok(array_buffer_obj.into())
+    }
+
     /// Deserialize a Map object
     fn deserialize_map(
         entries: &[(StructuredCloneValue, StructuredCloneValue)],
@@ -353,18 +493,6 @@ impl StructuredClone {
         Ok(set_obj.into())
     }
 
-    /// Deserialize an ArrayBuffer object
-    fn deserialize_array_buffer(data: &[u8], context: &mut Context) -> JsResult<JsValue> {
-        let array_buffer_constructor = context.intrinsics().constructors().array_buffer().constructor();
-        let length = JsValue::from(data.len());
-        let new_target = Some(&array_buffer_constructor);
-        let array_buffer = array_buffer_constructor.construct(&[length], new_target, context)?;
-
-        // TODO: Copy the data into the ArrayBuffer
-        eprintln!("Warning: ArrayBuffer data copying not fully implemented");
-
-        Ok(array_buffer.into())
-    }
 
     /// Serialize a structured clone value to bytes for cross-thread transfer
     pub fn serialize_to_bytes(value: &StructuredCloneValue) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {

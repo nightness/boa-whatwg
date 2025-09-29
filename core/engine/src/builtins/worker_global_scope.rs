@@ -9,6 +9,7 @@ use crate::{
     builtins::{
         BuiltInBuilder,
         worker_events::{WorkerEvent, dispatch_worker_event},
+        worker_navigator::WorkerNavigator,
         structured_clone::{StructuredCloneValue, structured_clone, structured_deserialize, TransferList},
     },
     property::{PropertyDescriptorBuilder, Attribute},
@@ -16,10 +17,32 @@ use crate::{
 use boa_gc::{Finalize, Trace};
 use std::sync::{Arc, Mutex};
 use crossbeam_channel::{Sender, Receiver, unbounded};
+use std::collections::HashMap;
+use std::sync::OnceLock;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+/// Global registry for active worker scopes
+static WORKER_SCOPE_REGISTRY: OnceLock<Mutex<HashMap<usize, Arc<WorkerGlobalScope>>>> = OnceLock::new();
+
+/// Global counter for worker scope IDs
+static WORKER_SCOPE_ID_COUNTER: AtomicUsize = AtomicUsize::new(1);
+
+/// Get the global worker scope registry
+fn get_worker_scope_registry() -> &'static Mutex<HashMap<usize, Arc<WorkerGlobalScope>>> {
+    WORKER_SCOPE_REGISTRY.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+/// Generate a unique worker scope ID
+fn generate_scope_id() -> usize {
+    WORKER_SCOPE_ID_COUNTER.fetch_add(1, Ordering::SeqCst)
+}
 
 /// Base WorkerGlobalScope functionality
 #[derive(Debug, Trace, Finalize)]
 pub struct WorkerGlobalScope {
+    /// Unique identifier for this worker scope
+    #[unsafe_ignore_trace]
+    scope_id: usize,
     /// Type of worker global scope
     scope_type: WorkerGlobalScopeType,
     /// Message channel to main thread
@@ -77,10 +100,11 @@ impl WorkerGlobalScope {
     /// Create a new WorkerGlobalScope
     pub fn new(scope_type: WorkerGlobalScopeType, script_url: &str) -> JsResult<Self> {
         let (main_sender, main_receiver) = unbounded();
-
+        let scope_id = generate_scope_id();
         let location = WorkerLocation::from_url(script_url)?;
 
         Ok(Self {
+            scope_id,
             scope_type,
             main_thread_sender: Some(main_sender),
             main_thread_receiver: Some(main_receiver),
@@ -89,9 +113,31 @@ impl WorkerGlobalScope {
         })
     }
 
+    /// Register this scope in the global registry
+    pub fn register_scope(scope: Arc<WorkerGlobalScope>) {
+        if let Ok(mut registry) = get_worker_scope_registry().lock() {
+            registry.insert(scope.scope_id, scope);
+        }
+    }
+
+    /// Unregister this scope from the global registry
+    pub fn unregister_scope(scope_id: usize) {
+        if let Ok(mut registry) = get_worker_scope_registry().lock() {
+            registry.remove(&scope_id);
+        }
+    }
+
+    /// Get the scope ID
+    pub fn get_scope_id(&self) -> usize {
+        self.scope_id
+    }
+
     /// Initialize the global scope in a JavaScript context
     pub fn initialize_in_context(&self, context: &mut Context) -> JsResult<()> {
         let global = context.global_object();
+
+        // Store the scope ID in the context for later retrieval
+        global.set(js_string!("__worker_scope_id__"), self.scope_id as f64, false, context)?;
 
         // Add 'self' reference to global scope
         global.set(js_string!("self"), global.clone(), false, context)?;
@@ -349,14 +395,10 @@ impl WorkerGlobalScope {
 
     /// Add WorkerNavigator object
     fn add_navigator_object(&self, context: &mut Context) -> JsResult<()> {
-        let navigator_obj = JsObject::with_object_proto(context.intrinsics());
+        // Create proper WorkerNavigator object with full WHATWG compliance
+        let navigator_obj = WorkerNavigator::create(context)?;
 
-        // Add basic navigator properties
-        navigator_obj.set(js_string!("userAgent"), js_string!("Thalora-WebBrowser/1.0"), false, context)?;
-        navigator_obj.set(js_string!("platform"), js_string!("Thalora"), false, context)?;
-        navigator_obj.set(js_string!("language"), js_string!("en-US"), false, context)?;
-        navigator_obj.set(js_string!("onLine"), true, false, context)?;
-
+        // Add navigator object to global scope
         context.global_object().set(js_string!("navigator"), navigator_obj, false, context)?;
         Ok(())
     }
@@ -443,6 +485,26 @@ impl WorkerGlobalScope {
         *self.closing.lock().unwrap()
     }
 
+    /// Get the current WorkerGlobalScope from a JavaScript context
+    /// This method retrieves the scope stored in the global registry using the scope ID
+    fn get_current_scope_from_context(context: &mut Context) -> Option<Arc<WorkerGlobalScope>> {
+        // Try to get the scope ID from the global object
+        let global = context.global_object();
+
+        if let Ok(scope_id_val) = global.get(js_string!("__worker_scope_id__"), context) {
+            if let Some(scope_id_num) = scope_id_val.as_number() {
+                let scope_id = scope_id_num as usize;
+
+                // Look up the scope in the global registry
+                if let Ok(registry) = get_worker_scope_registry().lock() {
+                    return registry.get(&scope_id).cloned();
+                }
+            }
+        }
+
+        None
+    }
+
     /// Static implementation for postMessage
     fn post_message_impl(
         _this: &JsValue,
@@ -454,8 +516,13 @@ impl WorkerGlobalScope {
 
         // Parse transfer list
         let transfer_list = if !_transfer.is_undefined() {
-            // TODO: Parse transfer list from array
-            Some(TransferList::new())
+            match TransferList::from_js_array(_transfer, context) {
+                Ok(list) => Some(list),
+                Err(e) => {
+                    eprintln!("Failed to parse transfer list in worker: {:?}", e);
+                    return Err(e);
+                }
+            }
         } else {
             None
         };
@@ -470,7 +537,33 @@ impl WorkerGlobalScope {
         };
 
         eprintln!("Worker postMessage called with structured cloned data");
-        // TODO: Send message to main thread through proper channel
+
+        // Send message to main thread through proper channel
+        if let Some(global_scope) = Self::get_current_scope_from_context(context) {
+            if let Some(ref sender) = global_scope.main_thread_sender {
+                let worker_msg = WorkerMessage {
+                    data: cloned_message,
+                    ports: Vec::new(), // TODO: Handle transferable objects
+                    source: MessageSource::Worker,
+                };
+
+                if let Err(_) = sender.send(worker_msg) {
+                    return Err(JsNativeError::error()
+                        .with_message("Failed to send message to main thread")
+                        .into());
+                } else {
+                    eprintln!("Message sent from worker to main thread successfully");
+                }
+            } else {
+                return Err(JsNativeError::error()
+                    .with_message("Worker message channel not available")
+                    .into());
+            }
+        } else {
+            return Err(JsNativeError::error()
+                .with_message("Worker global scope not available for postMessage")
+                .into());
+        }
 
         Ok(JsValue::undefined())
     }

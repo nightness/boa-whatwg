@@ -14,8 +14,10 @@ mod integration_tests;
 use crate::{
     builtins::{
         BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder,
-        worker_events, worker_script_loader,
-        structured_clone::{structured_clone, TransferList},
+        worker_events, worker_script_loader, worker_global_scope,
+        worker_error::{WorkerErrorHandler, WorkerErrorType, WorkerError, error_helpers},
+        message_event::create_message_event,
+        structured_clone::{structured_clone, structured_deserialize, TransferList},
     },
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
     object::{internal_methods::get_prototype_from_constructor, JsObject},
@@ -92,8 +94,9 @@ impl BuiltInConstructor for Worker {
         let script_url_str = script_url_string.to_std_string_escaped();
 
         // Validate URL
-        let url = Url::parse(&script_url_str).map_err(|_| {
-            JsNativeError::syntax().with_message(format!("Invalid Worker script URL: {}", script_url_str))
+        let url = Url::parse(&script_url_str).map_err(|e| {
+            eprintln!("Invalid Worker script URL '{}': {}", script_url_str, e);
+            error_helpers::script_load_error(&script_url_str, &format!("Invalid URL: {}", e))
         })?;
 
         // Parse options
@@ -203,16 +206,26 @@ impl Worker {
             // Check if worker is terminated
             if let Ok(state) = data.state.try_lock() {
                 if state.status == WorkerStatus::Terminated {
-                    return Err(JsNativeError::error()
-                        .with_message("Cannot post message to terminated worker")
-                        .into());
+                    // Use comprehensive error handling
+                    return Err(error_helpers::worker_terminated_error("send message").into());
                 }
             }
 
             // Parse transfer list
             let transfer_list = if !_transfer.is_undefined() {
-                // TODO: Parse transfer list from array
-                Some(TransferList::new())
+                match TransferList::from_js_array(_transfer, context) {
+                    Ok(list) => Some(list),
+                    Err(e) => {
+                        eprintln!("Failed to parse transfer list: {:?}", e);
+                        // Dispatch error event for transfer list parsing failure
+                        let _ = WorkerErrorHandler::handle_clone_error(
+                            &this_obj,
+                            "Invalid transfer list",
+                            context
+                        );
+                        return Err(error_helpers::data_clone_error("Invalid transfer list").into());
+                    }
+                }
             } else {
                 None
             };
@@ -222,7 +235,10 @@ impl Worker {
                 Ok(cloned) => cloned,
                 Err(e) => {
                     eprintln!("Failed to clone message for worker: {:?}", e);
-                    return Err(e);
+                    // Dispatch error event for cloning failure
+                    let error_msg = format!("Failed to clone message: {:?}", e);
+                    let _ = WorkerErrorHandler::handle_clone_error(&this_obj, &error_msg, context);
+                    return Err(error_helpers::data_clone_error(&error_msg).into());
                 }
             };
 
@@ -253,9 +269,13 @@ impl Worker {
                         data: message_str,
                         transfer: Vec::new(),
                     }) {
-                        return Err(JsNativeError::error()
-                            .with_message("Failed to send message to worker")
-                            .into());
+                        // Dispatch error event for message sending failure
+                        let _ = WorkerErrorHandler::handle_message_error(
+                            &this_obj,
+                            "Failed to send message to worker - channel closed",
+                            context
+                        );
+                        return Err(error_helpers::worker_terminated_error("send message").into());
                     }
                 }
             }
@@ -287,6 +307,51 @@ impl Worker {
         }
 
         Ok(JsValue::undefined())
+    }
+
+    /// Process messages from worker and dispatch as events
+    pub fn process_worker_messages(worker_obj: &JsObject, context: &mut Context) -> JsResult<()> {
+        if let Some(data) = worker_obj.downcast_ref::<WorkerData>() {
+            if let Some(ref receiver) = data.worker_to_main_receiver {
+                // Process all available messages
+                while let Ok(worker_message) = receiver.try_recv() {
+                    Self::dispatch_worker_message_event(worker_obj, worker_message, context)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Dispatch a message event on the Worker object
+    fn dispatch_worker_message_event(
+        worker_obj: &JsObject,
+        worker_message: worker_global_scope::WorkerMessage,
+        context: &mut Context,
+    ) -> JsResult<()> {
+        // Deserialize the structured clone data back to JavaScript
+        let js_data = match structured_deserialize(&worker_message.data, context) {
+            Ok(data) => data,
+            Err(e) => {
+                eprintln!("Failed to deserialize worker message: {:?}", e);
+                return Err(e);
+            }
+        };
+
+        // Create MessageEvent
+        let message_event = create_message_event(
+            js_data,
+            Some(""), // origin - TODO: should be worker origin
+            None, // source - TODO: could be worker reference
+            None, // ports - TODO: handle transferred ports
+            context,
+        )?;
+
+        // Create a WorkerEvent and dispatch it on the worker object
+        let worker_event = worker_events::WorkerEvent::new_message(message_event.into());
+        worker_events::dispatch_worker_event(worker_obj, worker_event, context)?;
+
+        eprintln!("Message event dispatched from worker to main thread");
+        Ok(())
     }
 }
 
@@ -335,16 +400,18 @@ struct WorkerData {
     #[unsafe_ignore_trace]
     state: Arc<Mutex<WorkerState>>,
     #[unsafe_ignore_trace]
-    message_sender: Option<Sender<WorkerMessage>>,
+    message_sender: Option<Sender<WorkerMessage>>, // Legacy channel system
     #[unsafe_ignore_trace]
-    message_receiver: Option<Receiver<WorkerMessage>>,
+    message_receiver: Option<Receiver<WorkerMessage>>, // Legacy channel system
     #[unsafe_ignore_trace]
     execution_context: Option<Arc<worker_script_loader::WorkerExecutionContext>>,
+    #[unsafe_ignore_trace]
+    worker_to_main_receiver: Option<Receiver<worker_global_scope::WorkerMessage>>, // New structured message system
 }
 
 impl WorkerData {
     fn new(script_url: String, worker_type: String, worker_name: Option<String>) -> Self {
-        let (sender, receiver) = unbounded();
+        let (sender, receiver) = unbounded(); // Legacy system
 
         Self {
             script_url,
@@ -354,11 +421,16 @@ impl WorkerData {
             message_sender: Some(sender),
             message_receiver: Some(receiver),
             execution_context: None,
+            worker_to_main_receiver: None, // Will be set when worker global scope is created
         }
     }
 
     fn set_execution_context(&mut self, context: Arc<worker_script_loader::WorkerExecutionContext>) {
         self.execution_context = Some(context);
+    }
+
+    fn set_worker_to_main_receiver(&mut self, receiver: Receiver<worker_global_scope::WorkerMessage>) {
+        self.worker_to_main_receiver = Some(receiver);
     }
 }
 

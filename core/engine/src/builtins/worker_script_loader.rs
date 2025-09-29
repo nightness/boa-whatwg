@@ -8,6 +8,7 @@ use crate::{
     builtins::{
         worker_events::{WorkerEvent, WorkerEventType, dispatch_worker_event},
         worker_global_scope::{WorkerGlobalScope, WorkerGlobalScopeType, WorkerMessage, MessageSource},
+        worker_error::{WorkerErrorHandler, WorkerErrorType, WorkerError, error_helpers},
         structured_clone::{StructuredCloneValue, structured_clone, structured_deserialize, TransferList},
     },
 };
@@ -55,7 +56,9 @@ impl WorkerExecutionContext {
             Ok(content) => content,
             Err(e) => {
                 eprintln!("Failed to fetch worker script: {}", e);
-                return Ok(());
+                // For now, we don't have a worker object reference to dispatch error events
+                // In a full implementation, we'd store a reference to the worker and dispatch error events
+                return Err(error_helpers::script_load_error(&self.script_url, &e.to_string()).into());
             }
         };
 
@@ -148,7 +151,7 @@ impl WorkerExecutionContext {
             Ok(content) => content,
             Err(e) => {
                 eprintln!("Failed to fetch worker script: {}", e);
-                return Ok(());
+                return Err(error_helpers::script_load_error(&self.script_url, &e.to_string()).into());
             }
         };
 
@@ -177,12 +180,15 @@ impl WorkerExecutionContext {
 
         // Create WorkerGlobalScope
         let global_scope = WorkerGlobalScope::new(scope_type, &self.script_url)?;
+        let global_scope_arc = Arc::new(global_scope);
 
-        // Store the global scope
-        {
-            let mut scope_guard = self.global_scope.lock().unwrap();
-            *scope_guard = Some(global_scope);
-        }
+        // Register the global scope in the global registry for postMessage access
+        WorkerGlobalScope::register_scope(global_scope_arc.clone());
+
+        // Store the global scope reference (can't clone WorkerGlobalScope, so we won't store it locally)
+        // The scope is now registered globally and accessible via postMessage
+
+        eprintln!("Worker global scope created and registered with ID: {}", global_scope_arc.get_scope_id());
 
         // Execute the script in a new isolated context
         // Note: In a real implementation, this would be in a separate thread
@@ -197,24 +203,31 @@ impl WorkerExecutionContext {
         // Create a new isolated JavaScript context for the worker
         let mut worker_context = Context::default();
 
-        // Get the global scope and initialize it in the context
-        if let Some(ref global_scope) = *self.global_scope.lock().unwrap() {
-            // Initialize the WorkerGlobalScope APIs in the context
-            global_scope.initialize_in_context(&mut worker_context)?;
+        // For now, create a new scope for execution (since we can't easily share the registered one)
+        // In a real implementation, we'd need better context sharing between the registry and execution
+        let scope_type = match self.worker_type.as_str() {
+            "shared" => WorkerGlobalScopeType::Shared,
+            "service" => WorkerGlobalScopeType::Service,
+            _ => WorkerGlobalScopeType::Dedicated,
+        };
 
-            // Execute the script
-            let result = global_scope.execute_script(&mut worker_context, script_content);
+        let execution_scope = WorkerGlobalScope::new(scope_type, &self.script_url)?;
 
-            match result {
-                Ok(value) => {
-                    eprintln!("Worker script executed successfully in isolated context");
+        // Initialize the WorkerGlobalScope APIs in the context
+        execution_scope.initialize_in_context(&mut worker_context)?;
 
-                    // Process any pending messages from main thread
-                    global_scope.process_main_thread_messages(&mut worker_context)?;
-                }
-                Err(e) => {
-                    eprintln!("Worker script execution failed: {:?}", e);
-                }
+        // Execute the script
+        let result = execution_scope.execute_script(&mut worker_context, script_content);
+
+        match result {
+            Ok(value) => {
+                eprintln!("Worker script executed successfully in isolated context");
+
+                // Process any pending messages from main thread
+                execution_scope.process_main_thread_messages(&mut worker_context)?;
+            }
+            Err(e) => {
+                eprintln!("Worker script execution failed: {:?}", e);
             }
         }
 
@@ -234,14 +247,13 @@ impl WorkerExecutionContext {
     /// Post message from main thread to worker
     pub async fn post_message_to_worker(&self, message: JsValue) -> JsResult<()> {
         if self.is_terminated() {
-            return Err(JsNativeError::error()
-                .with_message("Cannot send message to terminated worker")
-                .into());
+            return Err(error_helpers::worker_terminated_error("send message").into());
         }
 
         // Clone message using structured cloning
         let mut context = Context::default();
-        let cloned_message = structured_clone(&message, &mut context, None)?;
+        let cloned_message = structured_clone(&message, &mut context, None)
+            .map_err(|e| error_helpers::data_clone_error(&format!("Failed to clone message: {:?}", e)))?;
 
         self.post_cloned_message_to_worker(cloned_message).await
     }
@@ -249,9 +261,7 @@ impl WorkerExecutionContext {
     /// Post structured cloned message from main thread to worker
     pub async fn post_cloned_message_to_worker(&self, cloned_message: StructuredCloneValue) -> JsResult<()> {
         if self.is_terminated() {
-            return Err(JsNativeError::error()
-                .with_message("Cannot send message to terminated worker")
-                .into());
+            return Err(error_helpers::worker_terminated_error("send message").into());
         }
 
         // Send message to worker's global scope

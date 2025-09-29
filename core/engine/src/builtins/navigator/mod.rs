@@ -20,6 +20,7 @@ use crate::{
 use crate::builtins::{BuiltInConstructor, BuiltInObject, IntrinsicObject};
 use crate::context::intrinsics::StandardConstructor;
 use crate::builtins::web_locks::LockManagerObject;
+use crate::builtins::service_worker_container::ServiceWorkerContainer;
 
 /// `Navigator` object that provides information about the user agent and platform.
 #[derive(Debug, Clone, Finalize)]
@@ -70,6 +71,10 @@ impl IntrinsicObject for Navigator {
             .name(js_string!("get locks"))
             .build();
 
+        let service_worker_getter_func = BuiltInBuilder::callable(realm, Self::service_worker_getter)
+            .name(js_string!("get serviceWorker"))
+            .build();
+
         BuiltInBuilder::from_standard_constructor::<Self>(realm)
             .property(js_string!("userAgent"), js_string!("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"), Attribute::READONLY | Attribute::NON_ENUMERABLE)
             .property(js_string!("platform"), js_string!("MacIntel"), Attribute::READONLY | Attribute::NON_ENUMERABLE)
@@ -79,6 +84,12 @@ impl IntrinsicObject for Navigator {
             .accessor(
                 js_string!("locks"),
                 Some(locks_getter_func),
+                None,
+                Attribute::CONFIGURABLE | Attribute::ENUMERABLE,
+            )
+            .accessor(
+                js_string!("serviceWorker"),
+                Some(service_worker_getter_func),
                 None,
                 Attribute::CONFIGURABLE | Attribute::ENUMERABLE,
             )
@@ -123,6 +134,13 @@ impl Navigator {
             lock_manager
         );
         Ok(JsValue::from(lock_manager_obj))
+    }
+
+    /// `navigator.serviceWorker` getter
+    fn service_worker_getter(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        // Create and return a ServiceWorkerContainer instance
+        let service_worker_container = ServiceWorkerContainer::create(context)?;
+        Ok(JsValue::from(service_worker_container))
     }
 
     /// Create a Navigator instance for the global object

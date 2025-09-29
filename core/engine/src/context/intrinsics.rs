@@ -173,6 +173,7 @@ pub struct StandardConstructors {
     worker: StandardConstructor,
     shared_worker: StandardConstructor,
     service_worker: StandardConstructor,
+    service_worker_container: StandardConstructor,
     worklet: StandardConstructor,
     message_channel: StandardConstructor,
     request: StandardConstructor,
@@ -315,6 +316,7 @@ impl Default for StandardConstructors {
             worker: StandardConstructor::default(),
             shared_worker: StandardConstructor::default(),
             service_worker: StandardConstructor::default(),
+            service_worker_container: StandardConstructor::default(),
             worklet: StandardConstructor::default(),
             message_channel: StandardConstructor::default(),
             request: StandardConstructor::default(),
@@ -996,6 +998,18 @@ impl StandardConstructors {
     #[must_use]
     pub const fn service_worker(&self) -> &StandardConstructor {
         &self.service_worker
+    }
+
+    /// Returns the `ServiceWorkerContainer` constructor.
+    ///
+    /// More information:
+    ///  - [ServiceWorker spec][spec]
+    ///
+    /// [spec]: https://w3c.github.io/ServiceWorker/#serviceworkercontainer-interface
+    #[inline]
+    #[must_use]
+    pub const fn service_worker_container(&self) -> &StandardConstructor {
+        &self.service_worker_container
     }
 
     /// Returns the `Worklet` constructor.

@@ -2,7 +2,7 @@
 //! Tests for WHATWG HTML5 structured cloning specification compliance
 //! https://html.spec.whatwg.org/multipage/structured-data.html#structured-cloning
 
-use crate::{Context, JsValue, js_string, run_test_actions, TestAction, JsNativeErrorKind};
+use crate::{Context, JsValue, js_string, run_test_actions, TestAction, JsNativeErrorKind, Source};
 use super::*;
 
 #[test]
@@ -43,12 +43,10 @@ fn structured_clone_primitives() {
 fn structured_clone_array() {
     let mut context = Context::default();
 
-    run_test_actions([
-        TestAction::run("var testArray = [1, 'two', true, null, undefined]"),
-    ]);
-
-    let global = context.global_object();
-    let array = global.get(js_string!("testArray"), &mut context).unwrap();
+    // Create array directly in the context
+    let code = "var testArray = [1, 'two', true, null, undefined]; testArray;";
+    let result = context.eval(Source::from_bytes(code)).unwrap();
+    let array = result;
 
     let cloned = structured_clone(&array, &mut context, None).unwrap();
     let deserialized = structured_deserialize(&cloned, &mut context).unwrap();
@@ -82,20 +80,19 @@ fn structured_clone_array() {
 fn structured_clone_object() {
     let mut context = Context::default();
 
-    run_test_actions([
-        TestAction::run(r#"
-            var testObj = {
-                num: 42,
-                str: "hello",
-                bool: true,
-                nil: null,
-                undef: undefined
-            };
-        "#),
-    ]);
-
-    let global = context.global_object();
-    let obj = global.get(js_string!("testObj"), &mut context).unwrap();
+    // Create object directly in the context
+    let code = r#"
+        var testObj = {
+            num: 42,
+            str: "hello",
+            bool: true,
+            nil: null,
+            undef: undefined
+        };
+        testObj;
+    "#;
+    let result = context.eval(Source::from_bytes(code)).unwrap();
+    let obj = result;
 
     let cloned = structured_clone(&obj, &mut context, None).unwrap();
     let deserialized = structured_deserialize(&cloned, &mut context).unwrap();
@@ -124,12 +121,10 @@ fn structured_clone_object() {
 fn structured_clone_date() {
     let mut context = Context::default();
 
-    run_test_actions([
-        TestAction::run("var testDate = new Date('2023-12-25T12:00:00.000Z')"),
-    ]);
-
-    let global = context.global_object();
-    let date = global.get(js_string!("testDate"), &mut context).unwrap();
+    // Create date directly in the context
+    let code = "var testDate = new Date('2023-12-25T12:00:00.000Z'); testDate;";
+    let result = context.eval(Source::from_bytes(code)).unwrap();
+    let date = result;
 
     let cloned = structured_clone(&date, &mut context, None).unwrap();
     let deserialized = structured_deserialize(&cloned, &mut context).unwrap();
@@ -152,12 +147,10 @@ fn structured_clone_date() {
 fn structured_clone_regexp() {
     let mut context = Context::default();
 
-    run_test_actions([
-        TestAction::run("var testRegExp = /hello[0-9]+/gi"),
-    ]);
-
-    let global = context.global_object();
-    let regexp = global.get(js_string!("testRegExp"), &mut context).unwrap();
+    // Create regexp directly in the context
+    let code = "var testRegExp = /hello[0-9]+/gi; testRegExp;";
+    let result = context.eval(Source::from_bytes(code)).unwrap();
+    let regexp = result;
 
     let cloned = structured_clone(&regexp, &mut context, None).unwrap();
     let deserialized = structured_deserialize(&cloned, &mut context).unwrap();
@@ -181,22 +174,21 @@ fn structured_clone_regexp() {
 fn structured_clone_nested_object() {
     let mut context = Context::default();
 
-    run_test_actions([
-        TestAction::run(r#"
-            var nested = {
-                level1: {
-                    level2: {
-                        value: "deep"
-                    },
-                    array: [1, 2, 3]
+    // Create nested object directly in the context
+    let code = r#"
+        var nested = {
+            level1: {
+                level2: {
+                    value: "deep"
                 },
-                top: "level"
-            };
-        "#),
-    ]);
-
-    let global = context.global_object();
-    let nested = global.get(js_string!("nested"), &mut context).unwrap();
+                array: [1, 2, 3]
+            },
+            top: "level"
+        };
+        nested;
+    "#;
+    let result = context.eval(Source::from_bytes(code)).unwrap();
+    let nested = result;
 
     let cloned = structured_clone(&nested, &mut context, None).unwrap();
     let deserialized = structured_deserialize(&cloned, &mut context).unwrap();
@@ -317,12 +309,10 @@ fn structured_clone_empty_array() {
 fn structured_clone_empty_object() {
     let mut context = Context::default();
 
-    run_test_actions([
-        TestAction::run("var emptyObj = {}"),
-    ]);
-
-    let global = context.global_object();
-    let obj = global.get(js_string!("emptyObj"), &mut context).unwrap();
+    // Create empty object directly in the context
+    let code = "var emptyObj = {}; emptyObj;";
+    let result = context.eval(Source::from_bytes(code)).unwrap();
+    let obj = result;
 
     let cloned = structured_clone(&obj, &mut context, None).unwrap();
     let deserialized = structured_deserialize(&cloned, &mut context).unwrap();
