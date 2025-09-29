@@ -21,6 +21,7 @@ pub mod worklet;
 pub mod message_channel;
 pub mod message_port;
 pub mod message_event;
+pub mod broadcast_channel;
 pub mod document;
 pub mod document_parse;
 pub mod form;
@@ -141,6 +142,7 @@ pub(crate) use self::{
     service_worker_container::ServiceWorkerContainer,
     worklet::Worklet,
     message_channel::MessageChannel,
+    broadcast_channel::BroadcastChannel,
     document::Document,
     form::{HTMLFormElement, HTMLFormControlsCollection, HTMLInputElement},
     window::Window,

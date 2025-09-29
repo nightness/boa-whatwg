@@ -176,6 +176,7 @@ pub struct StandardConstructors {
     service_worker_container: StandardConstructor,
     worklet: StandardConstructor,
     message_channel: StandardConstructor,
+    broadcast_channel: StandardConstructor,
     request: StandardConstructor,
     response: StandardConstructor,
     headers: StandardConstructor,
@@ -319,6 +320,7 @@ impl Default for StandardConstructors {
             service_worker_container: StandardConstructor::default(),
             worklet: StandardConstructor::default(),
             message_channel: StandardConstructor::default(),
+            broadcast_channel: StandardConstructor::default(),
             request: StandardConstructor::default(),
             response: StandardConstructor::default(),
             headers: StandardConstructor::default(),
@@ -1034,6 +1036,18 @@ impl StandardConstructors {
     #[must_use]
     pub const fn message_channel(&self) -> &StandardConstructor {
         &self.message_channel
+    }
+
+    /// Returns the `BroadcastChannel` constructor.
+    ///
+    /// More information:
+    ///  - [BroadcastChannel spec][spec]
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/web-messaging.html#broadcasting-to-other-browsing-contexts
+    #[inline]
+    #[must_use]
+    pub const fn broadcast_channel(&self) -> &StandardConstructor {
+        &self.broadcast_channel
     }
 
     /// Returns the `Request` constructor.
