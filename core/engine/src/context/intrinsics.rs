@@ -178,6 +178,7 @@ pub struct StandardConstructors {
     message_channel: StandardConstructor,
     message_port: StandardConstructor,
     broadcast_channel: StandardConstructor,
+    crypto: StandardConstructor,
     request: StandardConstructor,
     response: StandardConstructor,
     headers: StandardConstructor,
@@ -323,6 +324,7 @@ impl Default for StandardConstructors {
             message_channel: StandardConstructor::default(),
             message_port: StandardConstructor::default(),
             broadcast_channel: StandardConstructor::default(),
+            crypto: StandardConstructor::default(),
             request: StandardConstructor::default(),
             response: StandardConstructor::default(),
             headers: StandardConstructor::default(),
@@ -1062,6 +1064,18 @@ impl StandardConstructors {
     #[must_use]
     pub const fn broadcast_channel(&self) -> &StandardConstructor {
         &self.broadcast_channel
+    }
+
+    /// Returns the `Crypto` constructor.
+    ///
+    /// More information:
+    ///  - [Web Crypto API spec][spec]
+    ///
+    /// [spec]: https://w3c.github.io/webcrypto/
+    #[inline]
+    #[must_use]
+    pub const fn crypto(&self) -> &StandardConstructor {
+        &self.crypto
     }
 
     /// Returns the `Request` constructor.

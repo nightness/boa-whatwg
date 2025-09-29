@@ -22,6 +22,7 @@ pub mod message_channel;
 pub mod message_port;
 pub mod message_event;
 pub mod broadcast_channel;
+pub mod crypto;
 pub mod document;
 pub mod document_parse;
 pub mod form;
@@ -144,6 +145,7 @@ pub(crate) use self::{
     message_channel::MessageChannel,
     message_port::MessagePort,
     broadcast_channel::BroadcastChannel,
+    crypto::Crypto,
     document::Document,
     form::{HTMLFormElement, HTMLFormControlsCollection, HTMLInputElement},
     window::Window,
@@ -374,6 +376,7 @@ impl Realm {
         MessageChannel::init(self);
         MessagePort::init(self);
         BroadcastChannel::init(self);
+        Crypto::init(self);
         AbortController::init(self);
         Request::init(self);
         Response::init(self);
@@ -652,6 +655,7 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<SharedWorker>(context)?;
     global_binding::<MessageChannel>(context)?;
     global_binding::<BroadcastChannel>(context)?;
+    global_binding::<Crypto>(context)?;
     global_binding::<AbortController>(context)?;
     global_binding::<XmlHttpRequest>(context)?;
     global_binding::<MutationObserver>(context)?;
@@ -727,6 +731,18 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     {
         global_binding::<temporal::Temporal>(context)?;
     }
+
+    // Add crypto global object (lowercase instance, not constructor)
+    let crypto_obj = crypto::create_crypto_object(context)?;
+    global_object.define_property_or_throw(
+        js_string!("crypto"),
+        PropertyDescriptor::builder()
+            .value(crypto_obj)
+            .writable(false)
+            .enumerable(true)
+            .configurable(true),
+        context,
+    )?;
 
     Ok(())
 }
