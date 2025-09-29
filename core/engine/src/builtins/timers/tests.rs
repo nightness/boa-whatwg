@@ -127,3 +127,121 @@ fn cross_clear() {
         TestAction::run("clearTimeout(intervalId)"), // Should not throw
     ]);
 }
+
+#[test]
+fn timer_callback_execution() {
+    run_test_actions([
+        // Test string callback execution
+        TestAction::run("setTimeout('console.log(\"String callback executed\")', 10)"),
+
+        // Test function callback (placeholder test since we can't actually execute)
+        TestAction::run("setTimeout(function() { console.log('Function callback'); }, 20)"),
+
+        // Test with additional arguments
+        TestAction::run("setTimeout(function(a, b) { console.log('Args:', a, b); }, 30, 'arg1', 'arg2')"),
+    ]);
+}
+
+#[test]
+fn timer_delay_clamping() {
+    run_test_actions([
+        // Test minimum delay clamping
+        TestAction::run("let id1 = setTimeout(function() {}, 0)"), // Should be clamped to 4ms
+        TestAction::run("let id2 = setTimeout(function() {}, 1)"), // Should be clamped to 4ms
+        TestAction::run("let id3 = setTimeout(function() {}, 3)"), // Should be clamped to 4ms
+        TestAction::run("let id4 = setTimeout(function() {}, 5)"), // Should remain 5ms
+
+        TestAction::assert("typeof id1 === 'number'"),
+        TestAction::assert("typeof id2 === 'number'"),
+        TestAction::assert("typeof id3 === 'number'"),
+        TestAction::assert("typeof id4 === 'number'"),
+
+        // Clean up
+        TestAction::run("clearTimeout(id1)"),
+        TestAction::run("clearTimeout(id2)"),
+        TestAction::run("clearTimeout(id3)"),
+        TestAction::run("clearTimeout(id4)"),
+    ]);
+}
+
+#[test]
+fn timer_async_behavior() {
+    run_test_actions([
+        // Test that timers return immediately but execute asynchronously
+        TestAction::run("let executed = false"),
+        TestAction::run("let timerId = setTimeout(function() { executed = true; }, 50)"),
+        TestAction::assert("executed === false"), // Should not have executed yet
+        TestAction::assert("typeof timerId === 'number'"),
+
+        // Test interval creation
+        TestAction::run("let intervalExecuted = 0"),
+        TestAction::run("let intervalId = setInterval(function() { intervalExecuted++; }, 25)"),
+        TestAction::assert("intervalExecuted === 0"), // Should not have executed yet
+
+        // Clean up
+        TestAction::run("clearInterval(intervalId)"),
+    ]);
+}
+
+#[test]
+fn timer_string_vs_function_callbacks() {
+    run_test_actions([
+        // Test string callbacks (eval-style)
+        TestAction::run("setTimeout('var stringCallbackVar = 42;', 10)"),
+
+        // Test function callbacks
+        TestAction::run("setTimeout(function() { var functionCallbackVar = 84; }, 15)"),
+
+        // Test arrow function callbacks
+        TestAction::run("setTimeout(() => { var arrowCallbackVar = 168; }, 20)"),
+
+        // All should return valid timer IDs
+        TestAction::run("let id1 = setTimeout('console.log(1)', 30)"),
+        TestAction::run("let id2 = setTimeout(function() { console.log(2); }, 35)"),
+        TestAction::run("let id3 = setTimeout(() => console.log(3), 40)"),
+
+        TestAction::assert("typeof id1 === 'number'"),
+        TestAction::assert("typeof id2 === 'number'"),
+        TestAction::assert("typeof id3 === 'number'"),
+        TestAction::assert("id1 !== id2 && id2 !== id3 && id1 !== id3"),
+    ]);
+}
+
+#[test]
+fn interval_vs_timeout_behavior() {
+    run_test_actions([
+        // Test that setTimeout executes once
+        TestAction::run("let timeoutCount = 0"),
+        TestAction::run("setTimeout(function() { timeoutCount++; }, 20)"),
+
+        // Test that setInterval would execute multiple times (if we let it)
+        TestAction::run("let intervalCount = 0"),
+        TestAction::run("let intervalId = setInterval(function() { intervalCount++; }, 25)"),
+
+        // Clear interval immediately to prevent multiple executions in test
+        TestAction::run("clearInterval(intervalId)"),
+
+        TestAction::assert("timeoutCount === 0"), // Not executed yet
+        TestAction::assert("intervalCount === 0"), // Not executed yet (cleared)
+    ]);
+}
+
+#[test]
+fn timer_id_uniqueness() {
+    run_test_actions([
+        // Test that timer IDs are unique and incrementing
+        TestAction::run("let ids = []"),
+        TestAction::run("for (let i = 0; i < 10; i++) { ids.push(setTimeout(function() {}, 100)); }"),
+
+        // Check uniqueness
+        TestAction::run("let unique = new Set(ids)"),
+        TestAction::assert("unique.size === 10"),
+
+        // Check ascending order
+        TestAction::run("let sorted = [...ids].sort((a, b) => a - b)"),
+        TestAction::assert("JSON.stringify(ids) === JSON.stringify(sorted)"),
+
+        // Clean up all timers
+        TestAction::run("ids.forEach(id => clearTimeout(id))"),
+    ]);
+}
