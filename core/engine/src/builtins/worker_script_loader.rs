@@ -5,6 +5,7 @@
 use crate::{
     Context, JsResult, JsValue, JsNativeError, Source, JsArgs, js_string,
     object::JsObject,
+    module::Module,
     builtins::{
         worker_events::{WorkerEvent, WorkerEventType, dispatch_worker_event},
         worker_global_scope::{WorkerGlobalScope, WorkerGlobalScopeType, WorkerMessage, MessageSource},
@@ -70,9 +71,91 @@ impl WorkerExecutionContext {
 
         eprintln!("Worker script loaded: {} bytes", script_content.len());
 
-        // TODO: Implement actual script execution in isolated context
-        // For now, we just cache the script content and indicate successful loading
+        // Execute script based on worker type
+        match self.worker_type.as_str() {
+            "module" => {
+                self.execute_module_script(&script_content).await
+            }
+            "classic" | _ => {
+                self.execute_classic_script(&script_content).await
+            }
+        }
+    }
 
+    /// Execute script as a classic worker (global scope execution)
+    async fn execute_classic_script(&self, script_content: &str) -> JsResult<()> {
+        // Check if terminated
+        if *self.terminated.lock().unwrap() {
+            return Ok(());
+        }
+
+        // Create a new worker context for script execution
+        let mut worker_context = Context::default();
+
+        // Set up WorkerGlobalScope for dedicated worker
+        let worker_global_scope = WorkerGlobalScope::new(
+            WorkerGlobalScopeType::Dedicated,
+            &self.script_url,
+        )?;
+
+        // Initialize the worker global scope in the context
+        worker_global_scope.initialize_in_context(&mut worker_context)?;
+
+        // Execute the script in classic mode (global scope)
+        match worker_context.eval(Source::from_bytes(script_content)) {
+            Ok(_result) => {
+                eprintln!("Classic worker script executed successfully");
+                Ok(())
+            }
+            Err(js_error) => {
+                eprintln!("Classic worker script execution failed: {}", js_error);
+                Err(error_helpers::script_parse_error(&self.script_url, &js_error.to_string()).into())
+            }
+        }
+    }
+
+    /// Execute script as a module worker (ES module execution)
+    async fn execute_module_script(&self, script_content: &str) -> JsResult<()> {
+        // Check if terminated
+        if *self.terminated.lock().unwrap() {
+            return Ok(());
+        }
+
+        // Create a new worker context for script execution
+        let mut worker_context = Context::default();
+
+        // Set up WorkerGlobalScope for dedicated worker
+        let worker_global_scope = WorkerGlobalScope::new(
+            WorkerGlobalScopeType::Dedicated,
+            &self.script_url,
+        )?;
+
+        // Initialize the worker global scope in the context
+        worker_global_scope.initialize_in_context(&mut worker_context)?;
+
+        // Parse the script as an ES module
+        let module = match Module::parse(
+            Source::from_bytes(script_content),
+            None, // use current realm
+            &mut worker_context,
+        ) {
+            Ok(module) => module,
+            Err(js_error) => {
+                eprintln!("Module worker script parsing failed: {}", js_error);
+                return Err(error_helpers::script_parse_error(&self.script_url, &js_error.to_string()).into());
+            }
+        };
+
+        // For now, use the simpler load_link_evaluate approach
+        // In a full implementation, we would handle module loading asynchronously
+        let promise = module.load_link_evaluate(&mut worker_context);
+
+        // Since we can't easily await JsPromise here, we'll use a simplified approach
+        // In a real implementation, this would need proper async handling
+        eprintln!("Module worker script loaded and linked (promise created)");
+
+        // For now, just indicate that the module setup was successful
+        // The actual evaluation would happen asynchronously via the promise
         Ok(())
     }
 

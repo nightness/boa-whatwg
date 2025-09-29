@@ -142,6 +142,7 @@ pub(crate) use self::{
     service_worker_container::ServiceWorkerContainer,
     worklet::Worklet,
     message_channel::MessageChannel,
+    message_port::MessagePort,
     broadcast_channel::BroadcastChannel,
     document::Document,
     form::{HTMLFormElement, HTMLFormControlsCollection, HTMLInputElement},
@@ -371,6 +372,8 @@ impl Realm {
         ServiceWorker::init(self);
         Worklet::init(self);
         MessageChannel::init(self);
+        MessagePort::init(self);
+        BroadcastChannel::init(self);
         AbortController::init(self);
         Request::init(self);
         Response::init(self);
@@ -647,6 +650,8 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<WebSocket>(context)?;
     global_binding::<Worker>(context)?;
     global_binding::<SharedWorker>(context)?;
+    global_binding::<MessageChannel>(context)?;
+    global_binding::<BroadcastChannel>(context)?;
     global_binding::<AbortController>(context)?;
     global_binding::<XmlHttpRequest>(context)?;
     global_binding::<MutationObserver>(context)?;
