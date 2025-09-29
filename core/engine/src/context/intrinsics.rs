@@ -221,6 +221,12 @@ pub struct StandardConstructors {
     storage: StandardConstructor,
     storage_event: StandardConstructor,
     storage_manager: StandardConstructor,
+    cache: StandardConstructor,
+    cache_storage: StandardConstructor,
+    cookie_store: StandardConstructor,
+    file_system_handle: StandardConstructor,
+    file_system_file_handle: StandardConstructor,
+    file_system_directory_handle: StandardConstructor,
     lock_manager: StandardConstructor,
     idb_factory: StandardConstructor,
     navigator: StandardConstructor,
@@ -369,6 +375,12 @@ impl Default for StandardConstructors {
             storage: StandardConstructor::default(),
             storage_event: StandardConstructor::default(),
             storage_manager: StandardConstructor::default(),
+            cache: StandardConstructor::default(),
+            cache_storage: StandardConstructor::default(),
+            cookie_store: StandardConstructor::default(),
+            file_system_handle: StandardConstructor::default(),
+            file_system_file_handle: StandardConstructor::default(),
+            file_system_directory_handle: StandardConstructor::default(),
             lock_manager: StandardConstructor::default(),
             idb_factory: StandardConstructor::default(),
             navigator: StandardConstructor::default(),
@@ -1474,6 +1486,66 @@ impl StandardConstructors {
     #[must_use]
     pub const fn storage_manager(&self) -> &StandardConstructor {
         &self.storage_manager
+    }
+
+    /// Returns the `Cache` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Service Worker Specification](https://w3c.github.io/ServiceWorker/#cache-interface)
+    #[inline]
+    #[must_use]
+    pub const fn cache(&self) -> &StandardConstructor {
+        &self.cache
+    }
+
+    /// Returns the `CacheStorage` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Service Worker Specification](https://w3c.github.io/ServiceWorker/#cachestorage-interface)
+    #[inline]
+    #[must_use]
+    pub const fn cache_storage(&self) -> &StandardConstructor {
+        &self.cache_storage
+    }
+
+    /// Returns the `CookieStore` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Cookie Store API Specification](https://wicg.github.io/cookie-store/)
+    #[inline]
+    #[must_use]
+    pub const fn cookie_store(&self) -> &StandardConstructor {
+        &self.cookie_store
+    }
+
+    /// Returns the `FileSystemHandle` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG File System API Specification](https://fs.spec.whatwg.org/)
+    #[inline]
+    #[must_use]
+    pub const fn file_system_handle(&self) -> &StandardConstructor {
+        &self.file_system_handle
+    }
+
+    /// Returns the `FileSystemFileHandle` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG File System API Specification](https://fs.spec.whatwg.org/)
+    #[inline]
+    #[must_use]
+    pub const fn file_system_file_handle(&self) -> &StandardConstructor {
+        &self.file_system_file_handle
+    }
+
+    /// Returns the `FileSystemDirectoryHandle` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG File System API Specification](https://fs.spec.whatwg.org/)
+    #[inline]
+    #[must_use]
+    pub const fn file_system_directory_handle(&self) -> &StandardConstructor {
+        &self.file_system_directory_handle
     }
 
     /// Returns the `LockManager` constructor.

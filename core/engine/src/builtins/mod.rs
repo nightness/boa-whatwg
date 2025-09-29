@@ -94,6 +94,10 @@ pub mod weak_set;
 pub mod storage;
 pub mod storage_event;
 pub mod storage_manager;
+pub mod cache;
+pub mod cache_storage;
+pub mod cookie_store;
+pub mod file_system;
 pub mod web_locks;
 pub mod indexed_db;
 pub mod navigator;
@@ -465,6 +469,12 @@ impl Realm {
         Storage::init(self);
         storage_event::StorageEvent::init(self);
         storage_manager::StorageManager::init(self);
+        cache::Cache::init(self);
+        cache_storage::CacheStorage::init(self);
+        cookie_store::CookieStore::init(self);
+        file_system::FileSystemHandle::init(self);
+        file_system::FileSystemFileHandle::init(self);
+        file_system::FileSystemDirectoryHandle::init(self);
         web_locks::LockManagerObject::init(self);
         Navigator::init(self);
         Atomics::init(self);
@@ -557,6 +567,36 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
                 context,
             )?;
         }
+
+        // Also expose caches as global property (CacheStorage API)
+        use crate::builtins::cache_storage::CacheStorage;
+        let cache_storage = CacheStorage::create_cache_storage();
+        let cache_storage_prototype = context.intrinsics().constructors().cache_storage().prototype();
+        cache_storage.set_prototype(Some(cache_storage_prototype));
+        global_object.define_property_or_throw(
+            js_string!("caches"),
+            PropertyDescriptor::builder()
+                .value(cache_storage)
+                .writable(false)
+                .enumerable(false)
+                .configurable(true),
+            context,
+        )?;
+
+        // Also expose cookieStore as global property (Cookie Store API)
+        use crate::builtins::cookie_store::CookieStore;
+        let cookie_store = CookieStore::create_cookie_store();
+        let cookie_store_prototype = context.intrinsics().constructors().cookie_store().prototype();
+        cookie_store.set_prototype(Some(cookie_store_prototype));
+        global_object.define_property_or_throw(
+            js_string!("cookieStore"),
+            PropertyDescriptor::builder()
+                .value(cookie_store)
+                .writable(false)
+                .enumerable(false)
+                .configurable(true),
+            context,
+        )?;
 
         // Also expose navigator as global for convenience
         if let Ok(navigator) = window_object.get(js_string!("navigator"), context) {

@@ -4,7 +4,8 @@
 //! https://html.spec.whatwg.org/#the-window-object
 
 use crate::{
-    builtins::{BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder, storage::Storage},
+    builtins::{BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder, storage::Storage,
+               file_system::{show_open_file_picker, show_save_file_picker, show_directory_picker}},
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
     object::{internal_methods::get_prototype_from_constructor, JsObject},
     string::StaticJsStrings,
@@ -60,6 +61,19 @@ impl IntrinsicObject for Window {
 
         let get_selection_func = BuiltInBuilder::callable(realm, get_selection)
             .name(js_string!("getSelection"))
+            .build();
+
+        // File System API functions
+        let show_open_file_picker_func = BuiltInBuilder::callable(realm, show_open_file_picker)
+            .name(js_string!("showOpenFilePicker"))
+            .build();
+
+        let show_save_file_picker_func = BuiltInBuilder::callable(realm, show_save_file_picker)
+            .name(js_string!("showSaveFilePicker"))
+            .build();
+
+        let show_directory_picker_func = BuiltInBuilder::callable(realm, show_directory_picker)
+            .name(js_string!("showDirectoryPicker"))
             .build();
 
         BuiltInBuilder::from_standard_constructor::<Self>(realm)
@@ -132,6 +146,9 @@ impl IntrinsicObject for Window {
             .method(dispatch_event, js_string!("dispatchEvent"), 1)
             .method(match_media, js_string!("matchMedia"), 1)
             .method(get_selection, js_string!("getSelection"), 0)
+            .method(show_open_file_picker, js_string!("showOpenFilePicker"), 0)
+            .method(show_save_file_picker, js_string!("showSaveFilePicker"), 0)
+            .method(show_directory_picker, js_string!("showDirectoryPicker"), 0)
             .build();
     }
 
