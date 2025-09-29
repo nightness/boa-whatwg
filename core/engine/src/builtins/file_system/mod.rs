@@ -8,7 +8,6 @@
 //!  - [MDN File System API](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API)
 
 use std::collections::HashMap;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use serde::{Deserialize, Serialize};
@@ -24,6 +23,7 @@ use crate::{
     string::StaticJsStrings,
     value::TryFromJs,
 };
+
 
 #[cfg(test)]
 mod tests;
@@ -207,10 +207,19 @@ impl FileSystemFileHandle {
         let file_handle = obj.downcast_ref::<Self>()
             .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a FileSystemFileHandle"))?;
 
-        // Create a simple file-like object
+        // Read actual file content from VFS
+        let (file_content, file_size) = match vfs::fs::read(&file_handle.handle.path) {
+            Ok(content) => {
+                let size = content.len() as u64;
+                (content, size)
+            },
+            Err(_) => (Vec::new(), 0),
+        };
+
+        // Create a file-like object with real content
         let file_obj = JsObject::with_object_proto(context.intrinsics());
 
-        // Add file properties
+        // Add file properties with real values
         file_obj.define_property_or_throw(
             js_string!("name"),
             PropertyDescriptor::builder()
@@ -223,7 +232,7 @@ impl FileSystemFileHandle {
         file_obj.define_property_or_throw(
             js_string!("size"),
             PropertyDescriptor::builder()
-                .value(JsValue::from(0)) // TODO: Get actual file size
+                .value(JsValue::from(file_size as i32))
                 .enumerable(true)
                 .build(),
             context,
@@ -233,6 +242,17 @@ impl FileSystemFileHandle {
             js_string!("type"),
             PropertyDescriptor::builder()
                 .value(JsValue::from(JsString::from("text/plain")))
+                .enumerable(true)
+                .build(),
+            context,
+        )?;
+
+        // Add content as a property instead of a method for now
+        let content_str = String::from_utf8(file_content).unwrap_or_else(|_| String::from(""));
+        file_obj.define_property_or_throw(
+            js_string!("content"),
+            PropertyDescriptor::builder()
+                .value(JsValue::from(JsString::from(content_str)))
                 .enumerable(true)
                 .build(),
             context,
@@ -256,25 +276,66 @@ impl FileSystemFileHandle {
             .as_object()
             .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a FileSystemFileHandle"))?;
 
-        let _file_handle = obj.downcast_ref::<Self>()
+        let file_handle = obj.downcast_ref::<Self>()
             .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a FileSystemFileHandle"))?;
 
-        // Create a simple writable stream-like object
+        // Clone file path for the write function
+        let file_path = file_handle.handle.path.clone();
+
+        // Create a writable stream-like object with real VFS write capability
         let writable_obj = JsObject::with_object_proto(context.intrinsics());
 
-        // Add write method
-        let write_fn = BuiltInBuilder::callable(context.realm(), |_this, _args, _context| {
-            Ok(JsValue::undefined())
-        })
-        .name(js_string!("write"))
-        .length(1)
-        .build();
+        // Add simplified write functionality using a property to store content
+        // This will be written when the stream is closed
+        writable_obj.define_property_or_throw(
+            js_string!("__file_path"),
+            PropertyDescriptor::builder()
+                .value(JsValue::from(JsString::from(file_path.to_string_lossy().to_string())))
+                .enumerable(false)
+                .build(),
+            context,
+        )?;
+
+        writable_obj.define_property_or_throw(
+            js_string!("__pending_content"),
+            PropertyDescriptor::builder()
+                .value(JsValue::from(JsString::from("")))
+                .enumerable(false)
+                .writable(true)
+                .build(),
+            context,
+        )?;
+
+        // Add a write method that stores content for later writing
+        let write_fn = BuiltInBuilder::callable(context.realm(), Self::writable_write)
+            .name(js_string!("write"))
+            .length(1)
+            .build();
 
         writable_obj.define_property_or_throw(
             js_string!("write"),
             PropertyDescriptor::builder()
                 .value(write_fn)
-                .enumerable(true)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true)
+                .build(),
+            context,
+        )?;
+
+        // Add close method that writes content to VFS
+        let close_fn = BuiltInBuilder::callable(context.realm(), Self::writable_close)
+            .name(js_string!("close"))
+            .length(0)
+            .build();
+
+        writable_obj.define_property_or_throw(
+            js_string!("close"),
+            PropertyDescriptor::builder()
+                .value(close_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true)
                 .build(),
             context,
         )?;
@@ -282,6 +343,66 @@ impl FileSystemFileHandle {
         // Create a resolved Promise
         let (promise, resolvers) = JsPromise::new_pending(context);
         resolvers.resolve.call(&JsValue::undefined(), &[writable_obj.into()], context)?;
+        Ok(JsValue::from(promise))
+    }
+
+    /// Write method for writable stream
+    pub(crate) fn writable_write(
+        this: &JsValue,
+        args: &[JsValue],
+        context: &mut Context,
+    ) -> JsResult<JsValue> {
+        let obj = this
+            .as_object()
+            .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a writable stream"))?;
+
+        if let Some(content_arg) = args.get(0) {
+            // Get current pending content
+            let current_content = obj.get(js_string!("__pending_content"), context)?;
+            let current_str = current_content.to_string(context)?;
+
+            // Append new content
+            let new_content = content_arg.to_string(context)?;
+            let combined_content = format!("{}{}", current_str.to_std_string_escaped(), new_content.to_std_string_escaped());
+
+            // Update the pending content
+            obj.set(js_string!("__pending_content"), JsValue::from(JsString::from(combined_content)), true, context)?;
+
+            // Return a resolved Promise
+            let (promise, resolvers) = JsPromise::new_pending(context);
+            resolvers.resolve.call(&JsValue::undefined(), &[JsValue::undefined()], context)?;
+            Ok(JsValue::from(promise))
+        } else {
+            Err(JsNativeError::typ().with_message("Content argument required").into())
+        }
+    }
+
+    /// Close method for writable stream that writes to VFS
+    pub(crate) fn writable_close(
+        this: &JsValue,
+        _args: &[JsValue],
+        context: &mut Context,
+    ) -> JsResult<JsValue> {
+        let obj = this
+            .as_object()
+            .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a writable stream"))?;
+
+        // Get the file path and pending content
+        let file_path_str = obj.get(js_string!("__file_path"), context)?;
+        let pending_content = obj.get(js_string!("__pending_content"), context)?;
+
+        let path_str = file_path_str.to_string(context)?.to_std_string_escaped();
+        let content_str = pending_content.to_string(context)?.to_std_string_escaped();
+
+        // Write the content to VFS
+        let file_path = PathBuf::from(path_str);
+        if let Err(_) = vfs::fs::write(&file_path, content_str.as_bytes()) {
+            return Err(JsNativeError::typ().with_message("Failed to write file").into());
+        }
+
+        // Return a resolved Promise
+        let (promise, resolvers) = JsPromise::new_pending(context);
+        resolvers.resolve.call(&JsValue::undefined(), &[JsValue::undefined()], context)?;
         Ok(JsValue::from(promise))
     }
 }
@@ -481,9 +602,14 @@ pub(crate) fn show_open_file_picker(
     _args: &[JsValue],
     context: &mut Context,
 ) -> JsResult<JsValue> {
-    // Create a mock file handle for demonstration
-    let temp_path = std::env::temp_dir().join("demo.txt");
-    let file_handle = FileSystemFileHandle::new("demo.txt".to_string(), temp_path);
+    // Create a file handle with VFS-backed persistence
+    let file_path = PathBuf::from("/documents/example_document.txt");
+
+    // Ensure the file exists in VFS with sample content
+    let sample_content = b"This is a sample document file created by showOpenFilePicker.\nYou can read and modify this content through the File System API.";
+    let _ = vfs::fs::write(&file_path, sample_content);
+
+    let file_handle = FileSystemFileHandle::new("example_document.txt".to_string(), file_path);
     let file_handle_obj = JsObject::from_proto_and_data_with_shared_shape(
         context.root_shape(),
         context.intrinsics().constructors().file_system_file_handle().prototype(),
@@ -506,9 +632,14 @@ pub(crate) fn show_save_file_picker(
     _args: &[JsValue],
     context: &mut Context,
 ) -> JsResult<JsValue> {
-    // Create a mock file handle for demonstration
-    let temp_path = std::env::temp_dir().join("save.txt");
-    let file_handle = FileSystemFileHandle::new("save.txt".to_string(), temp_path);
+    // Create a file handle with VFS-backed persistence for saving
+    let file_path = PathBuf::from("/documents/new_save_file.txt");
+
+    // Initialize an empty file in VFS that can be written to
+    let initial_content = b""; // Empty file ready for writing
+    let _ = vfs::fs::write(&file_path, initial_content);
+
+    let file_handle = FileSystemFileHandle::new("new_save_file.txt".to_string(), file_path);
     let file_handle_obj = JsObject::from_proto_and_data_with_shared_shape(
         context.root_shape(),
         context.intrinsics().constructors().file_system_file_handle().prototype(),
@@ -527,9 +658,15 @@ pub(crate) fn show_directory_picker(
     _args: &[JsValue],
     context: &mut Context,
 ) -> JsResult<JsValue> {
-    // Create a mock directory handle for demonstration
-    let temp_path = std::env::temp_dir().join("demo-directory");
-    let dir_handle = FileSystemDirectoryHandle::new("demo-directory".to_string(), temp_path);
+    // Create a directory handle with VFS-backed persistence
+    let dir_path = PathBuf::from("/documents");
+
+    // Ensure the directory exists in VFS with some sample files
+    // Create sample files in the directory
+    let _ = vfs::fs::write(&dir_path.join("readme.txt"), b"Welcome to the documents directory!\nThis directory contains sample files accessible through the File System API.");
+    let _ = vfs::fs::write(&dir_path.join("notes.txt"), b"Sample notes file.\nYou can read and write to this file.");
+
+    let dir_handle = FileSystemDirectoryHandle::new("documents".to_string(), dir_path);
     let dir_handle_obj = JsObject::from_proto_and_data_with_shared_shape(
         context.root_shape(),
         context.intrinsics().constructors().file_system_directory_handle().prototype(),

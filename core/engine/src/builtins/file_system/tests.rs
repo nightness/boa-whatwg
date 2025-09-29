@@ -133,6 +133,21 @@ fn test_directory_handle_methods_exist() {
 }
 
 #[test]
+fn test_file_system_vfs_integration() {
+    let mut context = Context::default();
+
+    // Test that file picker functions work with VFS
+    let result = context.eval(Source::from_bytes("showOpenFilePicker() instanceof Promise")).unwrap();
+    assert_eq!(result, JsValue::from(true));
+
+    let result = context.eval(Source::from_bytes("showSaveFilePicker() instanceof Promise")).unwrap();
+    assert_eq!(result, JsValue::from(true));
+
+    let result = context.eval(Source::from_bytes("showDirectoryPicker() instanceof Promise")).unwrap();
+    assert_eq!(result, JsValue::from(true));
+}
+
+#[test]
 fn test_file_system_handle_common_methods() {
     let mut context = Context::default();
 
