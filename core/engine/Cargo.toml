@@ -127,6 +127,8 @@ portable-atomic.workspace = true
 bytemuck = { workspace = true, features = ["derive"] }
 arrayvec.workspace = true
 intrusive-collections.workspace = true
+
+# Worker implementation dependencies already included above
 cfg-if.workspace = true
 time.workspace = true
 hashbrown.workspace = true

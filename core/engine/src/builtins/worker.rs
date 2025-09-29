@@ -8,8 +8,15 @@
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+mod integration_tests;
+
 use crate::{
-    builtins::{BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder, worker_events},
+    builtins::{
+        BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder,
+        worker_events, worker_script_loader,
+        structured_clone::{structured_clone, TransferList},
+    },
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
     object::{internal_methods::get_prototype_from_constructor, JsObject},
     string::StaticJsStrings,
@@ -139,48 +146,40 @@ impl BuiltInConstructor for Worker {
 
 impl Worker {
     /// Start worker execution
-    fn start_worker(worker: &JsObject, _context: &mut Context) -> JsResult<()> {
+    fn start_worker(worker: &JsObject, context: &mut Context) -> JsResult<()> {
         if let Some(data) = worker.downcast_ref::<WorkerData>() {
             let script_url = data.script_url.clone();
-            let state = data.state.clone();
+            let worker_type = data.worker_type.clone();
+            let worker_obj_clone = worker.clone();
 
-            // Check if we're in a Tokio runtime context
-            match tokio::runtime::Handle::try_current() {
+            // Update state to running
+            if let Ok(mut state) = data.state.try_lock() {
+                state.status = WorkerStatus::Running;
+            }
+
+            // Start worker execution with real script loading
+            let runtime_handle = tokio::runtime::Handle::try_current();
+            match runtime_handle {
                 Ok(handle) => {
-                    // We're in a Tokio runtime, spawn the worker task
                     handle.spawn(async move {
-                        // Update state to running
-                        {
-                            let mut worker_state = state.lock().await;
-                            worker_state.status = WorkerStatus::Running;
-                        }
-
-                        // In a real implementation, we would:
-                        // 1. Fetch the script from script_url
-                        // 2. Create a new JavaScript context for the worker
-                        // 3. Execute the script in isolation
-                        // 4. Handle message passing between main thread and worker
-
-                        // For now, we'll simulate a simple worker execution
-                        println!("Worker started with script: {}", script_url);
-
-                        // Simulate script execution delay
-                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
-                        // Simulate sending a message back to main thread
-                        // In real implementation, this would come from the worker's script execution
-                        // TODO: Implement proper event dispatching with proper context
-
-                        // Update state to completed (in real implementation, worker would keep running)
-                        {
-                            let mut worker_state = state.lock().await;
-                            worker_state.status = WorkerStatus::Terminated;
+                        // Use the script loader to start worker execution
+                        match worker_script_loader::WorkerScriptLoader::start_worker_execution(
+                            script_url,
+                            worker_type,
+                        ).await {
+                            Ok(execution_context) => {
+                                eprintln!("Worker started successfully with script loading: {}", execution_context.get_script_url());
+                                // TODO: Store execution context back to worker object somehow
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to start worker: {:?}", e);
+                            }
                         }
                     });
                 }
                 Err(_) => {
-                    // No Tokio runtime available, keep state as pending
-                    // This allows tests to run without requiring a full async runtime
+                    // No Tokio runtime available - for testing
+                    eprintln!("No async runtime available - worker execution deferred");
                 }
             }
         }
@@ -210,18 +209,54 @@ impl Worker {
                 }
             }
 
-            // Convert message to string for simple implementation
-            let message_str = message.to_string(context)?.to_std_string_escaped();
+            // Parse transfer list
+            let transfer_list = if !_transfer.is_undefined() {
+                // TODO: Parse transfer list from array
+                Some(TransferList::new())
+            } else {
+                None
+            };
 
-            // Send message to worker (in real implementation, this would use structured cloning)
-            if let Some(ref sender) = data.message_sender {
-                if let Err(_) = sender.send(WorkerMessage {
-                    data: message_str,
-                    transfer: Vec::new(), // TODO: Handle transfer objects
-                }) {
-                    return Err(JsNativeError::error()
-                        .with_message("Failed to send message to worker")
-                        .into());
+            // Clone the message using structured cloning
+            let cloned_message = match structured_clone(message, context, transfer_list.as_ref()) {
+                Ok(cloned) => cloned,
+                Err(e) => {
+                    eprintln!("Failed to clone message for worker: {:?}", e);
+                    return Err(e);
+                }
+            };
+
+            // Send message through the execution context if available
+            if let Some(ref exec_ctx) = data.execution_context {
+                // Use the async runtime to send the message
+                let exec_ctx_clone = exec_ctx.clone();
+                let runtime_handle = tokio::runtime::Handle::try_current();
+                match runtime_handle {
+                    Ok(handle) => {
+                        handle.spawn(async move {
+                            if let Err(e) = exec_ctx_clone.post_cloned_message_to_worker(cloned_message).await {
+                                eprintln!("Failed to post message to worker execution context: {:?}", e);
+                            }
+                        });
+                    }
+                    Err(_) => {
+                        eprintln!("No async runtime available for worker message passing");
+                    }
+                }
+            } else {
+                // Fallback to old message system for compatibility
+                let message_str = message.to_string(context)?.to_std_string_escaped();
+                eprintln!("Message posted to worker (execution context not ready): {}", message_str);
+
+                if let Some(ref sender) = data.message_sender {
+                    if let Err(_) = sender.send(WorkerMessage {
+                        data: message_str,
+                        transfer: Vec::new(),
+                    }) {
+                        return Err(JsNativeError::error()
+                            .with_message("Failed to send message to worker")
+                            .into());
+                    }
                 }
             }
         }
@@ -240,23 +275,14 @@ impl Worker {
         })?;
 
         if let Some(data) = this_obj.downcast_ref::<WorkerData>() {
-            let state = data.state.clone();
+            // Terminate the execution context if it exists
+            if let Some(ref exec_ctx) = data.execution_context {
+                exec_ctx.terminate();
+            }
 
-            // Check if we're in a Tokio runtime context
-            match tokio::runtime::Handle::try_current() {
-                Ok(handle) => {
-                    handle.spawn(async move {
-                        let mut worker_state = state.lock().await;
-                        worker_state.status = WorkerStatus::Terminated;
-                        // TODO: Interrupt worker execution and cleanup resources
-                    });
-                }
-                Err(_) => {
-                    // No Tokio runtime available, terminate synchronously if possible
-                    if let Ok(mut state) = data.state.try_lock() {
-                        state.status = WorkerStatus::Terminated;
-                    }
-                }
+            // Update worker state to terminated
+            if let Ok(mut state) = data.state.try_lock() {
+                state.status = WorkerStatus::Terminated;
             }
         }
 
@@ -290,10 +316,10 @@ impl WorkerState {
     }
 }
 
-/// Message passed between main thread and worker
+/// Message passed between main thread and worker (legacy - for old channel system)
 #[derive(Debug, Clone)]
 struct WorkerMessage {
-    data: String, // In real implementation, this would be structured cloned data
+    data: String, // Legacy string-based message data
     transfer: Vec<String>, // Placeholder for transfer objects
 }
 
@@ -312,6 +338,8 @@ struct WorkerData {
     message_sender: Option<Sender<WorkerMessage>>,
     #[unsafe_ignore_trace]
     message_receiver: Option<Receiver<WorkerMessage>>,
+    #[unsafe_ignore_trace]
+    execution_context: Option<Arc<worker_script_loader::WorkerExecutionContext>>,
 }
 
 impl WorkerData {
@@ -325,7 +353,12 @@ impl WorkerData {
             state: Arc::new(Mutex::new(WorkerState::new())),
             message_sender: Some(sender),
             message_receiver: Some(receiver),
+            execution_context: None,
         }
+    }
+
+    fn set_execution_context(&mut self, context: Arc<worker_script_loader::WorkerExecutionContext>) {
+        self.execution_context = Some(context);
     }
 }
 

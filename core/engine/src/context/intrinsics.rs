@@ -208,6 +208,7 @@ pub struct StandardConstructors {
     event: StandardConstructor,
     event_target: StandardConstructor,
     custom_event: StandardConstructor,
+    message_event: StandardConstructor,
     console: StandardConstructor,
     blob: StandardConstructor,
     weak_ref: StandardConstructor,
@@ -349,6 +350,7 @@ impl Default for StandardConstructors {
             event: StandardConstructor::default(),
             event_target: StandardConstructor::default(),
             custom_event: StandardConstructor::default(),
+            message_event: StandardConstructor::default(),
             console: StandardConstructor::default(),
             blob: StandardConstructor::default(),
             weak_ref: StandardConstructor::default(),
@@ -1282,6 +1284,13 @@ impl StandardConstructors {
     #[must_use]
     pub const fn custom_event(&self) -> &StandardConstructor {
         &self.custom_event
+    }
+
+    /// Returns the `MessageEvent` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn message_event(&self) -> &StandardConstructor {
+        &self.message_event
     }
 
     /// Returns the `ProcessingInstruction` constructor.

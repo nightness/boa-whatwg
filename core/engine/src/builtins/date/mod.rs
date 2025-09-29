@@ -52,6 +52,11 @@ impl Date {
     pub(crate) fn utc_now(context: &mut Context) -> Self {
         Self(context.clock().now().millis_since_epoch() as f64)
     }
+
+    /// Gets the internal time value for structured cloning
+    pub(crate) fn get_time_value(&self) -> f64 {
+        self.0
+    }
 }
 
 impl IntrinsicObject for Date {

@@ -47,6 +47,18 @@ pub struct RegExp {
     original_flags: JsString,
 }
 
+impl RegExp {
+    /// Gets the original source for structured cloning
+    pub(crate) fn get_original_source(&self) -> &JsString {
+        &self.original_source
+    }
+
+    /// Gets the original flags for structured cloning
+    pub(crate) fn get_original_flags(&self) -> &JsString {
+        &self.original_flags
+    }
+}
+
 impl IntrinsicObject for RegExp {
     fn init(realm: &Realm) {
         let get_species = BuiltInBuilder::callable(realm, Self::get_species)
