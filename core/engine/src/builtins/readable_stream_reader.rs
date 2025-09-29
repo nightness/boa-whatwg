@@ -8,7 +8,7 @@ use crate::{
     builtins::{BuiltInBuilder, Promise},
     object::JsObject,
     value::JsValue,
-    Context, JsData, JsNativeError, JsResult, js_string,
+    Context, JsData, JsNativeError, JsResult, js_string, JsArgs,
     realm::Realm, property::Attribute
 };
 use boa_gc::{Finalize, Trace};
@@ -79,7 +79,7 @@ impl ReadableStreamDefaultReader {
 
         if let Some(reader_data) = this_obj.downcast_ref::<ReadableStreamDefaultReaderData>() {
             // Try to read from the stream
-            if let Some(stream_data) = reader_data.stream.downcast_mut::<super::readable_stream::ReadableStreamData>() {
+            if let Some(mut stream_data) = reader_data.stream.downcast_mut::<super::readable_stream::ReadableStreamData>() {
                 if let Some(chunk) = stream_data.dequeue_chunk() {
                     // Create result object { value: chunk, done: false }
                     let result_obj = JsObject::with_object_proto(context.intrinsics());
@@ -118,7 +118,7 @@ impl ReadableStreamDefaultReader {
         let _reason = args.get_or_undefined(0);
 
         if let Some(reader_data) = this_obj.downcast_ref::<ReadableStreamDefaultReaderData>() {
-            if let Some(stream_data) = reader_data.stream.downcast_mut::<super::readable_stream::ReadableStreamData>() {
+            if let Some(mut stream_data) = reader_data.stream.downcast_mut::<super::readable_stream::ReadableStreamData>() {
                 stream_data.state = super::readable_stream::StreamState::Closed;
             }
         }
@@ -293,7 +293,7 @@ impl ReadableStreamBYOBReader {
         let _reason = args.get_or_undefined(0);
 
         if let Some(reader_data) = this_obj.downcast_ref::<ReadableStreamBYOBReaderData>() {
-            if let Some(stream_data) = reader_data.stream.downcast_mut::<super::readable_stream::ReadableStreamData>() {
+            if let Some(mut stream_data) = reader_data.stream.downcast_mut::<super::readable_stream::ReadableStreamData>() {
                 stream_data.state = super::readable_stream::StreamState::Closed;
             }
         }

@@ -26,7 +26,7 @@ use std::time::Duration;
 use base64::{Engine as _, engine::general_purpose};
 
 /// FileReader ready states
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Trace, Finalize)]
 #[repr(u16)]
 pub enum ReadyState {
     Empty = 0,
@@ -34,8 +34,19 @@ pub enum ReadyState {
     Done = 2,
 }
 
+impl ReadyState {
+    /// Convert ReadyState to u16 value
+    pub fn as_u16(&self) -> u16 {
+        match self {
+            ReadyState::Empty => 0,
+            ReadyState::Loading => 1,
+            ReadyState::Done => 2,
+        }
+    }
+}
+
 /// FileReader error codes
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Trace, Finalize)]
 #[repr(u16)]
 pub enum FileReaderError {
     NotReadable = 1,
@@ -242,9 +253,9 @@ impl IntrinsicObject for FileReader {
             )
 
             // Constants
-            .property(js_string!("EMPTY"), ReadyState::Empty as u16, crate::property::Attribute::NON_ENUMERABLE)
-            .property(js_string!("LOADING"), ReadyState::Loading as u16, crate::property::Attribute::NON_ENUMERABLE)
-            .property(js_string!("DONE"), ReadyState::Done as u16, crate::property::Attribute::NON_ENUMERABLE)
+            .property(js_string!("EMPTY"), ReadyState::Empty.as_u16(), crate::property::Attribute::NON_ENUMERABLE)
+            .property(js_string!("LOADING"), ReadyState::Loading.as_u16(), crate::property::Attribute::NON_ENUMERABLE)
+            .property(js_string!("DONE"), ReadyState::Done.as_u16(), crate::property::Attribute::NON_ENUMERABLE)
             .build();
     }
 
@@ -361,9 +372,9 @@ impl FileReader {
         // Extract file data
         let data = if let Some(file_obj) = file_arg.as_object() {
             if let Some(file_data) = file_obj.downcast_ref::<FileData>() {
-                file_data.blob().data.clone()
+                file_data.blob().data().clone()
             } else if let Some(blob_data) = file_obj.downcast_ref::<BlobData>() {
-                blob_data.data.clone()
+                blob_data.data().clone()
             } else {
                 return Err(JsNativeError::typ()
                     .with_message("Argument is not a File or Blob")
@@ -410,7 +421,7 @@ impl FileReader {
                 }
                 ReadOperation::DataURL => {
                     // Create data URL with base64 encoding
-                    let base64_data = general_purpose::STANDARD.encode(&data);
+                    let base64_data = general_purpose::STANDARD.encode(&**data);
                     format!("data:application/octet-stream;base64,{}", base64_data)
                 }
                 ReadOperation::Text(encoding) => {
@@ -463,7 +474,7 @@ pub(crate) fn get_ready_state(this: &JsValue, _args: &[JsValue], _context: &mut 
         JsNativeError::typ().with_message("readyState getter called on non-FileReader object")
     })?;
 
-    Ok(JsValue::from(reader_data.ready_state as u16))
+    Ok(JsValue::from(reader_data.ready_state.as_u16()))
 }
 
 /// `get FileReader.prototype.result`
@@ -492,7 +503,7 @@ pub(crate) fn get_error(this: &JsValue, _args: &[JsValue], _context: &mut Contex
         JsNativeError::typ().with_message("error getter called on non-FileReader object")
     })?;
 
-    match reader_data.error {
+    match &reader_data.error {
         Some(_error) => {
             // TODO: Return proper DOMException
             Ok(JsValue::from(js_string!("DOMException")))
@@ -531,7 +542,7 @@ macro_rules! event_handler_accessors {
 
             let handler = args.get_or_undefined(0);
             reader_data.$field = if handler.is_callable() {
-                handler.as_object().cloned()
+                handler.as_object().map(|obj| obj.clone())
             } else if handler.is_null() || handler.is_undefined() {
                 None
             } else {

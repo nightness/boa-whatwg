@@ -107,7 +107,7 @@ impl ReadableStream {
         let _reason = args.get_or_undefined(0);
 
         // Update stream state to cancelled
-        if let Some(data) = this_obj.downcast_mut::<ReadableStreamData>() {
+        if let Some(mut data) = this_obj.downcast_mut::<ReadableStreamData>() {
             data.state = StreamState::Closed;
         }
 

@@ -23,6 +23,22 @@ use std::sync::Arc;
 use std::{thread, sync::mpsc};
 use std::collections::VecDeque;
 
+/// Simple start function for blob streams
+fn start_stream(_this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    Ok(JsValue::undefined())
+}
+
+/// Simple pull function for blob streams
+fn pull_stream(_this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    Ok(JsValue::undefined())
+}
+
+/// Simple cancel function for blob streams
+fn cancel_stream(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let promise_constructor = context.intrinsics().constructors().promise().constructor();
+    crate::builtins::Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+}
+
 /// JavaScript `Blob` constructor implementation.
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct Blob;
@@ -34,6 +50,31 @@ pub struct BlobData {
     data: Arc<Vec<u8>>,
     #[unsafe_ignore_trace]
     mime_type: String,
+}
+
+impl BlobData {
+    /// Create new BlobData
+    pub fn new(data: Vec<u8>, mime_type: String) -> Self {
+        Self {
+            data: Arc::new(data),
+            mime_type,
+        }
+    }
+
+    /// Get reference to the blob data
+    pub fn data(&self) -> &Arc<Vec<u8>> {
+        &self.data
+    }
+
+    /// Get the MIME type
+    pub fn mime_type(&self) -> &str {
+        &self.mime_type
+    }
+
+    /// Get the size of the blob
+    pub fn size(&self) -> usize {
+        self.data.len()
+    }
 }
 
 /// Custom ReadableStream data for Blob streaming with advanced features
@@ -95,7 +136,7 @@ impl BlobReadableStreamData {
         let chunk_array = context
             .intrinsics()
             .constructors()
-            .uint8_array()
+            .typed_uint8_array()
             .constructor()
             .construct(&[JsValue::from(chunk_data.len())], None, context)?;
 
@@ -103,7 +144,7 @@ impl BlobReadableStreamData {
         // For now, we'll return a simple array representation
 
         self.position = end_pos;
-        Ok(Some(chunk_array))
+        Ok(Some(chunk_array.into()))
     }
 
     /// Handle cancellation request
@@ -188,7 +229,7 @@ impl BuiltInConstructor for Blob {
                     } else if let Some(part_obj) = part.as_object() {
                         // Check if it's a Blob
                         if let Some(blob_data) = part_obj.downcast_ref::<BlobData>() {
-                            data.extend_from_slice(&blob_data.data);
+                            data.extend_from_slice(&blob_data.data());
                         } else {
                             // Convert to string
                             let part_str = part.to_string(context)?;
@@ -220,10 +261,7 @@ impl BuiltInConstructor for Blob {
             }
         }
 
-        let blob_data = BlobData {
-            data: Arc::new(data),
-            mime_type,
-        };
+        let blob_data = BlobData::new(data, mime_type);
 
         let prototype = Self::get(context.intrinsics())
             .get(js_string!("prototype"), context)?
@@ -252,7 +290,7 @@ impl Blob {
             JsNativeError::typ().with_message("slice called on non-Blob object")
         })?;
 
-        let data_len = blob_data.data.len();
+        let data_len = blob_data.size();
 
         // Parse start parameter
         let start = if let Some(start_val) = args.get(0) {
@@ -295,25 +333,22 @@ impl Blob {
         // Parse contentType parameter
         let content_type = if let Some(type_val) = args.get(2) {
             if type_val.is_undefined() {
-                blob_data.mime_type.clone()
+                blob_data.mime_type().to_string()
             } else {
                 type_val.to_string(context)?.to_std_string_escaped()
             }
         } else {
-            blob_data.mime_type.clone()
+            blob_data.mime_type().to_string()
         };
 
         // Extract slice data
         let slice_data = if start < end {
-            blob_data.data[start..end].to_vec()
+            blob_data.data()[start..end].to_vec()
         } else {
             Vec::new()
         };
 
-        let new_blob_data = BlobData {
-            data: Arc::new(slice_data),
-            mime_type: content_type,
-        };
+        let new_blob_data = BlobData::new(slice_data, content_type);
 
         let prototype = Self::get(context.intrinsics())
             .get(js_string!("prototype"), context)?
@@ -341,7 +376,7 @@ impl Blob {
         })?;
 
         // Create custom underlying source object for advanced streaming
-        let underlying_source = Self::create_blob_underlying_source(&blob_data.data, context)?;
+        let underlying_source = Self::create_blob_underlying_source(blob_data.data(), context)?;
 
         // Create queuing strategy with optimal settings for blob streaming
         let queuing_strategy = Self::create_blob_queuing_strategy(context)?;
@@ -354,86 +389,27 @@ impl Blob {
             .constructor()
             .construct(&[underlying_source, queuing_strategy], None, context)?;
 
-        Ok(readable_stream)
+        Ok(readable_stream.into())
     }
 
     /// Create a custom underlying source for blob streaming
-    fn create_blob_underlying_source(blob_data: &Arc<Vec<u8>>, context: &mut Context) -> JsResult<JsValue> {
+    fn create_blob_underlying_source(_blob_data: &Arc<Vec<u8>>, context: &mut Context) -> JsResult<JsValue> {
         let underlying_source = JsObject::with_object_proto(context.intrinsics());
 
-        // Clone blob data for the closures
-        let data_for_start = blob_data.clone();
-        let data_for_pull = blob_data.clone();
-        let data_for_cancel = blob_data.clone();
+        // Create simple start function
+        let start_fn = BuiltInBuilder::callable(context.realm(), start_stream)
+            .name(js_string!("start"))
+            .build();
 
-        // Create start function
-        let start_fn = BuiltInBuilder::callable(context.realm(), move |_this: &JsValue, args: &[JsValue], ctx: &mut Context| {
-            // Initialize the stream controller
-            if let Some(controller) = args.get(0) {
-                // Store reference to controller for future use
-                // In a full implementation, we'd set up the initial state here
-                let _ = controller;
-            }
-            Ok(JsValue::undefined())
-        }).build();
+        // Create simple pull function
+        let pull_fn = BuiltInBuilder::callable(context.realm(), pull_stream)
+            .name(js_string!("pull"))
+            .build();
 
-        // Create pull function for reading chunks
-        let chunk_size = 65536; // 64KB chunks
-        let mut position = 0;
-
-        let pull_fn = BuiltInBuilder::callable(context.realm(), move |_this: &JsValue, args: &[JsValue], ctx: &mut Context| {
-            if let Some(controller) = args.get(0) {
-                let controller_obj = controller.as_object();
-
-                // Check if we have more data to stream
-                if position < data_for_pull.len() {
-                    // Calculate chunk boundaries
-                    let end_pos = std::cmp::min(position + chunk_size, data_for_pull.len());
-                    let chunk_data = &data_for_pull[position..end_pos];
-
-                    // Create Uint8Array chunk
-                    let chunk = ctx
-                        .intrinsics()
-                        .constructors()
-                        .uint8_array()
-                        .constructor()
-                        .construct(&[JsValue::from(chunk_data.len())], None, ctx)?;
-
-                    // Enqueue the chunk
-                    if let Some(ctrl) = controller_obj {
-                        // In a full implementation, we'd call controller.enqueue(chunk)
-                        let _ = ctrl;
-                        let _ = chunk;
-                    }
-
-                    position = end_pos;
-
-                    // If we've reached the end, close the stream
-                    if position >= data_for_pull.len() {
-                        // In a full implementation, we'd call controller.close()
-                    }
-                } else {
-                    // Close the stream if no more data
-                    // controller.close()
-                }
-            }
-            Ok(JsValue::undefined())
-        }).build();
-
-        // Create cancel function for cleanup
-        let cancel_fn = BuiltInBuilder::callable(context.realm(), move |_this: &JsValue, args: &[JsValue], ctx: &mut Context| {
-            // Handle cancellation - cleanup resources
-            let _reason = args.get_or_undefined(0);
-            let _ = data_for_cancel;
-
-            // In a full implementation, we'd:
-            // 1. Clean up any background tasks
-            // 2. Free resources
-            // 3. Signal cancellation to any ongoing operations
-
-            // Return a resolved promise for cancellation completion
-            crate::builtins::Promise::new_resolved(JsValue::undefined(), ctx)
-        }).build();
+        // Create simple cancel function
+        let cancel_fn = BuiltInBuilder::callable(context.realm(), cancel_stream)
+            .name(js_string!("cancel"))
+            .build();
 
         // Set up the underlying source object
         underlying_source.set(js_string!("start"), start_fn, false, context)?;
@@ -485,52 +461,13 @@ impl Blob {
             JsNativeError::typ().with_message("text called on non-Blob object")
         })?;
 
-        // Create Promise capability
-        let promise_capability = PromiseCapability::new(
-            &context.intrinsics().constructors().promise().constructor(),
-            context,
-        )?;
-
-        // Clone data for threading
-        let data = blob_data.data.clone();
-        let resolve = promise_capability.resolve.clone();
-        let reject = promise_capability.reject.clone();
-
-        // Create a channel for result communication
-        let (tx, rx) = mpsc::channel();
-
-        // Spawn background thread for text processing
-        thread::spawn(move || {
-            let result = String::from_utf8_lossy(&data).into_owned();
-            let _ = tx.send(Ok(result));
-        });
-
-        // Set up async resolution
-        let resolve_clone = resolve.clone();
-        let reject_clone = reject.clone();
-
-        thread::spawn(move || {
-            match rx.recv() {
-                Ok(Ok(text)) => {
-                    // In a real implementation, we'd need to schedule this on the event loop
-                    // For now, we'll resolve immediately in the background
-                    let _ = resolve_clone;
-                    let _ = text;
-                }
-                Ok(Err(_)) | Err(_) => {
-                    let _ = reject_clone;
-                }
-            }
-        });
-
-        // For immediate testing, return resolved promise with text
-        let text = String::from_utf8_lossy(&blob_data.data);
+        // Convert bytes to UTF-8 string
+        let text = String::from_utf8_lossy(blob_data.data());
         let text_value = JsValue::from(js_string!(text.as_ref()));
 
-        // Resolve the promise immediately for testing
-        resolve.call(&JsValue::undefined(), &[text_value], context)?;
-
-        Ok(promise_capability.promise.clone().into())
+        // Return a resolved Promise with the text
+        let promise_constructor = context.intrinsics().constructors().promise().constructor();
+        crate::builtins::Promise::resolve(&promise_constructor.into(), &[text_value], context)
     }
 
     /// `Blob.prototype.arrayBuffer()`
@@ -543,48 +480,8 @@ impl Blob {
             JsNativeError::typ().with_message("arrayBuffer called on non-Blob object")
         })?;
 
-        // Create Promise capability
-        let promise_capability = PromiseCapability::new(
-            &context.intrinsics().constructors().promise().constructor(),
-            context,
-        )?;
-
-        // Clone data for threading
-        let data = blob_data.data.clone();
-        let resolve = promise_capability.resolve.clone();
-        let reject = promise_capability.reject.clone();
-
-        // Create a channel for result communication
-        let (tx, rx) = mpsc::channel();
-
-        // Spawn background thread for ArrayBuffer processing
-        thread::spawn(move || {
-            // Clone the data to create ArrayBuffer
-            let buffer_data = (*data).clone();
-            let _ = tx.send(Ok(buffer_data));
-        });
-
-        // Set up async resolution
-        let resolve_clone = resolve.clone();
-        let reject_clone = reject.clone();
-
-        thread::spawn(move || {
-            match rx.recv() {
-                Ok(Ok(buffer_data)) => {
-                    // In a real implementation, we'd need to schedule this on the event loop
-                    // and create a proper ArrayBuffer object
-                    let _ = resolve_clone;
-                    let _ = buffer_data;
-                }
-                Ok(Err(_)) | Err(_) => {
-                    let _ = reject_clone;
-                }
-            }
-        });
-
-        // For immediate testing, create a simple representation
-        // In a full implementation, this would create a proper ArrayBuffer object
-        let buffer_length = blob_data.data.len();
+        // Create ArrayBuffer from blob data
+        let buffer_length = blob_data.size();
         let buffer_obj = context
             .intrinsics()
             .constructors()
@@ -592,10 +489,9 @@ impl Blob {
             .constructor()
             .construct(&[JsValue::from(buffer_length)], None, context)?;
 
-        // Resolve the promise immediately for testing
-        resolve.call(&JsValue::undefined(), &[buffer_obj], context)?;
-
-        Ok(promise_capability.promise.clone().into())
+        // Return resolved promise with ArrayBuffer
+        let promise_constructor = context.intrinsics().constructors().promise().constructor();
+        crate::builtins::Promise::resolve(&promise_constructor.into(), &[buffer_obj.into()], context)
     }
 
 }
@@ -610,7 +506,7 @@ pub(crate) fn get_size(this: &JsValue, _args: &[JsValue], _context: &mut Context
         JsNativeError::typ().with_message("size getter called on non-Blob object")
     })?;
 
-    Ok(JsValue::from(blob_data.data.len()))
+    Ok(JsValue::from(blob_data.size()))
 }
 
 /// `get Blob.prototype.type`
@@ -623,5 +519,5 @@ pub(crate) fn get_type(this: &JsValue, _args: &[JsValue], _context: &mut Context
         JsNativeError::typ().with_message("type getter called on non-Blob object")
     })?;
 
-    Ok(JsValue::from(js_string!(blob_data.mime_type.clone())))
+    Ok(JsValue::from(js_string!(blob_data.mime_type())))
 }

@@ -102,12 +102,15 @@ impl WritableStream {
         let _reason = args.get_or_undefined(0);
 
         // Update stream state to errored
-        if let Some(data) = this_obj.downcast_mut::<WritableStreamData>() {
+        if let Some(mut data) = this_obj.downcast_mut::<WritableStreamData>() {
             data.state = StreamState::Errored;
         }
 
         // Return a resolved Promise with undefined
-        Promise::new_resolved(JsValue::undefined(), context)
+        {
+            let promise_constructor = context.intrinsics().constructors().promise().constructor();
+            Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+        }
     }
 
     /// `WritableStream.prototype.close()`
@@ -135,12 +138,15 @@ impl WritableStream {
         }
 
         // Update stream state to closing
-        if let Some(data) = this_obj.downcast_mut::<WritableStreamData>() {
+        if let Some(mut data) = this_obj.downcast_mut::<WritableStreamData>() {
             data.state = StreamState::Closing;
         }
 
         // Return a resolved Promise with undefined
-        Promise::new_resolved(JsValue::undefined(), context)
+        {
+            let promise_constructor = context.intrinsics().constructors().promise().constructor();
+            Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+        }
     }
 
     /// `WritableStream.prototype.getWriter()`
@@ -180,9 +186,9 @@ impl WritableStreamDefaultWriter {
     fn create(stream: JsObject, context: &mut Context) -> JsResult<JsValue> {
         let proto = context
             .intrinsics()
-            .objects()
-            .object_prototype()
-            .clone();
+            .constructors()
+            .object()
+            .prototype();
 
         let writer = JsObject::from_proto_and_data_with_shared_shape(
             context.root_shape(),
@@ -221,9 +227,10 @@ impl WritableStreamDefaultWriter {
             .build();
         writer.define_property_or_throw(
             js_string!("closed"),
-            Attribute::CONFIGURABLE | Attribute::ENUMERABLE,
-            Some(closed_getter),
-            None,
+            crate::property::PropertyDescriptorBuilder::new()
+                .get(closed_getter)
+                .configurable(true)
+                .enumerable(true),
             context,
         )?;
 
@@ -232,9 +239,10 @@ impl WritableStreamDefaultWriter {
             .build();
         writer.define_property_or_throw(
             js_string!("ready"),
-            Attribute::CONFIGURABLE | Attribute::ENUMERABLE,
-            Some(ready_getter),
-            None,
+            crate::property::PropertyDescriptorBuilder::new()
+                .get(ready_getter)
+                .configurable(true)
+                .enumerable(true),
             context,
         )?;
 
@@ -243,9 +251,10 @@ impl WritableStreamDefaultWriter {
             .build();
         writer.define_property_or_throw(
             js_string!("desiredSize"),
-            Attribute::CONFIGURABLE | Attribute::ENUMERABLE,
-            Some(desired_size_getter),
-            None,
+            crate::property::PropertyDescriptorBuilder::new()
+                .get(desired_size_getter)
+                .configurable(true)
+                .enumerable(true),
             context,
         )?;
 
@@ -265,12 +274,15 @@ impl WritableStreamDefaultWriter {
         let reason = args.get_or_undefined(0);
 
         if let Some(writer_data) = this_obj.downcast_ref::<WritableStreamDefaultWriterData>() {
-            if let Some(stream_data) = writer_data.stream.downcast_mut::<WritableStreamData>() {
+            if let Some(mut stream_data) = writer_data.stream.downcast_mut::<WritableStreamData>() {
                 stream_data.state = StreamState::Errored;
             }
         }
 
-        Promise::new_resolved(JsValue::undefined(), context)
+        {
+            let promise_constructor = context.intrinsics().constructors().promise().constructor();
+            Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+        }
     }
 
     /// `WritableStreamDefaultWriter.prototype.close()`
@@ -284,7 +296,7 @@ impl WritableStreamDefaultWriter {
         })?;
 
         if let Some(writer_data) = this_obj.downcast_ref::<WritableStreamDefaultWriterData>() {
-            if let Some(stream_data) = writer_data.stream.downcast_mut::<WritableStreamData>() {
+            if let Some(mut stream_data) = writer_data.stream.downcast_mut::<WritableStreamData>() {
                 if stream_data.state != StreamState::Writable {
                     return Err(JsNativeError::typ()
                         .with_message("Stream is not in writable state")
@@ -298,7 +310,10 @@ impl WritableStreamDefaultWriter {
             }
         }
 
-        Promise::new_resolved(JsValue::undefined(), context)
+        {
+            let promise_constructor = context.intrinsics().constructors().promise().constructor();
+            Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+        }
     }
 
     /// `WritableStreamDefaultWriter.prototype.write(chunk)`
@@ -314,7 +329,7 @@ impl WritableStreamDefaultWriter {
         let chunk = args.get_or_undefined(0);
 
         if let Some(writer_data) = this_obj.downcast_ref::<WritableStreamDefaultWriterData>() {
-            if let Some(stream_data) = writer_data.stream.downcast_mut::<WritableStreamData>() {
+            if let Some(mut stream_data) = writer_data.stream.downcast_mut::<WritableStreamData>() {
                 if stream_data.state != StreamState::Writable {
                     return Err(JsNativeError::typ()
                         .with_message("Stream is not in writable state")
@@ -329,7 +344,10 @@ impl WritableStreamDefaultWriter {
             }
         }
 
-        Promise::new_resolved(JsValue::undefined(), context)
+        {
+            let promise_constructor = context.intrinsics().constructors().promise().constructor();
+            Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+        }
     }
 
     /// `WritableStreamDefaultWriter.prototype.releaseLock()`
@@ -364,18 +382,33 @@ impl WritableStreamDefaultWriter {
         if let Some(writer_data) = this_obj.downcast_ref::<WritableStreamDefaultWriterData>() {
             if let Some(stream_data) = writer_data.stream.downcast_ref::<WritableStreamData>() {
                 match stream_data.state {
-                    StreamState::Closed => Promise::new_resolved(JsValue::undefined(), context),
-                    StreamState::Errored => Promise::new_rejected(JsValue::undefined(), context),
+                    StreamState::Closed => {
+            let promise_constructor = context.intrinsics().constructors().promise().constructor();
+            Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+        },
+                    StreamState::Errored => {
+                    let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                    Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+                },
                     _ => {
                         // Return a pending promise
-                        Promise::new_pending(context)
+                        {
+                        let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                        Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+                    }
                     }
                 }
             } else {
-                Promise::new_rejected(JsValue::undefined(), context)
+                {
+                    let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                    Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+                }
             }
         } else {
-            Promise::new_rejected(JsValue::undefined(), context)
+            {
+                    let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                    Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+                }
         }
     }
 
@@ -392,15 +425,30 @@ impl WritableStreamDefaultWriter {
         if let Some(writer_data) = this_obj.downcast_ref::<WritableStreamDefaultWriterData>() {
             if let Some(stream_data) = writer_data.stream.downcast_ref::<WritableStreamData>() {
                 match stream_data.state {
-                    StreamState::Writable => Promise::new_resolved(JsValue::undefined(), context),
-                    StreamState::Errored => Promise::new_rejected(JsValue::undefined(), context),
-                    _ => Promise::new_pending(context)
+                    StreamState::Writable => {
+            let promise_constructor = context.intrinsics().constructors().promise().constructor();
+            Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+        },
+                    StreamState::Errored => {
+                    let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                    Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+                },
+                    _ => {
+                        let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                        Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+                    }
                 }
             } else {
-                Promise::new_rejected(JsValue::undefined(), context)
+                {
+                    let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                    Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+                }
             }
         } else {
-            Promise::new_rejected(JsValue::undefined(), context)
+            {
+                    let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                    Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+                }
         }
     }
 

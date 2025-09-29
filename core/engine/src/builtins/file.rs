@@ -187,9 +187,9 @@ impl BuiltInConstructor for File {
                     } else if let Some(part_obj) = part.as_object() {
                         // Check if it's a Blob or File
                         if let Some(blob_data) = part_obj.downcast_ref::<BlobData>() {
-                            data.extend_from_slice(&blob_data.data);
+                            data.extend_from_slice(blob_data.data());
                         } else if let Some(file_data) = part_obj.downcast_ref::<FileData>() {
-                            data.extend_from_slice(&file_data.blob_data.data);
+                            data.extend_from_slice(file_data.blob_data.data());
                         } else {
                             // Convert to string
                             let part_str = part.to_string(context)?;
@@ -239,10 +239,7 @@ impl BuiltInConstructor for File {
         }
 
         // Create blob data
-        let blob_data = BlobData {
-            data: Arc::new(data),
-            mime_type,
-        };
+        let blob_data = BlobData::new(data, mime_type);
 
         // Create file data
         let file_data = FileData::new(blob_data, file_name, last_modified);
@@ -277,7 +274,7 @@ impl File {
 
         // Use blob slice logic from the blob module
         // For now, implement simplified version
-        let data_len = file_data.blob_data.data.len();
+        let data_len = file_data.blob_data.size();
 
         // Parse start parameter
         let start = if let Some(start_val) = args.get(0) {
@@ -320,25 +317,22 @@ impl File {
         // Parse contentType parameter
         let content_type = if let Some(type_val) = args.get(2) {
             if type_val.is_undefined() {
-                file_data.blob_data.mime_type.clone()
+                file_data.blob_data.mime_type().to_string()
             } else {
                 type_val.to_string(context)?.to_std_string_escaped()
             }
         } else {
-            file_data.blob_data.mime_type.clone()
+            file_data.blob_data.mime_type().to_string()
         };
 
         // Extract slice data
         let slice_data = if start < end {
-            file_data.blob_data.data[start..end].to_vec()
+            file_data.blob_data.data()[start..end].to_vec()
         } else {
             Vec::new()
         };
 
-        let new_blob_data = BlobData {
-            data: Arc::new(slice_data),
-            mime_type: content_type,
-        };
+        let new_blob_data = BlobData::new(slice_data, content_type);
 
         // Return a new File object with the same name and lastModified
         let new_file_data = FileData::new(
@@ -380,7 +374,7 @@ impl File {
         })?;
 
         // Convert bytes to UTF-8 string
-        let text = String::from_utf8_lossy(&file_data.blob_data.data);
+        let text = String::from_utf8_lossy(file_data.blob_data.data());
 
         // TODO: Return a Promise that resolves to the text
         // For now, return the text directly
@@ -452,7 +446,7 @@ pub(crate) fn get_size(this: &JsValue, _args: &[JsValue], _context: &mut Context
         JsNativeError::typ().with_message("size getter called on non-File object")
     })?;
 
-    Ok(JsValue::from(file_data.blob_data.data.len()))
+    Ok(JsValue::from(file_data.blob_data.size()))
 }
 
 /// `get File.prototype.type` - inherits from Blob
@@ -465,5 +459,5 @@ pub(crate) fn get_type(this: &JsValue, _args: &[JsValue], _context: &mut Context
         JsNativeError::typ().with_message("type getter called on non-File object")
     })?;
 
-    Ok(JsValue::from(js_string!(file_data.blob_data.mime_type.clone())))
+    Ok(JsValue::from(js_string!(file_data.blob_data.mime_type())))
 }
