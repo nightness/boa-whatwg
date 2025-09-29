@@ -598,6 +598,51 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
             context,
         )?;
 
+        // Add File System API global functions
+        use crate::builtins::file_system::{show_open_file_picker, show_save_file_picker, show_directory_picker};
+
+        let show_open_file_picker_fn = BuiltInBuilder::callable(context.realm(), show_open_file_picker)
+            .name(js_string!("showOpenFilePicker"))
+            .length(0)
+            .build();
+        global_object.define_property_or_throw(
+            js_string!("showOpenFilePicker"),
+            PropertyDescriptor::builder()
+                .value(show_open_file_picker_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+            context,
+        )?;
+
+        let show_save_file_picker_fn = BuiltInBuilder::callable(context.realm(), show_save_file_picker)
+            .name(js_string!("showSaveFilePicker"))
+            .length(0)
+            .build();
+        global_object.define_property_or_throw(
+            js_string!("showSaveFilePicker"),
+            PropertyDescriptor::builder()
+                .value(show_save_file_picker_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+            context,
+        )?;
+
+        let show_directory_picker_fn = BuiltInBuilder::callable(context.realm(), show_directory_picker)
+            .name(js_string!("showDirectoryPicker"))
+            .length(0)
+            .build();
+        global_object.define_property_or_throw(
+            js_string!("showDirectoryPicker"),
+            PropertyDescriptor::builder()
+                .value(show_directory_picker_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+            context,
+        )?;
+
         // Also expose navigator as global for convenience
         if let Ok(navigator) = window_object.get(js_string!("navigator"), context) {
             global_object.define_property_or_throw(

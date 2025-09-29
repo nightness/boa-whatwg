@@ -13,13 +13,13 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use serde::{Deserialize, Serialize};
 
-use boa_gc::{Finalize, Trace};
+use boa_gc::{Finalize, Trace, Tracer};
 use crate::{
     Context, JsArgs, JsData, JsNativeError, JsObject, JsResult, JsString, JsValue,
     builtins::{BuiltInBuilder, BuiltInConstructor, BuiltInObject, IntrinsicObject},
     context::intrinsics::Intrinsics,
     js_string,
-    object::{CONSTRUCTOR, PROTOTYPE},
+    object::{CONSTRUCTOR, PROTOTYPE, JsPromise},
     property::{Attribute, PropertyDescriptor, PropertyDescriptorBuilder},
     string::StaticJsStrings,
     value::TryFromJs,
@@ -61,7 +61,6 @@ impl IntrinsicObject for FileSystemHandle {
         let _prototype = BuiltInBuilder::callable(realm, Self::constructor)
             .name(Self::NAME)
             .length(Self::LENGTH)
-            .constructor_has_prototype(false)
             .build();
     }
 
@@ -74,7 +73,7 @@ impl BuiltInConstructor for FileSystemHandle {
     const LENGTH: usize = 0;
     const P: usize = 0;
     const SP: usize = 0;
-    const STANDARD_CONSTRUCTOR: fn(&crate::context::intrinsics::StandardConstructors) -> &crate::builtins::BuiltInConstructor =
+    const STANDARD_CONSTRUCTOR: fn(&crate::context::intrinsics::StandardConstructors) -> &crate::context::intrinsics::StandardConstructor =
         crate::context::intrinsics::StandardConstructors::file_system_handle;
 
     fn constructor(
@@ -97,18 +96,22 @@ impl FileSystemHandle {
         args: &[JsValue],
         _context: &mut Context,
     ) -> JsResult<JsValue> {
-        let this_handle = this
+        let obj = this
             .as_object()
-            .and_then(|obj| obj.downcast_ref::<Self>())
+            .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a FileSystemHandle"))?;
+
+        let this_handle = obj.downcast_ref::<Self>()
             .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a FileSystemHandle"))?;
 
         let other = args.get_or_undefined(0);
-        let other_handle = other
+        let other_obj = other
             .as_object()
-            .and_then(|obj| obj.downcast_ref::<Self>())
             .ok_or_else(|| JsNativeError::typ().with_message("Argument is not a FileSystemHandle"))?;
 
-        Ok(JsValue::Boolean(this_handle.path == other_handle.path))
+        let other_handle = other_obj.downcast_ref::<Self>()
+            .ok_or_else(|| JsNativeError::typ().with_message("Argument is not a FileSystemHandle"))?;
+
+        Ok(JsValue::from(this_handle.path == other_handle.path))
     }
 
     /// `FileSystemHandle.prototype.queryPermission(descriptor)`
@@ -162,7 +165,6 @@ impl IntrinsicObject for FileSystemFileHandle {
         let _prototype = BuiltInBuilder::callable(realm, Self::constructor)
             .name(Self::NAME)
             .length(Self::LENGTH)
-            .constructor_has_prototype(false)
             .build();
     }
 
@@ -175,7 +177,7 @@ impl BuiltInConstructor for FileSystemFileHandle {
     const LENGTH: usize = 0;
     const P: usize = 0;
     const SP: usize = 0;
-    const STANDARD_CONSTRUCTOR: fn(&crate::context::intrinsics::StandardConstructors) -> &crate::builtins::BuiltInConstructor =
+    const STANDARD_CONSTRUCTOR: fn(&crate::context::intrinsics::StandardConstructors) -> &crate::context::intrinsics::StandardConstructor =
         crate::context::intrinsics::StandardConstructors::file_system_file_handle;
 
     fn constructor(
@@ -198,9 +200,11 @@ impl FileSystemFileHandle {
         _args: &[JsValue],
         context: &mut Context,
     ) -> JsResult<JsValue> {
-        let file_handle = this
+        let obj = this
             .as_object()
-            .and_then(|obj| obj.downcast_ref::<Self>())
+            .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a FileSystemFileHandle"))?;
+
+        let file_handle = obj.downcast_ref::<Self>()
             .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a FileSystemFileHandle"))?;
 
         // Create a simple file-like object
@@ -234,10 +238,10 @@ impl FileSystemFileHandle {
             context,
         )?;
 
-        // Create a resolved Promise using Promise.resolve()
-        let promise_constructor = context.intrinsics().constructors().promise();
-        let resolve_fn = promise_constructor.get(js_string!("resolve"), context)?;
-        resolve_fn.call(&JsValue::undefined(), &[file_obj.into()], context)
+        // Create a resolved Promise
+        let (promise, resolvers) = JsPromise::new_pending(context);
+        resolvers.resolve.call(&JsValue::undefined(), &[file_obj.into()], context)?;
+        Ok(JsValue::from(promise))
     }
 
     /// `FileSystemFileHandle.prototype.createWritable(options)`
@@ -248,9 +252,11 @@ impl FileSystemFileHandle {
         _args: &[JsValue],
         context: &mut Context,
     ) -> JsResult<JsValue> {
-        let _file_handle = this
+        let obj = this
             .as_object()
-            .and_then(|obj| obj.downcast_ref::<Self>())
+            .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a FileSystemFileHandle"))?;
+
+        let _file_handle = obj.downcast_ref::<Self>()
             .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a FileSystemFileHandle"))?;
 
         // Create a simple writable stream-like object
@@ -273,19 +279,40 @@ impl FileSystemFileHandle {
             context,
         )?;
 
-        // Create a resolved Promise using Promise.resolve()
-        let promise_constructor = context.intrinsics().constructors().promise();
-        let resolve_fn = promise_constructor.get(js_string!("resolve"), context)?;
-        resolve_fn.call(&JsValue::undefined(), &[writable_obj.into()], context)
+        // Create a resolved Promise
+        let (promise, resolvers) = JsPromise::new_pending(context);
+        resolvers.resolve.call(&JsValue::undefined(), &[writable_obj.into()], context)?;
+        Ok(JsValue::from(promise))
     }
 }
 
 /// File System Directory Handle
-#[derive(Debug, Trace, Finalize, JsData)]
+#[derive(Debug, JsData)]
 pub struct FileSystemDirectoryHandle {
     pub(crate) handle: FileSystemHandle,
+    #[allow(dead_code)]
     pub(crate) entries: Arc<RwLock<HashMap<String, FileData>>>,
 }
+
+// Manual implementation of Trace and Finalize
+unsafe impl Trace for FileSystemDirectoryHandle {
+    unsafe fn trace(&self, tracer: &mut Tracer) {
+        unsafe {
+            self.handle.trace(tracer);
+            // Skip tracing entries as Arc<RwLock<...>> doesn't implement Trace
+        }
+    }
+
+    unsafe fn trace_non_roots(&self) {
+        // No implementation needed
+    }
+
+    fn run_finalizer(&self) {
+        // No implementation needed
+    }
+}
+
+impl Finalize for FileSystemDirectoryHandle {}
 
 impl FileSystemDirectoryHandle {
     /// Create a new directory handle
@@ -306,7 +333,6 @@ impl IntrinsicObject for FileSystemDirectoryHandle {
         let _prototype = BuiltInBuilder::callable(realm, Self::constructor)
             .name(Self::NAME)
             .length(Self::LENGTH)
-            .constructor_has_prototype(false)
             .build();
     }
 
@@ -319,7 +345,7 @@ impl BuiltInConstructor for FileSystemDirectoryHandle {
     const LENGTH: usize = 0;
     const P: usize = 0;
     const SP: usize = 0;
-    const STANDARD_CONSTRUCTOR: fn(&crate::context::intrinsics::StandardConstructors) -> &crate::builtins::BuiltInConstructor =
+    const STANDARD_CONSTRUCTOR: fn(&crate::context::intrinsics::StandardConstructors) -> &crate::context::intrinsics::StandardConstructor =
         crate::context::intrinsics::StandardConstructors::file_system_directory_handle;
 
     fn constructor(
@@ -342,9 +368,11 @@ impl FileSystemDirectoryHandle {
         args: &[JsValue],
         context: &mut Context,
     ) -> JsResult<JsValue> {
-        let dir_handle = this
+        let obj = this
             .as_object()
-            .and_then(|obj| obj.downcast_ref::<Self>())
+            .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a FileSystemDirectoryHandle"))?;
+
+        let dir_handle = obj.downcast_ref::<Self>()
             .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a FileSystemDirectoryHandle"))?;
 
         let name = args.get_or_undefined(0).to_string(context)?.to_std_string_escaped();
@@ -357,10 +385,10 @@ impl FileSystemDirectoryHandle {
             file_handle,
         );
 
-        // Create a resolved Promise using Promise.resolve()
-        let promise_constructor = context.intrinsics().constructors().promise();
-        let resolve_fn = promise_constructor.get(js_string!("resolve"), context)?;
-        resolve_fn.call(&JsValue::undefined(), &[file_handle_obj.into()], context)
+        // Create a resolved Promise
+        let (promise, resolvers) = JsPromise::new_pending(context);
+        resolvers.resolve.call(&JsValue::undefined(), &[file_handle_obj.into()], context)?;
+        Ok(JsValue::from(promise))
     }
 
     /// `FileSystemDirectoryHandle.prototype.getDirectoryHandle(name, options)`
@@ -371,9 +399,11 @@ impl FileSystemDirectoryHandle {
         args: &[JsValue],
         context: &mut Context,
     ) -> JsResult<JsValue> {
-        let dir_handle = this
+        let obj = this
             .as_object()
-            .and_then(|obj| obj.downcast_ref::<Self>())
+            .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a FileSystemDirectoryHandle"))?;
+
+        let dir_handle = obj.downcast_ref::<Self>()
             .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a FileSystemDirectoryHandle"))?;
 
         let name = args.get_or_undefined(0).to_string(context)?.to_std_string_escaped();
@@ -386,10 +416,10 @@ impl FileSystemDirectoryHandle {
             subdir_handle,
         );
 
-        // Create a resolved Promise using Promise.resolve()
-        let promise_constructor = context.intrinsics().constructors().promise();
-        let resolve_fn = promise_constructor.get(js_string!("resolve"), context)?;
-        resolve_fn.call(&JsValue::undefined(), &[subdir_handle_obj.into()], context)
+        // Create a resolved Promise
+        let (promise, resolvers) = JsPromise::new_pending(context);
+        resolvers.resolve.call(&JsValue::undefined(), &[subdir_handle_obj.into()], context)?;
+        Ok(JsValue::from(promise))
     }
 
     /// `FileSystemDirectoryHandle.prototype.removeEntry(name, options)`
@@ -400,9 +430,11 @@ impl FileSystemDirectoryHandle {
         args: &[JsValue],
         context: &mut Context,
     ) -> JsResult<JsValue> {
-        let dir_handle = this
+        let obj = this
             .as_object()
-            .and_then(|obj| obj.downcast_ref::<Self>())
+            .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a FileSystemDirectoryHandle"))?;
+
+        let dir_handle = obj.downcast_ref::<Self>()
             .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a FileSystemDirectoryHandle"))?;
 
         let name = args.get_or_undefined(0).to_string(context)?.to_std_string_escaped();
@@ -413,10 +445,10 @@ impl FileSystemDirectoryHandle {
             entries.remove(&name);
         }
 
-        // Create a resolved Promise using Promise.resolve()
-        let promise_constructor = context.intrinsics().constructors().promise();
-        let resolve_fn = promise_constructor.get(js_string!("resolve"), context)?;
-        resolve_fn.call(&JsValue::undefined(), &[JsValue::undefined()], context)
+        // Create a resolved Promise
+        let (promise, resolvers) = JsPromise::new_pending(context);
+        resolvers.resolve.call(&JsValue::undefined(), &[JsValue::undefined()], context)?;
+        Ok(JsValue::from(promise))
     }
 
     /// `FileSystemDirectoryHandle.prototype.resolve(possibleDescendant)`
@@ -427,17 +459,19 @@ impl FileSystemDirectoryHandle {
         args: &[JsValue],
         context: &mut Context,
     ) -> JsResult<JsValue> {
-        let _dir_handle = this
+        let obj = this
             .as_object()
-            .and_then(|obj| obj.downcast_ref::<Self>())
+            .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a FileSystemDirectoryHandle"))?;
+
+        let _dir_handle = obj.downcast_ref::<Self>()
             .ok_or_else(|| JsNativeError::typ().with_message("'this' is not a FileSystemDirectoryHandle"))?;
 
         let _other = args.get_or_undefined(0);
 
         // For now, return null (not a descendant)
-        let promise_constructor = context.intrinsics().constructors().promise();
-        let resolve_fn = promise_constructor.get(js_string!("resolve"), context)?;
-        resolve_fn.call(&JsValue::undefined(), &[JsValue::null()], context)
+        let (promise, resolvers) = JsPromise::new_pending(context);
+        resolvers.resolve.call(&JsValue::undefined(), &[JsValue::null()], context)?;
+        Ok(JsValue::from(promise))
     }
 }
 
@@ -457,13 +491,13 @@ pub(crate) fn show_open_file_picker(
     );
 
     // Return array with single file handle
-    let array = crate::builtins::Array::array_create(1, context)?;
-    array.set(0, file_handle_obj.into(), true, context)?;
+    let array = crate::builtins::Array::array_create(1, None, context)?;
+    array.set(0, file_handle_obj, true, context)?;
 
-    // Create a resolved Promise using Promise.resolve()
-    let promise_constructor = context.intrinsics().constructors().promise();
-    let resolve_fn = promise_constructor.get(js_string!("resolve"), context)?;
-    resolve_fn.call(&JsValue::undefined(), &[array.into()], context)
+    // Create a resolved Promise
+    let (promise, resolvers) = JsPromise::new_pending(context);
+    resolvers.resolve.call(&JsValue::undefined(), &[array.into()], context)?;
+    Ok(JsValue::from(promise))
 }
 
 /// The global `window.showSaveFilePicker()` function
@@ -481,10 +515,10 @@ pub(crate) fn show_save_file_picker(
         file_handle,
     );
 
-    // Create a resolved Promise using Promise.resolve()
-    let promise_constructor = context.intrinsics().constructors().promise();
-    let resolve_fn = promise_constructor.get(js_string!("resolve"), context)?;
-    resolve_fn.call(&JsValue::undefined(), &[file_handle_obj.into()], context)
+    // Create a resolved Promise
+    let (promise, resolvers) = JsPromise::new_pending(context);
+    resolvers.resolve.call(&JsValue::undefined(), &[file_handle_obj.into()], context)?;
+    Ok(JsValue::from(promise))
 }
 
 /// The global `window.showDirectoryPicker()` function
@@ -502,8 +536,8 @@ pub(crate) fn show_directory_picker(
         dir_handle,
     );
 
-    // Create a resolved Promise using Promise.resolve()
-    let promise_constructor = context.intrinsics().constructors().promise();
-    let resolve_fn = promise_constructor.get(js_string!("resolve"), context)?;
-    resolve_fn.call(&JsValue::undefined(), &[dir_handle_obj.into()], context)
+    // Create a resolved Promise
+    let (promise, resolvers) = JsPromise::new_pending(context);
+    resolvers.resolve.call(&JsValue::undefined(), &[dir_handle_obj.into()], context)?;
+    Ok(JsValue::from(promise))
 }
