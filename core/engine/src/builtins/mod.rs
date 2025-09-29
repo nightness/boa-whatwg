@@ -668,6 +668,21 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
                 context,
             )?;
         }
+
+        // Add IDBKeyRange global constructor
+        {
+            use crate::builtins::indexed_db::IdbKeyRange;
+            let key_range_constructor = IdbKeyRange::create_constructor(context);
+            global_object.define_property_or_throw(
+                js_string!("IDBKeyRange"),
+                PropertyDescriptor::builder()
+                    .value(key_range_constructor)
+                    .writable(false)
+                    .enumerable(false)
+                    .configurable(true),
+                context,
+            )?;
+        }
     }
     let restricted = PropertyDescriptor::builder()
         .writable(false)

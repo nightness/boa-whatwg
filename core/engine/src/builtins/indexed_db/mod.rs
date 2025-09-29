@@ -25,8 +25,14 @@ use crate::{
 use crate::builtins::{BuiltInConstructor, BuiltInObject, IntrinsicObject};
 use crate::context::intrinsics::StandardConstructor;
 
+mod key_range;
+mod index;
+
 #[cfg(test)]
 mod tests;
+
+pub use key_range::IdbKeyRange;
+pub use index::IdbIndex;
 
 /// IndexedDB factory object that provides the main entry point
 #[derive(Debug, Clone, Finalize)]
@@ -1141,15 +1147,61 @@ impl IdbFactory {
 
     /// `objectStore.get(key)`
     fn store_get(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
-        // Basic implementation - validates key argument and returns undefined for missing data
-        let _key = args.get_or_undefined(0);
+        let key = args.get_or_undefined(0);
 
-        // For now, return undefined to indicate no data found (this would be enhanced with real data lookup)
-        Ok(JsValue::from(Self::create_success_request(JsValue::undefined(), context)))
+        // Mock data for get operation
+        let mock_data = vec![
+            (JsValue::from(1), JsValue::from(JsString::from("value1"))),
+            (JsValue::from(2), JsValue::from(JsString::from("value2"))),
+            (JsValue::from(3), JsValue::from(JsString::from("value3"))),
+            (JsValue::from(4), JsValue::from(JsString::from("value4"))),
+            (JsValue::from(5), JsValue::from(JsString::from("value5"))),
+        ];
+
+        // Find matching value based on key or key range
+        let result = if key.is_undefined() || key.is_null() {
+            JsValue::undefined()
+        } else if let Some(range_obj) = key.as_object() {
+            if let Some(range_data) = range_obj.downcast_ref::<IdbKeyRange>() {
+                // Key range - return first matching value
+                mock_data.iter()
+                    .find(|(k, _)| IdbKeyRange::key_in_range(k, &range_data, context).unwrap_or(false))
+                    .map(|(_, v)| v.clone())
+                    .unwrap_or(JsValue::undefined())
+            } else {
+                JsValue::undefined()
+            }
+        } else {
+            // Single key - find exact match
+            mock_data.iter()
+                .find(|(k, _)| IdbKeyRange::compare_keys(k, &key, context).unwrap_or(1) == 0)
+                .map(|(_, v)| v.clone())
+                .unwrap_or(JsValue::undefined())
+        };
+
+        Ok(JsValue::from(Self::create_success_request(result, context)))
     }
 
     /// `objectStore.delete(key)`
-    fn store_delete(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    fn store_delete(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        let key = args.get_or_undefined(0);
+
+        // Validate key or key range
+        if key.is_undefined() || key.is_null() {
+            return Err(JsNativeError::error()
+                .with_message("Failed to execute 'delete' on 'IDBObjectStore': The parameter is not a valid key.")
+                .into());
+        }
+
+        // Check if it's a valid key range or single key
+        let _is_valid = if let Some(range_obj) = key.as_object() {
+            range_obj.downcast_ref::<IdbKeyRange>().is_some()
+        } else {
+            IdbKeyRange::is_valid_key(&key)
+        };
+
+        // In a real implementation, this would delete records matching the key/range
+        // For now, just return success
         Ok(JsValue::from(Self::create_success_request(JsValue::undefined(), context)))
     }
 
@@ -1282,7 +1334,7 @@ impl IdbFactory {
 
     /// `objectStore.openCursor(range, direction)`
     fn store_open_cursor(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
-        let _range = args.get_or_undefined(0);
+        let range = args.get_or_undefined(0);
         let direction = args.get_or_undefined(1);
 
         let direction_str = if direction.is_undefined() {
@@ -1292,11 +1344,24 @@ impl IdbFactory {
         };
 
         // Mock data for cursor iteration
-        let mock_data = vec![
+        let mut mock_data = vec![
             (JsValue::from(1), JsValue::from(JsString::from("value1"))),
             (JsValue::from(2), JsValue::from(JsString::from("value2"))),
             (JsValue::from(3), JsValue::from(JsString::from("value3"))),
+            (JsValue::from(4), JsValue::from(JsString::from("value4"))),
+            (JsValue::from(5), JsValue::from(JsString::from("value5"))),
         ];
+
+        // Filter data based on key range if provided
+        if !range.is_undefined() && !range.is_null() {
+            if let Some(range_obj) = range.as_object() {
+                if let Some(range_data) = range_obj.downcast_ref::<IdbKeyRange>() {
+                    mock_data.retain(|(key, _)| {
+                        IdbKeyRange::key_in_range(key, &range_data, context).unwrap_or(false)
+                    });
+                }
+            }
+        }
 
         let cursor = IdbCursorWithValue::new("objectStore".to_string(), direction_str, mock_data.clone());
         let cursor_obj = JsObject::from_proto_and_data(
@@ -1334,7 +1399,7 @@ impl IdbFactory {
 
     /// `objectStore.openKeyCursor(range, direction)`
     fn store_open_key_cursor(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
-        let _range = args.get_or_undefined(0);
+        let range = args.get_or_undefined(0);
         let direction = args.get_or_undefined(1);
 
         let direction_str = if direction.is_undefined() {
@@ -1344,11 +1409,24 @@ impl IdbFactory {
         };
 
         // Mock data for key cursor iteration (only keys, no values)
-        let mock_data = vec![
+        let mut mock_data = vec![
             (JsValue::from(1), JsValue::undefined()),
             (JsValue::from(2), JsValue::undefined()),
             (JsValue::from(3), JsValue::undefined()),
+            (JsValue::from(4), JsValue::undefined()),
+            (JsValue::from(5), JsValue::undefined()),
         ];
+
+        // Filter data based on key range if provided
+        if !range.is_undefined() && !range.is_null() {
+            if let Some(range_obj) = range.as_object() {
+                if let Some(range_data) = range_obj.downcast_ref::<IdbKeyRange>() {
+                    mock_data.retain(|(key, _)| {
+                        IdbKeyRange::key_in_range(key, &range_data, context).unwrap_or(false)
+                    });
+                }
+            }
+        }
 
         let cursor = IdbCursor::new("objectStore".to_string(), direction_str, mock_data);
         let cursor_obj = JsObject::from_proto_and_data(
@@ -1380,7 +1458,7 @@ impl IdbFactory {
 
     /// `objectStore.getAll(query, count)`
     fn store_get_all(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
-        let _query = args.get_or_undefined(0);
+        let query = args.get_or_undefined(0);
         let count = args.get_or_undefined(1);
 
         let limit = if count.is_undefined() {
@@ -1389,13 +1467,34 @@ impl IdbFactory {
             Some(count.to_u32(context)? as usize)
         };
 
-        // Mock data for getAll operation
-        let mut mock_values = vec![
-            JsValue::from(JsString::from("value1")),
-            JsValue::from(JsString::from("value2")),
-            JsValue::from(JsString::from("value3")),
+        // Mock data for getAll operation (key-value pairs)
+        let mut mock_data = vec![
+            (JsValue::from(1), JsValue::from(JsString::from("value1"))),
+            (JsValue::from(2), JsValue::from(JsString::from("value2"))),
+            (JsValue::from(3), JsValue::from(JsString::from("value3"))),
+            (JsValue::from(4), JsValue::from(JsString::from("value4"))),
+            (JsValue::from(5), JsValue::from(JsString::from("value5"))),
         ];
 
+        // Filter data based on query (key range) if provided
+        if !query.is_undefined() && !query.is_null() {
+            if let Some(range_obj) = query.as_object() {
+                if let Some(range_data) = range_obj.downcast_ref::<IdbKeyRange>() {
+                    mock_data.retain(|(key, _)| {
+                        IdbKeyRange::key_in_range(key, &range_data, context).unwrap_or(false)
+                    });
+                }
+            } else {
+                // Single key query
+                let target_key = query.clone();
+                mock_data.retain(|(key, _)| {
+                    IdbKeyRange::compare_keys(key, &target_key, context).unwrap_or(1) == 0
+                });
+            }
+        }
+
+        // Extract values and apply limit
+        let mut mock_values: Vec<JsValue> = mock_data.into_iter().map(|(_, value)| value).collect();
         if let Some(limit_val) = limit {
             mock_values.truncate(limit_val);
         }
@@ -1411,7 +1510,7 @@ impl IdbFactory {
 
     /// `objectStore.getAllKeys(query, count)`
     fn store_get_all_keys(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
-        let _query = args.get_or_undefined(0);
+        let query = args.get_or_undefined(0);
         let count = args.get_or_undefined(1);
 
         let limit = if count.is_undefined() {
@@ -1420,13 +1519,34 @@ impl IdbFactory {
             Some(count.to_u32(context)? as usize)
         };
 
-        // Mock data for getAllKeys operation
-        let mut mock_keys = vec![
-            JsValue::from(1),
-            JsValue::from(2),
-            JsValue::from(3),
+        // Mock data for getAllKeys operation (key-value pairs)
+        let mut mock_data = vec![
+            (JsValue::from(1), JsValue::from(JsString::from("value1"))),
+            (JsValue::from(2), JsValue::from(JsString::from("value2"))),
+            (JsValue::from(3), JsValue::from(JsString::from("value3"))),
+            (JsValue::from(4), JsValue::from(JsString::from("value4"))),
+            (JsValue::from(5), JsValue::from(JsString::from("value5"))),
         ];
 
+        // Filter data based on query (key range) if provided
+        if !query.is_undefined() && !query.is_null() {
+            if let Some(range_obj) = query.as_object() {
+                if let Some(range_data) = range_obj.downcast_ref::<IdbKeyRange>() {
+                    mock_data.retain(|(key, _)| {
+                        IdbKeyRange::key_in_range(key, &range_data, context).unwrap_or(false)
+                    });
+                }
+            } else {
+                // Single key query
+                let target_key = query.clone();
+                mock_data.retain(|(key, _)| {
+                    IdbKeyRange::compare_keys(key, &target_key, context).unwrap_or(1) == 0
+                });
+            }
+        }
+
+        // Extract keys and apply limit
+        let mut mock_keys: Vec<JsValue> = mock_data.into_iter().map(|(key, _)| key).collect();
         if let Some(limit_val) = limit {
             mock_keys.truncate(limit_val);
         }
