@@ -9,7 +9,7 @@
 mod tests;
 
 use crate::{
-    builtins::{BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder, worker_events},
+    builtins::{BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder, worker_events, message_port::MessagePortData},
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
     object::{internal_methods::get_prototype_from_constructor, JsObject},
     string::StaticJsStrings,
@@ -116,12 +116,13 @@ impl BuiltInConstructor for SharedWorker {
         // Create the SharedWorker object
         let proto = get_prototype_from_constructor(new_target, StandardConstructors::shared_worker, context)?;
 
-        // Create or get existing shared worker instance
+        // Create or get existing shared worker instance with MessagePort
         let shared_worker_data = SharedWorkerData::get_or_create(
             script_url_str,
             worker_name,
             worker_type,
-        );
+            context,
+        )?;
 
         let shared_worker_obj = JsObject::from_proto_and_data_with_shared_shape(
             context.root_shape(),
@@ -140,48 +141,93 @@ impl BuiltInConstructor for SharedWorker {
 }
 
 impl SharedWorker {
-    /// Ensure the shared worker is running
-    fn ensure_worker_running(shared_worker: &JsObject, _context: &mut Context) -> JsResult<()> {
+    /// Ensure the shared worker is running and dispatch connect event for new connection
+    fn ensure_worker_running(shared_worker: &JsObject, context: &mut Context) -> JsResult<()> {
         if let Some(data) = shared_worker.downcast_ref::<SharedWorkerData>() {
             let script_url = data.script_url.clone();
+            let connection_id = data.connection_id.clone();
             let state = data.state.clone();
 
-            // Check if we're in a Tokio runtime context
-            match tokio::runtime::Handle::try_current() {
-                Ok(handle) => {
-                    handle.spawn(async move {
-                        let mut worker_state = state.lock().await;
-
-                        if worker_state.status == SharedWorkerStatus::Pending {
-                            worker_state.status = SharedWorkerStatus::Running;
-                            worker_state.connection_count += 1;
-
-                            // In a real implementation, we would:
-                            // 1. Fetch the script from script_url
-                            // 2. Create a new SharedWorkerGlobalScope context
-                            // 3. Execute the script in isolation
-                            // 4. Handle multiple connections via MessagePorts
-                            // 5. Dispatch 'connect' events when new clients connect
-
-                            println!("SharedWorker started with script: {}", script_url);
-
-                            // Simulate script execution delay
-                            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                        } else {
-                            // Worker already running, just increment connection count
-                            worker_state.connection_count += 1;
-                        }
-                    });
+            // First, check if we need to start the worker
+            let should_start_worker = {
+                if let Ok(worker_state) = state.try_lock() {
+                    worker_state.status == SharedWorkerStatus::Pending
+                } else {
+                    false
                 }
-                Err(_) => {
-                    // No Tokio runtime available, increment connection count synchronously
-                    if let Ok(mut state) = data.state.try_lock() {
-                        state.connection_count += 1;
-                        if state.status == SharedWorkerStatus::Pending {
-                            state.status = SharedWorkerStatus::Running;
-                        }
+            };
+
+            if should_start_worker {
+                // Start the worker for the first time
+                Self::start_shared_worker(&script_url, &state)?;
+            }
+
+            // Now dispatch the connect event for this specific connection
+            Self::dispatch_connect_event(&connection_id, &state, context)?;
+        }
+        Ok(())
+    }
+
+    /// Start the shared worker (only called once per worker)
+    fn start_shared_worker(script_url: &str, state: &Arc<Mutex<SharedWorkerState>>) -> JsResult<()> {
+        // Check if we're in a Tokio runtime context
+        match tokio::runtime::Handle::try_current() {
+            Ok(handle) => {
+                let script_url = script_url.to_string();
+                let state = state.clone();
+
+                handle.spawn(async move {
+                    let mut worker_state = state.lock().await;
+                    if worker_state.status == SharedWorkerStatus::Pending {
+                        worker_state.status = SharedWorkerStatus::Running;
+
+                        // In a real implementation, we would:
+                        // 1. Fetch the script from script_url
+                        // 2. Create a new SharedWorkerGlobalScope context
+                        // 3. Execute the script in isolation
+                        // 4. Set up the SharedWorkerGlobalScope with onconnect handler
+
+                        println!("SharedWorker started with script: {}", script_url);
+
+                        // Simulate script execution delay
+                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    }
+                });
+            }
+            Err(_) => {
+                // No Tokio runtime available, start synchronously
+                if let Ok(mut worker_state) = state.try_lock() {
+                    if worker_state.status == SharedWorkerStatus::Pending {
+                        worker_state.status = SharedWorkerStatus::Running;
+                        println!("SharedWorker started synchronously");
                     }
                 }
+            }
+        }
+        Ok(())
+    }
+
+    /// Dispatch connect event to the SharedWorkerGlobalScope
+    fn dispatch_connect_event(
+        connection_id: &str,
+        state: &Arc<Mutex<SharedWorkerState>>,
+        _context: &mut Context,
+    ) -> JsResult<()> {
+        // Check if this connection exists
+        if let Ok(worker_state) = state.try_lock() {
+            if worker_state.connection_ids.contains(&connection_id.to_string()) {
+                // In a real implementation, we would:
+                // 1. Get the SharedWorkerGlobalScope context
+                // 2. Get the MessagePort for this connection
+                // 3. Call the _dispatchConnect function with the port
+                // 4. This would trigger the onconnect event handler
+
+                println!("Dispatching connect event for connection: {}", connection_id);
+
+                // TODO: Implement actual connect event dispatch
+                // let worker_global_scope = get_shared_worker_global_scope(&worker_key);
+                // let port_obj = get_message_port_for_connection(connection_id)?;
+                // worker_global_scope.call_function("_dispatchConnect", &[port_obj.into()])?;
             }
         }
         Ok(())
@@ -203,6 +249,8 @@ struct SharedWorkerState {
     connection_count: usize,
     script_content: Option<String>,
     execution_context: Option<String>, // Placeholder for actual SharedWorkerGlobalScope
+    /// Active connection IDs (store just the IDs, not the actual MessagePortData)
+    connection_ids: Vec<String>,
 }
 
 impl SharedWorkerState {
@@ -212,7 +260,28 @@ impl SharedWorkerState {
             connection_count: 0,
             script_content: None,
             execution_context: None,
+            connection_ids: Vec::new(),
         }
+    }
+
+    /// Add a new connection to this shared worker
+    fn add_connection(&mut self, connection_id: String) {
+        self.connection_ids.push(connection_id);
+        self.connection_count += 1;
+        // TODO: Dispatch onconnect event to SharedWorkerGlobalScope
+    }
+
+    /// Remove a connection from this shared worker
+    fn remove_connection(&mut self, connection_id: &str) {
+        if let Some(pos) = self.connection_ids.iter().position(|id| id == connection_id) {
+            self.connection_ids.remove(pos);
+            self.connection_count = self.connection_count.saturating_sub(1);
+        }
+    }
+
+    /// Get all active connection IDs
+    fn get_connection_ids(&self) -> &Vec<String> {
+        &self.connection_ids
     }
 }
 
@@ -241,16 +310,20 @@ struct SharedWorkerData {
     worker_key: String, // Unique key for this shared worker
     #[unsafe_ignore_trace]
     state: Arc<Mutex<SharedWorkerState>>,
+    /// MessagePort for this connection to the shared worker
+    port: JsObject,
     #[unsafe_ignore_trace]
-    message_sender: Option<Sender<SharedWorkerMessage>>,
-    #[unsafe_ignore_trace]
-    message_receiver: Option<Receiver<SharedWorkerMessage>>,
-    #[unsafe_ignore_trace]
-    port: Option<JsObject>, // MessagePort for this connection
+    /// Unique connection ID for this port
+    connection_id: String,
 }
 
 impl SharedWorkerData {
-    fn get_or_create(script_url: String, worker_name: Option<String>, worker_type: String) -> Self {
+    fn get_or_create(
+        script_url: String,
+        worker_name: Option<String>,
+        worker_type: String,
+        context: &mut Context,
+    ) -> JsResult<Self> {
         // Create unique key for this shared worker (script URL + name)
         let worker_key = format!("{}#{}", script_url, worker_name.as_deref().unwrap_or(""));
 
@@ -262,36 +335,47 @@ impl SharedWorkerData {
                 .clone()
         };
 
-        let (sender, receiver) = unbounded();
+        // Create a MessagePort pair for this connection
+        let (client_port_data, worker_port_data) = MessagePortData::create_entangled_pair();
 
-        Self {
+        // Create the client-side MessagePort object (this will be returned via .port)
+        let client_port = client_port_data.create_js_object(context)?;
+
+        // Generate unique connection ID based on timestamp
+        let connection_id = format!("conn-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        );
+
+        // Store the connection ID in the shared state
+        // TODO: The worker_port_data should be passed to SharedWorkerGlobalScope for onconnect events
+        if let Ok(mut shared_state) = state.try_lock() {
+            shared_state.add_connection(connection_id.clone());
+        }
+
+        Ok(Self {
             script_url,
             worker_type,
             worker_name,
             worker_key,
             state,
-            message_sender: Some(sender),
-            message_receiver: Some(receiver),
-            port: None, // Will be created when MessagePort is implemented
-        }
+            port: client_port,
+            connection_id,
+        })
     }
 }
 
 // Property getters
-fn get_port(this: &JsValue, _: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+fn get_port(this: &JsValue, _: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
     let this_obj = this.as_object().ok_or_else(|| {
         JsNativeError::typ().with_message("SharedWorker.prototype.port getter called on non-object")
     })?;
 
     if let Some(data) = this_obj.downcast_ref::<SharedWorkerData>() {
-        // In a real implementation, this would return a MessagePort object
-        // For now, return a placeholder object that represents the MessagePort
-        let port_placeholder = context.global_object();
-
-        // TODO: Replace with actual MessagePort implementation
-        // let port = MessagePort::create_for_shared_worker(context, &data.worker_key)?;
-
-        Ok(JsValue::from(port_placeholder.clone()))
+        // Return the actual MessagePort object for this connection
+        Ok(JsValue::from(data.port.clone()))
     } else {
         Err(JsNativeError::typ()
             .with_message("SharedWorker.prototype.port getter called on invalid object")

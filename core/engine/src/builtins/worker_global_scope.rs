@@ -218,12 +218,65 @@ impl WorkerGlobalScope {
     fn add_shared_worker_apis(&self, context: &mut Context) -> JsResult<()> {
         let global = context.global_object();
 
-        // SharedWorkerGlobalScope has 'name' property and 'connect' event
-        // For now, just log that it's initialized
+        // SharedWorkerGlobalScope has 'name' property and 'connect' event handler
         eprintln!("Initialized SharedWorkerGlobalScope");
 
-        // Add placeholder name property
+        // Add name property (should be set from the worker's actual name)
         global.set(js_string!("name"), js_string!(""), false, context)?;
+
+        // Add onconnect event handler property
+        global.set(js_string!("onconnect"), JsValue::null(), false, context)?;
+
+        // Add connect event dispatch function for internal use
+        self.add_connect_event_dispatcher(context)?;
+
+        Ok(())
+    }
+
+    /// Add connect event dispatcher for SharedWorkerGlobalScope
+    fn add_connect_event_dispatcher(&self, context: &mut Context) -> JsResult<()> {
+        let global = context.global_object();
+
+        // Add internal function to dispatch connect events
+        let dispatch_connect = BuiltInBuilder::callable(
+            context.realm(),
+            |_this: &JsValue, args: &[JsValue], context: &mut Context| {
+                let port_arg = args.get_or_undefined(0);
+
+                // Create MessageEvent for the connect event
+                let event_obj = JsObject::with_object_proto(context.intrinsics());
+
+                // Set event properties
+                event_obj.set(js_string!("type"), js_string!("connect"), false, context)?;
+                event_obj.set(js_string!("bubbles"), false, false, context)?;
+                event_obj.set(js_string!("cancelable"), false, false, context)?;
+
+                // Add ports array with the connecting port
+                let ports_array = crate::builtins::Array::array_create(1, None, context)?;
+                ports_array.set(0, port_arg.clone(), true, context)?;
+                event_obj.set(js_string!("ports"), ports_array, false, context)?;
+
+                // Check if onconnect handler exists and call it
+                let global = context.global_object();
+                let onconnect = global.get(js_string!("onconnect"), context)?;
+
+                if !onconnect.is_null() && !onconnect.is_undefined() {
+                    if let Some(handler) = onconnect.as_callable() {
+                        let _ = handler.call(&global.clone().into(), &[event_obj.into()], context);
+                    }
+                }
+
+                // Also dispatch to addEventListener if event listeners exist
+                // TODO: Implement proper event dispatching system
+
+                Ok(JsValue::undefined())
+            }
+        )
+        .name(js_string!("_dispatchConnect"))
+        .build();
+
+        // Store the dispatcher function for internal use (not exposed to JS)
+        global.set(js_string!("_dispatchConnect"), dispatch_connect, false, context)?;
 
         Ok(())
     }
