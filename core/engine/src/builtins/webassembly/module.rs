@@ -40,6 +40,8 @@ impl BuiltInObject for WebAssemblyModule {
 
 impl BuiltInConstructor for WebAssemblyModule {
     const LENGTH: usize = 1;
+    const P: usize = 0; // no prototype properties
+    const SP: usize = 3; // exports, imports, customSections static methods
 
     const STANDARD_CONSTRUCTOR: fn(&StandardConstructors) -> &StandardConstructor =
         StandardConstructors::webassembly_module;

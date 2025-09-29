@@ -13,7 +13,7 @@ use wasmtime::*;
 ///
 /// This provides a singleton runtime that manages the wasmtime Engine,
 /// compiled modules, instances, and stores for the entire Boa context.
-#[derive(Debug, Clone, Trace, Finalize, JsData)]
+#[derive(Clone, Trace, Finalize, JsData)]
 pub struct WebAssemblyRuntime {
     #[unsafe_ignore_trace]
     engine: Arc<Engine>,
@@ -32,6 +32,19 @@ pub struct WebAssemblyRuntime {
 }
 
 static RUNTIME: OnceLock<WebAssemblyRuntime> = OnceLock::new();
+
+impl std::fmt::Debug for WebAssemblyRuntime {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WebAssemblyRuntime")
+            .field("modules", &self.modules)
+            .field("instances", &self.instances)
+            .field("stores", &self.stores)
+            .field("memories", &self.memories)
+            .field("tables", &self.tables)
+            .field("globals", &self.globals)
+            .finish()
+    }
+}
 
 impl WebAssemblyRuntime {
     /// Create a new WebAssembly runtime with optimized configuration
@@ -177,7 +190,7 @@ impl WebAssemblyRuntime {
     }
 
     /// Create a WebAssembly table
-    pub fn create_table(&self, table_type: TableType, init: wasmtime::Val) -> Result<String, wasmtime::Error> {
+    pub fn create_table(&self, table_type: TableType, init: wasmtime::Ref) -> Result<String, wasmtime::Error> {
         let store_id = self.create_store();
         let table_id = self.generate_table_id();
 

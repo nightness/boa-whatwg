@@ -22,8 +22,17 @@ pub struct WebAssemblyMemory;
 
 impl IntrinsicObject for WebAssemblyMemory {
     fn init(realm: &Realm) {
+        let buffer_getter = BuiltInBuilder::callable(realm, Self::buffer)
+            .name(js_string!("get buffer"))
+            .build();
+
         BuiltInBuilder::from_standard_constructor::<Self>(realm)
-            .property(js_string!("buffer"), Self::buffer, Attribute::READONLY)
+            .accessor(
+                js_string!("buffer"),
+                Some(buffer_getter),
+                None,
+                Attribute::CONFIGURABLE,
+            )
             .method(Self::grow, js_string!("grow"), 1)
             .build();
     }
@@ -39,6 +48,8 @@ impl BuiltInObject for WebAssemblyMemory {
 
 impl BuiltInConstructor for WebAssemblyMemory {
     const LENGTH: usize = 1;
+    const P: usize = 2; // buffer property, grow method
+    const SP: usize = 0; // no static properties
 
     const STANDARD_CONSTRUCTOR: fn(&StandardConstructors) -> &StandardConstructor =
         StandardConstructors::webassembly_memory;
@@ -166,10 +177,10 @@ impl WebAssemblyMemory {
         // Get the WebAssembly runtime
         let runtime = WebAssemblyRuntime::get_or_create(context)?;
 
-        // Convert to wasmtime MemoryType
+        // Convert to wasmtime MemoryType (wasmtime uses u32 for memory sizes)
         let memory_type = wasmtime::MemoryType::new(
-            descriptor.initial,
-            descriptor.maximum,
+            descriptor.initial as u32,
+            descriptor.maximum.map(|m| m as u32),
         );
 
         // Create the memory in wasmtime
@@ -286,7 +297,7 @@ pub struct MemoryDescriptor {
 }
 
 /// WebAssembly memory index type (i32 or i64)
-#[derive(Debug, Clone, Copy, Trace, Finalize)]
+#[derive(Debug, Clone, Trace, Finalize)]
 pub enum IndexType {
     I32,
     I64,

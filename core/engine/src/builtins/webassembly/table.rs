@@ -22,8 +22,17 @@ pub struct WebAssemblyTable;
 
 impl IntrinsicObject for WebAssemblyTable {
     fn init(realm: &Realm) {
+        let length_getter = BuiltInBuilder::callable(realm, Self::length)
+            .name(js_string!("get length"))
+            .build();
+
         BuiltInBuilder::from_standard_constructor::<Self>(realm)
-            .property(js_string!("length"), Self::length, Attribute::READONLY)
+            .accessor(
+                js_string!("length"),
+                Some(length_getter),
+                None,
+                Attribute::CONFIGURABLE,
+            )
             .method(Self::get, js_string!("get"), 1)
             .method(Self::set, js_string!("set"), 2)
             .method(Self::grow, js_string!("grow"), 1)
@@ -41,6 +50,8 @@ impl BuiltInObject for WebAssemblyTable {
 
 impl BuiltInConstructor for WebAssemblyTable {
     const LENGTH: usize = 1;
+    const P: usize = 4; // length property, get, set, grow methods
+    const SP: usize = 0; // no static properties
 
     const STANDARD_CONSTRUCTOR: fn(&StandardConstructors) -> &StandardConstructor =
         StandardConstructors::webassembly_table;
@@ -151,26 +162,26 @@ impl WebAssemblyTable {
         // Get the WebAssembly runtime
         let runtime = WebAssemblyRuntime::get_or_create(context)?;
 
-        // Convert to wasmtime TableType
-        let wasm_type = match descriptor.element {
-            ElementType::FuncRef => wasmtime::ValType::FuncRef,
-            ElementType::ExternRef => wasmtime::ValType::ExternRef,
+        // Convert to wasmtime TableType (needs RefType, not ValType)
+        let ref_type = match descriptor.element {
+            ElementType::FuncRef => wasmtime::RefType::FUNCREF,
+            ElementType::ExternRef => wasmtime::RefType::EXTERNREF,
         };
 
         let table_type = wasmtime::TableType::new(
-            wasm_type,
+            ref_type,
             descriptor.initial,
             descriptor.maximum,
         );
 
         // Create initial value for the table
-        let init_val = match descriptor.element {
-            ElementType::FuncRef => wasmtime::Val::FuncRef(None),
-            ElementType::ExternRef => wasmtime::Val::ExternRef(None),
+        let init_ref = match descriptor.element {
+            ElementType::FuncRef => wasmtime::Ref::Func(None),
+            ElementType::ExternRef => wasmtime::Ref::Extern(None),
         };
 
         // Create the table in wasmtime
-        let table_id = runtime.create_table(table_type, init_val).map_err(|err| {
+        let table_id = runtime.create_table(table_type, init_ref).map_err(|err| {
             JsNativeError::typ()
                 .with_message(format!("WebAssembly.Table creation failed: {}", err))
         })?;
@@ -356,7 +367,7 @@ pub struct TableDescriptor {
 }
 
 /// WebAssembly table element type
-#[derive(Debug, Clone, Copy, Trace, Finalize)]
+#[derive(Debug, Clone, Trace, Finalize)]
 pub enum ElementType {
     FuncRef,
     ExternRef,

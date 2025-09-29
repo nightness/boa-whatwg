@@ -500,7 +500,7 @@ impl Test {
 
         let (result, result_text) = result.map_or_else(
             |_| {
-                eeprintln!("last panic was on test \"{}\"", self.path.display());
+                eprintln!("last panic was on test \"{}\"", self.path.display());
                 (TestOutcomeResult::Panic, String::new())
             },
             |(res, text)| {

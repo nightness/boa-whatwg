@@ -22,8 +22,20 @@ pub struct WebAssemblyGlobal;
 
 impl IntrinsicObject for WebAssemblyGlobal {
     fn init(realm: &Realm) {
+        let value_getter = BuiltInBuilder::callable(realm, Self::value)
+            .name(js_string!("get value"))
+            .build();
+        let value_setter = BuiltInBuilder::callable(realm, Self::set_value)
+            .name(js_string!("set value"))
+            .build();
+
         BuiltInBuilder::from_standard_constructor::<Self>(realm)
-            .property(js_string!("value"), Self::value, Attribute::WRITABLE | Attribute::CONFIGURABLE)
+            .accessor(
+                js_string!("value"),
+                Some(value_getter),
+                Some(value_setter),
+                Attribute::CONFIGURABLE,
+            )
             .build();
     }
 
@@ -38,6 +50,8 @@ impl BuiltInObject for WebAssemblyGlobal {
 
 impl BuiltInConstructor for WebAssemblyGlobal {
     const LENGTH: usize = 2;
+    const P: usize = 2; // value property, valueOf method
+    const SP: usize = 0; // no static properties
 
     const STANDARD_CONSTRUCTOR: fn(&StandardConstructors) -> &StandardConstructor =
         StandardConstructors::webassembly_global;
@@ -161,8 +175,8 @@ impl WebAssemblyGlobal {
             ValueType::F32 => wasmtime::ValType::F32,
             ValueType::F64 => wasmtime::ValType::F64,
             ValueType::V128 => wasmtime::ValType::V128,
-            ValueType::ExternRef => wasmtime::ValType::ExternRef,
-            ValueType::FuncRef => wasmtime::ValType::FuncRef,
+            ValueType::ExternRef => wasmtime::ValType::EXTERNREF,
+            ValueType::FuncRef => wasmtime::ValType::FUNCREF,
         }
     }
 
@@ -181,7 +195,8 @@ impl WebAssemblyGlobal {
                 // WebAssembly i64 values are represented as BigInt in JavaScript
                 if let Some(bigint) = value.as_bigint() {
                     // Convert BigInt to i64
-                    let i64_val = bigint.to_i64().unwrap_or(0);
+                    let i128_val = bigint.to_i128();
+                    let i64_val = i128_val as i64; // Truncate to i64
                     Ok(wasmtime::Val::I64(i64_val))
                 } else {
                     // Fallback to regular number conversion
@@ -200,7 +215,7 @@ impl WebAssemblyGlobal {
             ValueType::V128 => {
                 // V128 values are complex and require special handling
                 // For now, default to zeros
-                Ok(wasmtime::Val::V128(0))
+                Ok(wasmtime::Val::V128(0.into()))
             }
             ValueType::ExternRef => {
                 // Convert any JavaScript value to externref
@@ -282,6 +297,45 @@ impl WebAssemblyGlobal {
             Ok(JsValue::undefined())
         }
     }
+
+    /// Setter for WebAssembly.Global.prototype.value
+    fn set_value(
+        this: &JsValue,
+        args: &[JsValue],
+        context: &mut Context,
+    ) -> JsResult<JsValue> {
+        let global_obj = this.as_object().ok_or_else(|| {
+            JsNativeError::typ()
+                .with_message("WebAssembly.Global.value called on non-object")
+        })?;
+
+        let global_data = global_obj.downcast_ref::<WebAssemblyGlobalData>().ok_or_else(|| {
+            JsNativeError::typ()
+                .with_message("WebAssembly.Global.value called on non-Global object")
+        })?;
+
+        if !global_data.descriptor().mutable {
+            return Err(JsNativeError::typ()
+                .with_message("Cannot set value of immutable WebAssembly.Global")
+                .into());
+        }
+
+        let new_value = args.get_or_undefined(0);
+
+        // Get the runtime to set the global value
+        let runtime = WebAssemblyRuntime::get_or_create(context)?;
+
+        // Convert and validate the new value
+        let wasm_value = Self::js_value_to_wasm_value(
+            new_value,
+            &global_data.descriptor().value_type,
+            context,
+        )?;
+
+        // TODO: Implement actual global value setting in wasmtime
+
+        Ok(JsValue::undefined())
+    }
 }
 
 /// Internal data for WebAssembly.Global instances
@@ -313,7 +367,7 @@ pub struct GlobalDescriptor {
 }
 
 /// WebAssembly value types
-#[derive(Debug, Clone, Copy, Trace, Finalize)]
+#[derive(Debug, Clone, Trace, Finalize)]
 pub enum ValueType {
     I32,
     I64,

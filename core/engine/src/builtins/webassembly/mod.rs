@@ -73,41 +73,38 @@ impl IntrinsicObject for WebAssembly {
         WebAssemblyGlobal::init(realm);
 
         // Create the WebAssembly global object with static methods
-        let webassembly_obj = BuiltInBuilder::callable(realm, Self::not_callable)
+        let webassembly_obj = BuiltInBuilder::with_intrinsic::<Self>(realm)
             .static_method(Self::validate, js_string!("validate"), 1)
             .static_method(Self::compile, js_string!("compile"), 1)
             .static_method(Self::instantiate, js_string!("instantiate"), 1)
             .static_method(Self::compile_streaming, js_string!("compileStreaming"), 1)
             .static_method(Self::instantiate_streaming, js_string!("instantiateStreaming"), 1)
-            .property(
+            .static_property(
                 js_string!("Module"),
                 WebAssemblyModule::get(realm.intrinsics()),
                 Attribute::WRITABLE | Attribute::CONFIGURABLE,
             )
-            .property(
+            .static_property(
                 js_string!("Instance"),
                 WebAssemblyInstance::get(realm.intrinsics()),
                 Attribute::WRITABLE | Attribute::CONFIGURABLE,
             )
-            .property(
+            .static_property(
                 js_string!("Memory"),
                 WebAssemblyMemory::get(realm.intrinsics()),
                 Attribute::WRITABLE | Attribute::CONFIGURABLE,
             )
-            .property(
+            .static_property(
                 js_string!("Table"),
                 WebAssemblyTable::get(realm.intrinsics()),
                 Attribute::WRITABLE | Attribute::CONFIGURABLE,
             )
-            .property(
+            .static_property(
                 js_string!("Global"),
                 WebAssemblyGlobal::get(realm.intrinsics()),
                 Attribute::WRITABLE | Attribute::CONFIGURABLE,
             )
             .build();
-
-        realm.register_global_property(js_string!("WebAssembly"), webassembly_obj, Attribute::WRITABLE | Attribute::CONFIGURABLE)
-            .expect("WebAssembly object could not be initialized");
     }
 
     fn get(_intrinsics: &Intrinsics) -> JsObject {
