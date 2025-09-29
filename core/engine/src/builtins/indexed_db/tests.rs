@@ -159,11 +159,11 @@ fn test_indexed_db_debug_object_store_methods() {
 
     // Check if basic methods exist
     let result = context.eval(Source::from_bytes("typeof objectStore.add")).unwrap();
-    println!("objectStore.add type: {:?}", result);
+    eprintln!("objectStore.add type: {:?}", result);
     assert_eq!(result, JsValue::from(JsString::from("function")));
 
     let result = context.eval(Source::from_bytes("typeof objectStore.openCursor")).unwrap();
-    println!("objectStore.openCursor type: {:?}", result);
+    eprintln!("objectStore.openCursor type: {:?}", result);
     assert_eq!(result, JsValue::from(JsString::from("function")));
 }
 

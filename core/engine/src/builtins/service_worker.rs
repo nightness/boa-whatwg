@@ -210,7 +210,7 @@ impl ServiceWorker {
                             *worker_state = ServiceWorkerState::Installing;
                         }
 
-                        println!("ServiceWorker installing with script: {} for scope: {}", script_url, scope);
+                        eprintln!("ServiceWorker installing with script: {} for scope: {}", script_url, scope);
 
                         // Simulate installation delay
                         tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
@@ -235,12 +235,12 @@ impl ServiceWorker {
                             *worker_state = ServiceWorkerState::Activated;
                         }
 
-                        println!("ServiceWorker activated for scope: {}", scope);
+                        eprintln!("ServiceWorker activated for scope: {}", scope);
                     });
                 }
                 Err(_) => {
                     // No Tokio runtime, simulate synchronously
-                    println!("ServiceWorker registration started for: {}", script_url);
+                    eprintln!("ServiceWorker registration started for: {}", script_url);
                 }
             }
         }

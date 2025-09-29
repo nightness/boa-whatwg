@@ -168,7 +168,7 @@ impl Worklet {
                         modules_map.insert(url.clone(), module);
 
                         // Simulate module loading
-                        println!("Worklet loading module: {}", url);
+                        eprintln!("Worklet loading module: {}", url);
                         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
                         // Update module state to loaded
@@ -178,12 +178,12 @@ impl Worklet {
                             module.exports.insert("main".to_string(), "function".to_string());
                         }
 
-                        println!("Worklet module loaded: {}", url);
+                        eprintln!("Worklet module loaded: {}", url);
                     });
                 }
                 Err(_) => {
                     // No Tokio runtime, simulate synchronously
-                    println!("Worklet module load initiated for: {}", module_url_str);
+                    eprintln!("Worklet module load initiated for: {}", module_url_str);
                 }
             }
         }
@@ -212,7 +212,7 @@ impl Worklet {
             worklet_data,
         );
 
-        println!("Created specialized worklet: {}", worklet_type);
+        eprintln!("Created specialized worklet: {}", worklet_type);
         Ok(object)
     }
 }

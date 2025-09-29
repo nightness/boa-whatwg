@@ -187,7 +187,7 @@ impl SharedWorker {
                         // 3. Execute the script in isolation
                         // 4. Set up the SharedWorkerGlobalScope with onconnect handler
 
-                        println!("SharedWorker started with script: {}", script_url);
+                        eprintln!("SharedWorker started with script: {}", script_url);
 
                         // Simulate script execution delay
                         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
@@ -199,7 +199,7 @@ impl SharedWorker {
                 if let Ok(mut worker_state) = state.try_lock() {
                     if worker_state.status == SharedWorkerStatus::Pending {
                         worker_state.status = SharedWorkerStatus::Running;
-                        println!("SharedWorker started synchronously");
+                        eprintln!("SharedWorker started synchronously");
                     }
                 }
             }
@@ -222,7 +222,7 @@ impl SharedWorker {
                 // 3. Call the _dispatchConnect function with the port
                 // 4. This would trigger the onconnect event handler
 
-                println!("Dispatching connect event for connection: {}", connection_id);
+                eprintln!("Dispatching connect event for connection: {}", connection_id);
 
                 // TODO: Implement actual connect event dispatch
                 // let worker_global_scope = get_shared_worker_global_scope(&worker_key);

@@ -5,6 +5,10 @@ pub mod array;
 pub mod array_buffer;
 pub mod async_function;
 pub mod readable_stream;
+pub mod readable_stream_reader;
+pub mod writable_stream;
+pub mod transform_stream;
+pub mod queuing_strategy;
 pub mod websocket;
 pub mod websocket_stream;
 pub mod worker;
@@ -141,6 +145,9 @@ pub(crate) use self::{
     promise::Promise,
     proxy::Proxy,
     readable_stream::ReadableStream,
+    writable_stream::WritableStream,
+    transform_stream::TransformStream,
+    queuing_strategy::{CountQueuingStrategy, ByteLengthQueuingStrategy},
     websocket::WebSocket,
     websocket_stream::WebSocketStream,
     worker::Worker,
@@ -373,6 +380,10 @@ impl Realm {
         GeneratorFunction::init(self);
         Promise::init(self);
         ReadableStream::init(self);
+        WritableStream::init(self);
+        TransformStream::init(self);
+        CountQueuingStrategy::init(self);
+        ByteLengthQueuingStrategy::init(self);
         WebSocket::init(self);
         WebSocketStream::init(self);
         Worker::init(self);
@@ -754,6 +765,10 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<Reflect>(context)?;
     global_binding::<Promise>(context)?;
     global_binding::<ReadableStream>(context)?;
+    global_binding::<WritableStream>(context)?;
+    global_binding::<TransformStream>(context)?;
+    global_binding::<CountQueuingStrategy>(context)?;
+    global_binding::<ByteLengthQueuingStrategy>(context)?;
     global_binding::<WebSocket>(context)?;
     global_binding::<Worker>(context)?;
     global_binding::<SharedWorker>(context)?;

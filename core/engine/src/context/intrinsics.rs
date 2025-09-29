@@ -168,6 +168,10 @@ pub struct StandardConstructors {
     date_time_format: StandardConstructor,
     promise: StandardConstructor,
     readable_stream: StandardConstructor,
+    writable_stream: StandardConstructor,
+    transform_stream: StandardConstructor,
+    count_queuing_strategy: StandardConstructor,
+    byte_length_queuing_strategy: StandardConstructor,
     websocket: StandardConstructor,
     websocket_stream: StandardConstructor,
     worker: StandardConstructor,
@@ -322,6 +326,10 @@ impl Default for StandardConstructors {
             date_time_format: StandardConstructor::default(),
             promise: StandardConstructor::default(),
             readable_stream: StandardConstructor::default(),
+            writable_stream: StandardConstructor::default(),
+            transform_stream: StandardConstructor::default(),
+            count_queuing_strategy: StandardConstructor::default(),
+            byte_length_queuing_strategy: StandardConstructor::default(),
             websocket: StandardConstructor::default(),
             websocket_stream: StandardConstructor::default(),
             worker: StandardConstructor::default(),
@@ -1786,6 +1794,66 @@ impl StandardConstructors {
     #[cfg(feature = "temporal")]
     pub const fn calendar(&self) -> &StandardConstructor {
         &self.calendar
+    }
+
+    /// Returns the `ReadableStream` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Streams spec][spec]
+    ///
+    /// [spec]: https://streams.spec.whatwg.org/#readablestream
+    #[inline]
+    #[must_use]
+    pub const fn readable_stream(&self) -> &StandardConstructor {
+        &self.readable_stream
+    }
+
+    /// Returns the `WritableStream` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Streams spec][spec]
+    ///
+    /// [spec]: https://streams.spec.whatwg.org/#writablestream
+    #[inline]
+    #[must_use]
+    pub const fn writable_stream(&self) -> &StandardConstructor {
+        &self.writable_stream
+    }
+
+    /// Returns the `TransformStream` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Streams spec][spec]
+    ///
+    /// [spec]: https://streams.spec.whatwg.org/#transformstream
+    #[inline]
+    #[must_use]
+    pub const fn transform_stream(&self) -> &StandardConstructor {
+        &self.transform_stream
+    }
+
+    /// Returns the `CountQueuingStrategy` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Streams spec][spec]
+    ///
+    /// [spec]: https://streams.spec.whatwg.org/#countqueuingstrategy
+    #[inline]
+    #[must_use]
+    pub const fn count_queuing_strategy(&self) -> &StandardConstructor {
+        &self.count_queuing_strategy
+    }
+
+    /// Returns the `ByteLengthQueuingStrategy` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Streams spec][spec]
+    ///
+    /// [spec]: https://streams.spec.whatwg.org/#bytelengthqueuingstrategy
+    #[inline]
+    #[must_use]
+    pub const fn byte_length_queuing_strategy(&self) -> &StandardConstructor {
+        &self.byte_length_queuing_strategy
     }
 }
 

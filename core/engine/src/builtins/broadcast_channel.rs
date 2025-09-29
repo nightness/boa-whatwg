@@ -195,7 +195,7 @@ fn post_message(this: &JsValue, args: &[JsValue], _context: &mut Context) -> JsR
         // 2. Check for transferable objects (BroadcastChannel doesn't support transfer)
         // 3. Queue the message for async delivery to other channels with same name
 
-        println!("BroadcastChannel '{}' posting message: {:?}", data.name, message);
+        eprintln!("BroadcastChannel '{}' posting message: {:?}", data.name, message);
 
         Ok(JsValue::undefined())
     } else {
@@ -214,7 +214,7 @@ fn close(this: &JsValue, _: &[JsValue], _: &mut Context) -> JsResult<JsValue> {
     if let Some(data) = this_obj.downcast_ref::<BroadcastChannelData>() {
         data.close();
 
-        println!("BroadcastChannel '{}' closed", data.name);
+        eprintln!("BroadcastChannel '{}' closed", data.name);
 
         Ok(JsValue::undefined())
     } else {

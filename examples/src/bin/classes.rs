@@ -37,7 +37,7 @@ impl Person {
             // If it is we downcast the type to type `Person`.
             if let Some(person) = object.downcast_ref::<Person>() {
                 // and print a message to stdout.
-                println!(
+                eprintln!(
                     "Hello my name is {}, I'm {} years old",
                     person.name.to_std_string_escaped(),
                     person.age // Here we can access the native rust fields of the struct.
