@@ -95,6 +95,7 @@ boa_parser.workspace = true
 boa_string.workspace = true
 cow-utils.workspace = true
 futures-lite.workspace = true
+base64 = "0.22"
 float16 = { version = "0.1", optional = true }
 lz4_flex = { workspace = true, optional = true }
 xsum = { version = "0.1.1", optional = true }

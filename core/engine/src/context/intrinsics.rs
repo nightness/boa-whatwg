@@ -219,6 +219,8 @@ pub struct StandardConstructors {
     message_event: StandardConstructor,
     console: StandardConstructor,
     blob: StandardConstructor,
+    file: StandardConstructor,
+    file_reader: StandardConstructor,
     weak_ref: StandardConstructor,
     weak_map: StandardConstructor,
     weak_set: StandardConstructor,
@@ -377,6 +379,8 @@ impl Default for StandardConstructors {
             message_event: StandardConstructor::default(),
             console: StandardConstructor::default(),
             blob: StandardConstructor::default(),
+            file: StandardConstructor::default(),
+            file_reader: StandardConstructor::default(),
             weak_ref: StandardConstructor::default(),
             weak_map: StandardConstructor::default(),
             weak_set: StandardConstructor::default(),
@@ -968,6 +972,30 @@ impl StandardConstructors {
     #[must_use]
     pub const fn blob(&self) -> &StandardConstructor {
         &self.blob
+    }
+
+    /// Returns the `File` constructor.
+    ///
+    /// More information:
+    ///  - [File API reference][spec]
+    ///
+    /// [spec]: https://w3c.github.io/FileAPI/#file-section
+    #[inline]
+    #[must_use]
+    pub const fn file(&self) -> &StandardConstructor {
+        &self.file
+    }
+
+    /// Returns the `FileReader` constructor.
+    ///
+    /// More information:
+    ///  - [File API reference][spec]
+    ///
+    /// [spec]: https://w3c.github.io/FileAPI/#filereader-section
+    #[inline]
+    #[must_use]
+    pub const fn file_reader(&self) -> &StandardConstructor {
+        &self.file_reader
     }
 
     /// Returns the `WebSocket` constructor.
@@ -1796,17 +1824,6 @@ impl StandardConstructors {
         &self.calendar
     }
 
-    /// Returns the `ReadableStream` constructor.
-    ///
-    /// More information:
-    ///  - [WHATWG Streams spec][spec]
-    ///
-    /// [spec]: https://streams.spec.whatwg.org/#readablestream
-    #[inline]
-    #[must_use]
-    pub const fn readable_stream(&self) -> &StandardConstructor {
-        &self.readable_stream
-    }
 
     /// Returns the `WritableStream` constructor.
     ///

@@ -22,9 +22,9 @@ impl ReadableStreamDefaultReader {
     pub fn create(stream: JsObject, context: &mut Context) -> JsResult<JsValue> {
         let proto = context
             .intrinsics()
-            .objects()
-            .object_prototype()
-            .clone();
+            .constructors()
+            .object()
+            .prototype();
 
         let reader = JsObject::from_proto_and_data_with_shared_shape(
             context.root_shape(),
@@ -57,9 +57,10 @@ impl ReadableStreamDefaultReader {
             .build();
         reader.define_property_or_throw(
             js_string!("closed"),
-            Attribute::CONFIGURABLE | Attribute::ENUMERABLE,
-            Some(closed_getter),
-            None,
+            crate::property::PropertyDescriptorBuilder::new()
+                .get(closed_getter)
+                .configurable(true)
+                .enumerable(true),
             context,
         )?;
 
@@ -85,20 +86,23 @@ impl ReadableStreamDefaultReader {
                     result_obj.set(js_string!("value"), chunk, true, context)?;
                     result_obj.set(js_string!("done"), JsValue::from(false), true, context)?;
 
-                    return Promise::new_resolved(JsValue::from(result_obj), context);
+                    let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                    return crate::builtins::Promise::resolve(&promise_constructor.into(), &[JsValue::from(result_obj)], context);
                 } else if stream_data.state == super::readable_stream::StreamState::Closed {
                     // Create result object { value: undefined, done: true }
                     let result_obj = JsObject::with_object_proto(context.intrinsics());
                     result_obj.set(js_string!("value"), JsValue::undefined(), true, context)?;
                     result_obj.set(js_string!("done"), JsValue::from(true), true, context)?;
 
-                    return Promise::new_resolved(JsValue::from(result_obj), context);
+                    let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                    return crate::builtins::Promise::resolve(&promise_constructor.into(), &[JsValue::from(result_obj)], context);
                 }
             }
         }
 
-        // Return a pending promise for now
-        Promise::new_pending(context)
+        // Return a resolved promise for now
+        let promise_constructor = context.intrinsics().constructors().promise().constructor();
+        Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
     }
 
     /// `ReadableStreamDefaultReader.prototype.cancel(reason)`
@@ -119,7 +123,8 @@ impl ReadableStreamDefaultReader {
             }
         }
 
-        Promise::new_resolved(JsValue::undefined(), context)
+        let promise_constructor = context.intrinsics().constructors().promise().constructor();
+        crate::builtins::Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
     }
 
     /// `ReadableStreamDefaultReader.prototype.releaseLock()`
@@ -133,7 +138,7 @@ impl ReadableStreamDefaultReader {
         })?;
 
         if let Some(reader_data) = this_obj.downcast_ref::<ReadableStreamDefaultReaderData>() {
-            if let Some(stream_data) = reader_data.stream.downcast_mut::<super::readable_stream::ReadableStreamData>() {
+            if let Some(mut stream_data) = reader_data.stream.downcast_mut::<super::readable_stream::ReadableStreamData>() {
                 stream_data.locked = false;
             }
         }
@@ -154,15 +159,30 @@ impl ReadableStreamDefaultReader {
         if let Some(reader_data) = this_obj.downcast_ref::<ReadableStreamDefaultReaderData>() {
             if let Some(stream_data) = reader_data.stream.downcast_ref::<super::readable_stream::ReadableStreamData>() {
                 match stream_data.state {
-                    super::readable_stream::StreamState::Closed => Promise::new_resolved(JsValue::undefined(), context),
-                    super::readable_stream::StreamState::Errored => Promise::new_rejected(JsValue::undefined(), context),
-                    _ => Promise::new_pending(context)
+                    super::readable_stream::StreamState::Closed => {
+                        let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                        crate::builtins::Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+                    },
+                    super::readable_stream::StreamState::Errored => {
+                        let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                        crate::builtins::Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+                    },
+                    _ => {
+                        let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                        crate::builtins::Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+                    }
                 }
             } else {
-                Promise::new_rejected(JsValue::undefined(), context)
+                {
+                    let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                    Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+                }
             }
         } else {
-            Promise::new_rejected(JsValue::undefined(), context)
+            {
+                    let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                    Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+                }
         }
     }
 }
@@ -176,9 +196,9 @@ impl ReadableStreamBYOBReader {
     pub fn create(stream: JsObject, context: &mut Context) -> JsResult<JsValue> {
         let proto = context
             .intrinsics()
-            .objects()
-            .object_prototype()
-            .clone();
+            .constructors()
+            .object()
+            .prototype();
 
         let reader = JsObject::from_proto_and_data_with_shared_shape(
             context.root_shape(),
@@ -211,9 +231,10 @@ impl ReadableStreamBYOBReader {
             .build();
         reader.define_property_or_throw(
             js_string!("closed"),
-            Attribute::CONFIGURABLE | Attribute::ENUMERABLE,
-            Some(closed_getter),
-            None,
+            crate::property::PropertyDescriptorBuilder::new()
+                .get(closed_getter)
+                .configurable(true)
+                .enumerable(true),
             context,
         )?;
 
@@ -239,7 +260,8 @@ impl ReadableStreamBYOBReader {
                         let result_obj = JsObject::with_object_proto(context.intrinsics());
                         result_obj.set(js_string!("value"), JsValue::undefined(), true, context)?;
                         result_obj.set(js_string!("done"), JsValue::from(true), true, context)?;
-                        return Promise::new_resolved(JsValue::from(result_obj), context);
+                        let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                    return crate::builtins::Promise::resolve(&promise_constructor.into(), &[JsValue::from(result_obj)], context);
                     },
                     _ => {
                         // For BYOB reader, we'd need to handle the view parameter properly
@@ -247,13 +269,15 @@ impl ReadableStreamBYOBReader {
                         let result_obj = JsObject::with_object_proto(context.intrinsics());
                         result_obj.set(js_string!("value"), _view.clone(), true, context)?;
                         result_obj.set(js_string!("done"), JsValue::from(false), true, context)?;
-                        return Promise::new_resolved(JsValue::from(result_obj), context);
+                        let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                    return crate::builtins::Promise::resolve(&promise_constructor.into(), &[JsValue::from(result_obj)], context);
                     }
                 }
             }
         }
 
-        Promise::new_pending(context)
+        let promise_constructor = context.intrinsics().constructors().promise().constructor();
+        Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
     }
 
     /// `ReadableStreamBYOBReader.prototype.cancel(reason)`
@@ -274,7 +298,8 @@ impl ReadableStreamBYOBReader {
             }
         }
 
-        Promise::new_resolved(JsValue::undefined(), context)
+        let promise_constructor = context.intrinsics().constructors().promise().constructor();
+        crate::builtins::Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
     }
 
     /// `ReadableStreamBYOBReader.prototype.releaseLock()`
@@ -288,7 +313,7 @@ impl ReadableStreamBYOBReader {
         })?;
 
         if let Some(reader_data) = this_obj.downcast_ref::<ReadableStreamBYOBReaderData>() {
-            if let Some(stream_data) = reader_data.stream.downcast_mut::<super::readable_stream::ReadableStreamData>() {
+            if let Some(mut stream_data) = reader_data.stream.downcast_mut::<super::readable_stream::ReadableStreamData>() {
                 stream_data.locked = false;
             }
         }
@@ -309,15 +334,30 @@ impl ReadableStreamBYOBReader {
         if let Some(reader_data) = this_obj.downcast_ref::<ReadableStreamBYOBReaderData>() {
             if let Some(stream_data) = reader_data.stream.downcast_ref::<super::readable_stream::ReadableStreamData>() {
                 match stream_data.state {
-                    super::readable_stream::StreamState::Closed => Promise::new_resolved(JsValue::undefined(), context),
-                    super::readable_stream::StreamState::Errored => Promise::new_rejected(JsValue::undefined(), context),
-                    _ => Promise::new_pending(context)
+                    super::readable_stream::StreamState::Closed => {
+                        let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                        crate::builtins::Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+                    },
+                    super::readable_stream::StreamState::Errored => {
+                        let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                        crate::builtins::Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+                    },
+                    _ => {
+                        let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                        crate::builtins::Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+                    }
                 }
             } else {
-                Promise::new_rejected(JsValue::undefined(), context)
+                {
+                    let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                    Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+                }
             }
         } else {
-            Promise::new_rejected(JsValue::undefined(), context)
+            {
+                    let promise_constructor = context.intrinsics().constructors().promise().constructor();
+                    Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
+                }
         }
     }
 }

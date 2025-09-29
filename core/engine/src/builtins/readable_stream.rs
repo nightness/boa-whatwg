@@ -112,7 +112,9 @@ impl ReadableStream {
         }
 
         // Return a resolved Promise with undefined
-        Promise::new_resolved(JsValue::undefined(), context)
+        // Use Promise.resolve static method
+        let promise_constructor = context.intrinsics().constructors().promise().constructor();
+        crate::builtins::Promise::resolve(&promise_constructor.into(), &[JsValue::undefined()], context)
     }
 
     /// `ReadableStream.prototype.getReader(options)`
@@ -136,7 +138,7 @@ impl ReadableStream {
         }
 
         // Lock the stream
-        if let Some(data) = this_obj.downcast_mut::<ReadableStreamData>() {
+        if let Some(mut data) = this_obj.downcast_mut::<ReadableStreamData>() {
             data.locked = true;
         }
 
@@ -273,7 +275,7 @@ impl ReadableStreamData {
     }
 
     /// Remove a chunk from the internal queue
-    fn dequeue_chunk(&mut self) -> Option<JsValue> {
+    pub fn dequeue_chunk(&mut self) -> Option<JsValue> {
         self.queue.pop_front()
     }
 

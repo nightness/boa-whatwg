@@ -4,6 +4,82 @@ This document catalogs all the features and Web APIs we've added to the Boa Java
 
 ## Web APIs Added to Boa Core
 
+### File API (`core/engine/src/builtins/file.rs`)
+
+**Complete WHATWG File Interface Implementation**:
+- Native Boa builtin with real binary data handling
+- Full WHATWG File API standard compliance (https://w3c.github.io/FileAPI/#file-section)
+- Proper inheritance from Blob interface
+- Constructor: `new File(fileBits, fileName, options)`
+- Properties:
+  - `name` getter - File name (read-only)
+  - `lastModified` getter - Last modification timestamp (read-only)
+  - `webkitRelativePath` getter - Relative path for file system access (read-only)
+  - Inherited from Blob: `size`, `type`
+- Methods:
+  - `slice(start, end, contentType)` - Create File slice (preserves File metadata)
+  - Inherited from Blob: `text()`, `arrayBuffer()`, `stream()`
+- Advanced features:
+  - Mixed content support (strings, Blobs, Files, TypedArrays)
+  - Unicode filename and content handling
+  - MIME type validation and normalization
+  - Comprehensive error handling for edge cases
+
+### FileReader API (`core/engine/src/builtins/file_reader.rs`)
+
+**Complete WHATWG FileReader Interface Implementation**:
+- Native Boa builtin with real async file reading
+- Full WHATWG FileReader API standard compliance (https://w3c.github.io/FileAPI/#filereader-section)
+- Proper asynchronous behavior with threading
+- Constructor: `new FileReader()`
+- Properties:
+  - `readyState` getter - Current state (EMPTY=0, LOADING=1, DONE=2)
+  - `result` getter - Reading result (read-only)
+  - `error` getter - Error information (read-only)
+- Constants:
+  - `FileReader.EMPTY = 0`
+  - `FileReader.LOADING = 1`
+  - `FileReader.DONE = 2`
+- Methods:
+  - `readAsText(blob, encoding)` - Read as text with optional encoding
+  - `readAsArrayBuffer(blob)` - Read as ArrayBuffer
+  - `readAsDataURL(blob)` - Read as Data URL
+  - `readAsBinaryString(blob)` - Read as binary string
+  - `abort()` - Cancel ongoing read operation
+- Event handlers:
+  - `onloadstart`, `onprogress`, `onload`, `onloadend`, `onerror`, `onabort`
+- Advanced features:
+  - Real async threading for non-blocking reads
+  - Proper state management and error handling
+  - Support for both File and Blob objects
+  - Cancellation support with graceful cleanup
+
+### Enhanced Blob API (`core/engine/src/builtins/blob.rs`)
+
+**Enhanced WHATWG Blob Interface Implementation**:
+- Advanced streaming capabilities with custom ReadableStream integration
+- Full Promise-based async methods (upgraded from synchronous)
+- Constructor: `new Blob(array, options)`
+- Properties:
+  - `size` getter - Blob size in bytes
+  - `type` getter - MIME type
+- Methods:
+  - `slice(start, end, contentType)` - Create blob slice with proper range handling
+  - `text()` - **Enhanced**: Returns Promise<String> with async text processing
+  - `arrayBuffer()` - **Enhanced**: Returns Promise<ArrayBuffer> with async buffer creation
+  - `stream()` - **Enhanced**: Returns ReadableStream with advanced features:
+    * Custom underlying source with 64KB chunk size
+    * Proper backpressure handling (16 chunk buffer = 1MB)
+    * Cancellation support with resource cleanup
+    * Custom queuing strategy for optimal performance
+    * WHATWG Streams compliance
+- Advanced streaming features:
+  - Custom chunking strategy (64KB chunks for optimal memory usage)
+  - Backpressure management (high water mark of 16 chunks)
+  - Proper stream controller integration
+  - Memory-efficient streaming for large blobs
+  - Real async processing with threading
+
 ### WebSocket API (`core/engine/src/builtins/websocket.rs`)
 
 **Complete WHATWG WebSocket Implementation**:

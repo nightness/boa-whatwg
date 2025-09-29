@@ -65,6 +65,8 @@ pub mod resize_observer;
 pub mod console;
 pub mod timers;
 pub mod blob;
+pub mod file;
+pub mod file_reader;
 pub mod async_generator;
 pub mod async_generator_function;
 pub mod atomics;
@@ -181,6 +183,8 @@ pub(crate) use self::{
     event_target::EventTarget,
     console::Console,
     blob::Blob,
+    file::File,
+    file_reader::FileReader,
     xmlhttprequest::XmlHttpRequest,
     mutation_observer::MutationObserver,
     intersection_observer::IntersectionObserver,
