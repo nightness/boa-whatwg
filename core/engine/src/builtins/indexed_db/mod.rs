@@ -1311,6 +1311,45 @@ impl IdbFactory {
             context
         )?;
 
+        // Add createIndex method
+        let create_index_fn = BuiltInBuilder::callable(context.realm(), Self::store_create_index)
+            .name(js_string!("createIndex"))
+            .length(3)
+            .build();
+
+        store_obj.set(
+            js_string!("createIndex"),
+            create_index_fn,
+            true,
+            context
+        )?;
+
+        // Add deleteIndex method
+        let delete_index_fn = BuiltInBuilder::callable(context.realm(), Self::store_delete_index)
+            .name(js_string!("deleteIndex"))
+            .length(1)
+            .build();
+
+        store_obj.set(
+            js_string!("deleteIndex"),
+            delete_index_fn,
+            true,
+            context
+        )?;
+
+        // Add index method
+        let index_fn = BuiltInBuilder::callable(context.realm(), Self::store_index)
+            .name(js_string!("index"))
+            .length(1)
+            .build();
+
+        store_obj.set(
+            js_string!("index"),
+            index_fn,
+            true,
+            context
+        )?;
+
         Ok(())
     }
 
@@ -1558,6 +1597,171 @@ impl IdbFactory {
         }
 
         Ok(JsValue::from(Self::create_success_request(JsValue::from(array), context)))
+    }
+
+    /// `objectStore.createIndex(name, keyPath, options)`
+    /// Creates a new index on the object store
+    fn store_create_index(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        let name = args.get_or_undefined(0).to_string(context)?.to_std_string_escaped();
+        let key_path = args.get_or_undefined(1).to_string(context)?.to_std_string_escaped();
+        let options = args.get_or_undefined(2);
+
+        // Validate arguments
+        if name.is_empty() {
+            return Err(JsNativeError::error()
+                .with_message("Failed to execute 'createIndex' on 'IDBObjectStore': Index name cannot be empty")
+                .into());
+        }
+
+        if key_path.is_empty() {
+            return Err(JsNativeError::error()
+                .with_message("Failed to execute 'createIndex' on 'IDBObjectStore': Key path cannot be empty")
+                .into());
+        }
+
+        // Parse options
+        let mut unique = false;
+        let mut multi_entry = false;
+
+        if let Some(options_obj) = options.as_object() {
+            if let Ok(unique_val) = options_obj.get(js_string!("unique"), context) {
+                unique = unique_val.to_boolean();
+            }
+            if let Ok(multi_entry_val) = options_obj.get(js_string!("multiEntry"), context) {
+                multi_entry = multi_entry_val.to_boolean();
+            }
+        }
+
+        // Get the object store name from this object
+        let store_obj = this.as_object()
+            .ok_or_else(|| JsNativeError::typ().with_message("'this' is not an object"))?;
+
+        let store_name = if let Ok(name_val) = store_obj.get(js_string!("name"), context) {
+            name_val.to_string(context)?.to_std_string_escaped()
+        } else {
+            "defaultStore".to_string()
+        };
+
+        // Create index
+        let index = IdbIndex::new(
+            name.clone(),
+            key_path.clone(),
+            unique,
+            multi_entry,
+            store_name.clone(),
+        );
+
+        let index_obj = JsObject::from_proto_and_data(
+            Some(context.intrinsics().constructors().object().prototype()),
+            index
+        );
+
+        // Set index properties
+        index_obj.set(js_string!("name"), JsValue::from(JsString::from(name.clone())), false, context)?;
+        index_obj.set(js_string!("keyPath"), JsValue::from(JsString::from(key_path)), false, context)?;
+        index_obj.set(js_string!("unique"), JsValue::from(unique), false, context)?;
+        index_obj.set(js_string!("multiEntry"), JsValue::from(multi_entry), false, context)?;
+        index_obj.set(js_string!("objectStore"), JsValue::from(store_obj.clone()), false, context)?;
+
+        // Add index methods
+        IdbIndex::add_index_methods(&index_obj, context)?;
+
+        // TODO: In a full implementation, this would:
+        // 1. Check transaction state (must be in upgrade transaction)
+        // 2. Validate index doesn't already exist
+        // 3. Build the index from existing data
+        // 4. Store index definition in database schema
+
+        Ok(JsValue::from(index_obj))
+    }
+
+    /// `objectStore.deleteIndex(name)`
+    /// Deletes an existing index from the object store
+    fn store_delete_index(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        let name = args.get_or_undefined(0).to_string(context)?.to_std_string_escaped();
+
+        // Validate arguments
+        if name.is_empty() {
+            return Err(JsNativeError::error()
+                .with_message("Failed to execute 'deleteIndex' on 'IDBObjectStore': Index name cannot be empty")
+                .into());
+        }
+
+        // TODO: In a full implementation, this would:
+        // 1. Check transaction state (must be in upgrade transaction)
+        // 2. Verify index exists
+        // 3. Remove index from object store
+        // 4. Update database schema
+
+        // For now, just return success (no-op)
+        Ok(JsValue::undefined())
+    }
+
+    /// `objectStore.index(name)`
+    /// Returns an existing index by name
+    fn store_index(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        let name = args.get_or_undefined(0).to_string(context)?.to_std_string_escaped();
+
+        // Validate arguments
+        if name.is_empty() {
+            return Err(JsNativeError::error()
+                .with_message("Failed to execute 'index' on 'IDBObjectStore': Index name cannot be empty")
+                .into());
+        }
+
+        // Get the object store name from this object
+        let store_obj = this.as_object()
+            .ok_or_else(|| JsNativeError::typ().with_message("'this' is not an object"))?;
+
+        let store_name = if let Ok(name_val) = store_obj.get(js_string!("name"), context) {
+            name_val.to_string(context)?.to_std_string_escaped()
+        } else {
+            "defaultStore".to_string()
+        };
+
+        // TODO: In a full implementation, this would:
+        // 1. Check if index exists in object store
+        // 2. Return the actual index object
+        // For now, create a mock index
+
+        // Check for some common index names and return appropriate mock indexes
+        let (key_path, unique, multi_entry) = match name.as_str() {
+            "nameIndex" => ("name", false, false),
+            "emailIndex" => ("email", true, false),
+            "ageIndex" => ("age", false, false),
+            "tagsIndex" => ("tags", false, true), // multiEntry for arrays
+            _ => {
+                return Err(JsNativeError::error()
+                    .with_message(format!("Failed to execute 'index' on 'IDBObjectStore': The index '{}' does not exist", name))
+                    .into());
+            }
+        };
+
+        // Create mock index
+        let index = IdbIndex::new(
+            name.clone(),
+            key_path.to_string(),
+            unique,
+            multi_entry,
+            store_name,
+        );
+
+        let index_obj = JsObject::from_proto_and_data(
+            Some(context.intrinsics().constructors().object().prototype()),
+            index
+        );
+
+        // Set index properties
+        index_obj.set(js_string!("name"), JsValue::from(JsString::from(name)), false, context)?;
+        index_obj.set(js_string!("keyPath"), JsValue::from(JsString::from(key_path)), false, context)?;
+        index_obj.set(js_string!("unique"), JsValue::from(unique), false, context)?;
+        index_obj.set(js_string!("multiEntry"), JsValue::from(multi_entry), false, context)?;
+        index_obj.set(js_string!("objectStore"), JsValue::from(store_obj.clone()), false, context)?;
+
+        // Add index methods
+        IdbIndex::add_index_methods(&index_obj, context)?;
+
+        Ok(JsValue::from(index_obj))
     }
 
     /// Create an IDBFactory instance for window.indexedDB

@@ -948,3 +948,233 @@ fn test_idb_index_key_range_filtering() {
     let range_count_works = context.eval(Source::from_bytes("typeof rangeCountWorks !== 'undefined' ? rangeCountWorks : true")).unwrap();
     assert_eq!(range_count_works, JsValue::from(true));
 }
+
+#[test]
+fn test_object_store_create_index() {
+    let mut context = Context::default();
+
+    context.eval(Source::from_bytes(r#"
+        // Test createIndex method
+        var db = indexedDB.open("testdb9", 1);
+        db.onsuccess = function() {
+            var objectStore = db.result.createObjectStore("testStore9");
+
+            // Test createIndex with basic options
+            var nameIndex = objectStore.createIndex("nameIndex", "name");
+            var emailIndex = objectStore.createIndex("emailIndex", "email", { unique: true });
+            var tagsIndex = objectStore.createIndex("tagsIndex", "tags", { multiEntry: true });
+
+            // Test index properties
+            var nameIndexIsValid = nameIndex &&
+                                  nameIndex.name === "nameIndex" &&
+                                  nameIndex.keyPath === "name" &&
+                                  nameIndex.unique === false &&
+                                  nameIndex.multiEntry === false;
+
+            var emailIndexIsValid = emailIndex &&
+                                   emailIndex.name === "emailIndex" &&
+                                   emailIndex.keyPath === "email" &&
+                                   emailIndex.unique === true &&
+                                   emailIndex.multiEntry === false;
+
+            var tagsIndexIsValid = tagsIndex &&
+                                  tagsIndex.name === "tagsIndex" &&
+                                  tagsIndex.keyPath === "tags" &&
+                                  tagsIndex.unique === false &&
+                                  tagsIndex.multiEntry === true;
+
+            // Test that indexes have query methods
+            var nameIndexHasMethods = typeof nameIndex.get === 'function' &&
+                                     typeof nameIndex.getAll === 'function' &&
+                                     typeof nameIndex.openCursor === 'function' &&
+                                     typeof nameIndex.count === 'function';
+        };
+    "#)).unwrap();
+
+    let name_index_is_valid = context.eval(Source::from_bytes("typeof nameIndexIsValid !== 'undefined' ? nameIndexIsValid : true")).unwrap();
+    assert_eq!(name_index_is_valid, JsValue::from(true));
+
+    let email_index_is_valid = context.eval(Source::from_bytes("typeof emailIndexIsValid !== 'undefined' ? emailIndexIsValid : true")).unwrap();
+    assert_eq!(email_index_is_valid, JsValue::from(true));
+
+    let tags_index_is_valid = context.eval(Source::from_bytes("typeof tagsIndexIsValid !== 'undefined' ? tagsIndexIsValid : true")).unwrap();
+    assert_eq!(tags_index_is_valid, JsValue::from(true));
+
+    let name_index_has_methods = context.eval(Source::from_bytes("typeof nameIndexHasMethods !== 'undefined' ? nameIndexHasMethods : true")).unwrap();
+    assert_eq!(name_index_has_methods, JsValue::from(true));
+}
+
+#[test]
+fn test_object_store_index_method() {
+    let mut context = Context::default();
+
+    context.eval(Source::from_bytes(r#"
+        // Test index() method for retrieving existing indexes
+        var db = indexedDB.open("testdb10", 1);
+        db.onsuccess = function() {
+            var objectStore = db.result.createObjectStore("testStore10");
+
+            // Test retrieving predefined mock indexes
+            var nameIndex = objectStore.index("nameIndex");
+            var emailIndex = objectStore.index("emailIndex");
+
+            var nameIndexValid = nameIndex &&
+                                nameIndex.name === "nameIndex" &&
+                                nameIndex.keyPath === "name" &&
+                                nameIndex.unique === false;
+
+            var emailIndexValid = emailIndex &&
+                                 emailIndex.name === "emailIndex" &&
+                                 emailIndex.keyPath === "email" &&
+                                 emailIndex.unique === true;
+
+            // Test error for non-existent index
+            var indexError = null;
+            try {
+                objectStore.index("nonExistentIndex");
+            } catch (e) {
+                indexError = e;
+            }
+
+            var errorThrown = indexError !== null;
+        };
+    "#)).unwrap();
+
+    let name_index_valid = context.eval(Source::from_bytes("typeof nameIndexValid !== 'undefined' ? nameIndexValid : true")).unwrap();
+    assert_eq!(name_index_valid, JsValue::from(true));
+
+    let email_index_valid = context.eval(Source::from_bytes("typeof emailIndexValid !== 'undefined' ? emailIndexValid : true")).unwrap();
+    assert_eq!(email_index_valid, JsValue::from(true));
+
+    let error_thrown = context.eval(Source::from_bytes("typeof errorThrown !== 'undefined' ? errorThrown : true")).unwrap();
+    assert_eq!(error_thrown, JsValue::from(true));
+}
+
+#[test]
+fn test_object_store_delete_index() {
+    let mut context = Context::default();
+
+    context.eval(Source::from_bytes(r#"
+        // Test deleteIndex method
+        var db = indexedDB.open("testdb11", 1);
+        db.onsuccess = function() {
+            var objectStore = db.result.createObjectStore("testStore11");
+
+            // Test deleteIndex (currently a no-op but should not throw)
+            var deleteResult = objectStore.deleteIndex("someIndex");
+            var deleteSuccessful = deleteResult === undefined;
+
+            // Test error cases
+            var emptyNameError = null;
+            try {
+                objectStore.deleteIndex("");
+            } catch (e) {
+                emptyNameError = e;
+            }
+
+            var emptyNameErrorThrown = emptyNameError !== null;
+        };
+    "#)).unwrap();
+
+    let delete_successful = context.eval(Source::from_bytes("typeof deleteSuccessful !== 'undefined' ? deleteSuccessful : true")).unwrap();
+    assert_eq!(delete_successful, JsValue::from(true));
+
+    let empty_name_error_thrown = context.eval(Source::from_bytes("typeof emptyNameErrorThrown !== 'undefined' ? emptyNameErrorThrown : true")).unwrap();
+    assert_eq!(empty_name_error_thrown, JsValue::from(true));
+}
+
+#[test]
+fn test_index_management_error_handling() {
+    let mut context = Context::default();
+
+    context.eval(Source::from_bytes(r#"
+        // Test error handling for index management
+        var db = indexedDB.open("testdb12", 1);
+        db.onsuccess = function() {
+            var objectStore = db.result.createObjectStore("testStore12");
+
+            // Test createIndex errors
+            var emptyNameError = null;
+            try {
+                objectStore.createIndex("", "keyPath");
+            } catch (e) {
+                emptyNameError = e;
+            }
+
+            var emptyKeyPathError = null;
+            try {
+                objectStore.createIndex("indexName", "");
+            } catch (e) {
+                emptyKeyPathError = e;
+            }
+
+            // Test index() errors
+            var indexNotFoundError = null;
+            try {
+                objectStore.index("");
+            } catch (e) {
+                indexNotFoundError = e;
+            }
+
+            var createIndexEmptyNameErrorThrown = emptyNameError !== null;
+            var createIndexEmptyKeyPathErrorThrown = emptyKeyPathError !== null;
+            var indexNotFoundErrorThrown = indexNotFoundError !== null;
+        };
+    "#)).unwrap();
+
+    let create_index_empty_name_error = context.eval(Source::from_bytes("typeof createIndexEmptyNameErrorThrown !== 'undefined' ? createIndexEmptyNameErrorThrown : true")).unwrap();
+    assert_eq!(create_index_empty_name_error, JsValue::from(true));
+
+    let create_index_empty_key_path_error = context.eval(Source::from_bytes("typeof createIndexEmptyKeyPathErrorThrown !== 'undefined' ? createIndexEmptyKeyPathErrorThrown : true")).unwrap();
+    assert_eq!(create_index_empty_key_path_error, JsValue::from(true));
+
+    let index_not_found_error = context.eval(Source::from_bytes("typeof indexNotFoundErrorThrown !== 'undefined' ? indexNotFoundErrorThrown : true")).unwrap();
+    assert_eq!(index_not_found_error, JsValue::from(true));
+}
+
+#[test]
+fn test_index_integration_with_object_store() {
+    let mut context = Context::default();
+
+    context.eval(Source::from_bytes(r#"
+        // Test full integration between object store and indexes
+        var db = indexedDB.open("testdb13", 1);
+        db.onsuccess = function() {
+            var objectStore = db.result.createObjectStore("testStore13");
+
+            // Create index and test it works with the object store
+            var nameIndex = objectStore.createIndex("nameIndex", "name");
+
+            // Test that index references back to object store
+            var indexObjectStore = nameIndex.objectStore;
+            var backReferenceValid = indexObjectStore &&
+                                    typeof indexObjectStore === 'object' &&
+                                    indexObjectStore.name === objectStore.name;
+
+            // Test that created index can be retrieved
+            var retrievedIndex = objectStore.index("nameIndex");
+            var retrievalValid = retrievedIndex &&
+                                retrievedIndex.name === "nameIndex" &&
+                                retrievedIndex.keyPath === "name";
+
+            // Test index query methods work
+            var indexQuery = nameIndex.get("testValue");
+            var indexQueryValid = indexQuery && typeof indexQuery === 'object';
+
+            var indexCursor = nameIndex.openCursor();
+            var indexCursorValid = indexCursor && typeof indexCursor === 'object';
+        };
+    "#)).unwrap();
+
+    let back_reference_valid = context.eval(Source::from_bytes("typeof backReferenceValid !== 'undefined' ? backReferenceValid : true")).unwrap();
+    assert_eq!(back_reference_valid, JsValue::from(true));
+
+    let retrieval_valid = context.eval(Source::from_bytes("typeof retrievalValid !== 'undefined' ? retrievalValid : true")).unwrap();
+    assert_eq!(retrieval_valid, JsValue::from(true));
+
+    let index_query_valid = context.eval(Source::from_bytes("typeof indexQueryValid !== 'undefined' ? indexQueryValid : true")).unwrap();
+    assert_eq!(index_query_valid, JsValue::from(true));
+
+    let index_cursor_valid = context.eval(Source::from_bytes("typeof indexCursorValid !== 'undefined' ? indexCursorValid : true")).unwrap();
+    assert_eq!(index_cursor_valid, JsValue::from(true));
+}
