@@ -568,12 +568,12 @@ impl Context {
             )
         };
 
-        println!("{}", frame.code_block);
-        println!(
+        eprintln!("{}", frame.code_block);
+        eprintln!(
             "{msg:-^width$}",
             width = Self::COLUMN_WIDTH * Self::NUMBER_OF_COLUMNS - 10
         );
-        println!(
+        eprintln!(
             "{:<TIME_COLUMN_WIDTH$} {:<OPCODE_COLUMN_WIDTH$} {:<OPERAND_COLUMN_WIDTH$} Stack\n",
             "Time",
             "Opcode",
@@ -614,7 +614,7 @@ impl Context {
             | Opcode::SuperCall
             | Opcode::SuperCallSpread
             | Opcode::SuperCallDerived => {
-                println!();
+                eprintln!();
             }
             _ => {}
         }
@@ -628,7 +628,7 @@ impl Context {
             .stack
             .display_trace(self.vm.frame(), self.vm.frames.len() - 1);
 
-        println!(
+        eprintln!(
             "{:<TIME_COLUMN_WIDTH$} {:<OPCODE_COLUMN_WIDTH$} {operands:<OPERAND_COLUMN_WIDTH$} {stack}",
             format!("{}μs", duration.as_micros()),
             format!("{}", opcode.as_str()),

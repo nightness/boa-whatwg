@@ -1,0 +1,5 @@
+eval code = Function('super()')()
+result = Err(JsError { inner: Native(JsNativeError { kind: Syntax, message: "invalid `super` call", cause: None, .. }), backtrace: Some(Backtrace { stack: [Bytecode { pc: 29, source_info: SourceInfo { inner: Inner { map: SourceMap { entries: [Entry { pc: 20, position: Some(Position { line_number: 1, column_number: 9 }) }, Entry { pc: 36, position: Some(Position { line_number: 1, column_number: 20 }) }, Entry { pc: 42, position: None }], path: None }, function_name: "<main>", text_spanned: SourceTextSpanned } } }] }) })
+typeof Function -> Ok(JsValue(String("function")))
+Function.toString() -> Ok(JsValue(String("function Function() { [native code] }")))
+Object.prototype.toString.call(Function) -> Ok(JsValue(String("[object Function]")))

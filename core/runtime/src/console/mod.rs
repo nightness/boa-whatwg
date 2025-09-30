@@ -87,9 +87,9 @@ pub trait Logger: Trace {
 
 /// The default implementation for logging from the console.
 ///
-/// Implements the [`Logger`] trait and output errors to stderr and all
-/// the others to stdout. Will add indentation based on the number of
-/// groups.
+/// Implements the [`Logger`] trait and outputs all logs to stderr so
+/// logging doesn't interfere with stdout-based protocols (like MCP).
+/// Will add indentation based on the number of groups.
 #[derive(Debug, Trace, Finalize)]
 pub struct DefaultLogger;
 
@@ -97,7 +97,7 @@ impl Logger for DefaultLogger {
     #[inline]
     fn log(&self, msg: String, state: &ConsoleState, _context: &mut Context) -> JsResult<()> {
         let indent = state.indent();
-        writeln!(std::io::stdout(), "{msg:>indent$}").map_err(JsError::from_rust)
+        writeln!(std::io::stderr(), "{msg:>indent$}").map_err(JsError::from_rust)
     }
 
     #[inline]

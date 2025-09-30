@@ -2,5 +2,5 @@
 
 pub fn main() {
     // Rerun the tests if the test files change.
-    println!("cargo::rerun-if-changed=tests/");
+   eprintln!("cargo::rerun-if-changed=tests/");
 }

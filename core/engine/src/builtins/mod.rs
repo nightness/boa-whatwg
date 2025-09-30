@@ -1,8 +1,79 @@
 //! Boa's ECMAScript built-in object implementations, e.g. Object, String, Math, Array, etc.
 
+pub mod abort_controller;
 pub mod array;
 pub mod array_buffer;
 pub mod async_function;
+pub mod readable_stream;
+pub mod readable_stream_reader;
+pub mod writable_stream;
+pub mod transform_stream;
+pub mod queuing_strategy;
+pub mod websocket;
+pub mod websocket_stream;
+pub mod webassembly;
+pub mod worker;
+pub mod worker_error;
+pub mod worker_events;
+pub mod worker_navigator;
+pub mod worker_script_loader;
+pub mod worker_global_scope;
+pub mod structured_clone;
+pub mod shared_worker;
+pub mod service_worker;
+pub mod service_worker_container;
+pub mod worklet;
+pub mod message_channel;
+pub mod message_port;
+pub mod message_event;
+pub mod broadcast_channel;
+pub mod crypto;
+pub mod document;
+pub mod document_parse;
+pub mod form;
+pub mod window;
+pub mod history;
+pub mod pageswap_event;
+pub mod node;
+pub mod character_data;
+pub mod text;
+pub mod document_fragment;
+pub mod shadow_root;
+pub mod html_slot_element;
+pub mod shadow_tree_traversal;
+pub mod shadow_css_scoping;
+pub mod declarative_shadow_dom;
+pub mod slotchange_event;
+pub mod nodelist;
+pub mod element;
+pub mod attr;
+pub mod comment;
+pub mod processing_instruction;
+pub mod cdata_section;
+pub mod selection;
+pub mod frame_selection;
+pub mod range;
+pub mod event;
+pub mod event_target;
+pub mod custom_event;
+pub mod domtokenlist;
+pub mod css;
+pub mod fetch;
+pub mod xmlhttprequest;
+pub mod mutation_observer;
+pub mod intersection_observer;
+pub mod resize_observer;
+pub mod console;
+pub mod timers;
+pub mod blob;
+pub mod file;
+pub mod file_reader;
+pub mod event_source;
+pub mod rtc_peer_connection;
+pub mod rtc_data_channel;
+pub mod rtc_ice_candidate;
+pub mod rtc_session_description;
+pub mod webrtc_tests;
 pub mod async_generator;
 pub mod async_generator_function;
 pub mod atomics;
@@ -33,6 +104,17 @@ pub mod uri;
 pub mod weak;
 pub mod weak_map;
 pub mod weak_set;
+pub mod storage;
+pub mod storage_event;
+pub mod storage_manager;
+pub mod cache;
+pub mod cache_storage;
+pub mod cookie_store;
+pub mod file_system;
+pub mod web_locks;
+pub mod indexed_db;
+pub mod navigator;
+pub mod performance;
 
 mod builder;
 
@@ -53,6 +135,7 @@ pub(crate) mod options;
 pub mod temporal;
 
 pub(crate) use self::{
+    abort_controller::AbortController,
     array::Array,
     async_function::AsyncFunction,
     bigint::BigInt,
@@ -71,6 +154,54 @@ pub(crate) use self::{
     object::OrdinaryObject,
     promise::Promise,
     proxy::Proxy,
+    readable_stream::ReadableStream,
+    writable_stream::WritableStream,
+    transform_stream::TransformStream,
+    queuing_strategy::{CountQueuingStrategy, ByteLengthQueuingStrategy},
+    websocket::WebSocket,
+    websocket_stream::WebSocketStream,
+    worker::Worker,
+    shared_worker::SharedWorker,
+    service_worker::ServiceWorker,
+    service_worker_container::ServiceWorkerContainer,
+    worklet::Worklet,
+    message_channel::MessageChannel,
+    message_port::MessagePort,
+    broadcast_channel::BroadcastChannel,
+    crypto::Crypto,
+    document::Document,
+    form::{HTMLFormElement, HTMLFormControlsCollection, HTMLInputElement},
+    window::Window,
+    history::History,
+    pageswap_event::PageSwapEvent,
+    node::Node,
+    character_data::CharacterData,
+    text::Text,
+    document_fragment::DocumentFragment,
+    shadow_root::ShadowRoot,
+    html_slot_element::HTMLSlotElement,
+    nodelist::NodeList,
+    element::Element,
+    attr::Attr,
+    comment::Comment,
+    domtokenlist::DOMTokenList,
+    selection::Selection,
+    range::Range,
+    event::Event,
+    event_target::EventTarget,
+    console::Console,
+    blob::Blob,
+    file::File,
+    file_reader::FileReader,
+    event_source::EventSource,
+    rtc_peer_connection::RTCPeerConnectionBuiltin,
+    rtc_data_channel::RTCDataChannelBuiltin,
+    rtc_ice_candidate::RTCIceCandidateBuiltin,
+    rtc_session_description::RTCSessionDescriptionBuiltin,
+    xmlhttprequest::XmlHttpRequest,
+    mutation_observer::MutationObserver,
+    intersection_observer::IntersectionObserver,
+    resize_observer::ResizeObserver,
     reflect::Reflect,
     regexp::RegExp,
     set::Set,
@@ -83,7 +214,7 @@ pub(crate) use self::{
 };
 
 use crate::{
-    Context, JsResult, JsString, JsValue,
+    Context, JsResult, JsString, JsValue, JsNativeError,
     builtins::{
         array::ArrayIterator,
         array_buffer::{ArrayBuffer, SharedArrayBuffer},
@@ -91,6 +222,8 @@ use crate::{
         async_generator_function::AsyncGeneratorFunction,
         atomics::Atomics,
         error::r#type::ThrowTypeError,
+        fetch::{Fetch, Request, Response, Headers},
+        timers::{SetTimeout, SetInterval, ClearTimeout, ClearInterval},
         generator::Generator,
         generator_function::GeneratorFunction,
         iterable::{AsyncFromSyncIterator, AsyncIterator, Iterator},
@@ -104,6 +237,11 @@ use crate::{
         weak::WeakRef,
         weak_map::WeakMap,
         weak_set::WeakSet,
+        storage::Storage,
+        web_locks::{LockManagerObject, Lock},
+        indexed_db::IdbFactory,
+        navigator::Navigator,
+        performance::Performance,
     },
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
     js_string,
@@ -207,6 +345,7 @@ impl Realm {
         ForInIterator::init(self);
         Math::init(self);
         Json::init(self);
+        css::Css::init(self);
         Array::init(self);
         ArrayIterator::init(self);
         Proxy::init(self);
@@ -258,6 +397,99 @@ impl Realm {
         Generator::init(self);
         GeneratorFunction::init(self);
         Promise::init(self);
+        ReadableStream::init(self);
+        WritableStream::init(self);
+        TransformStream::init(self);
+        CountQueuingStrategy::init(self);
+        ByteLengthQueuingStrategy::init(self);
+        WebSocket::init(self);
+        WebSocketStream::init(self);
+        EventSource::init(self);
+        RTCPeerConnectionBuiltin::init(self);
+        RTCDataChannelBuiltin::init(self);
+        RTCIceCandidateBuiltin::init(self);
+        RTCSessionDescriptionBuiltin::init(self);
+        Worker::init(self);
+        SharedWorker::init(self);
+        ServiceWorker::init(self);
+        Worklet::init(self);
+        MessageChannel::init(self);
+        MessagePort::init(self);
+        BroadcastChannel::init(self);
+        Crypto::init(self);
+        AbortController::init(self);
+        Request::init(self);
+        Response::init(self);
+        Headers::init(self);
+        Document::init(self);
+        document_parse::setup_parse_html_unsafe(self);
+        Window::init(self);
+        History::init(self);
+        PageSwapEvent::init(self);
+        Node::init(self);
+        CharacterData::init(self);
+        Text::init(self);
+        DocumentFragment::init(self);
+        indexed_db::IdbFactory::init(self);
+
+        // TEMPORARILY DISABLED: Shadow DOM support causes "not a callable function" errors
+        //
+        // PROBLEM DETAILS:
+        // When Shadow DOM is enabled, basic form interactions fail with "TypeError: not a callable function".
+        // This affects document.querySelector, JSON.stringify, element.dispatchEvent, and other core DOM APIs.
+        //
+        // INVESTIGATION FINDINGS:
+        // 1. The issue started immediately after adding Shadow DOM implementation
+        // 2. Form automation worked perfectly before Shadow DOM was added
+        // 3. Session management works correctly (pages load, sessions persist)
+        // 4. DOM APIs are available (typeof checks show they exist as functions)
+        // 5. But when called during form interactions, they become "not a callable function"
+        //
+        // LIKELY CAUSE:
+        // The Shadow DOM implementation is interfering with the execution context
+        // or prototype chain of basic DOM methods, making them non-callable during
+        // JavaScript evaluation in form interaction scenarios.
+        //
+        // MUTEX FIX ATTEMPTED:
+        // We fixed BorrowMutError in shadow_root mutex locks using try_lock(),
+        // but the core issue persists, suggesting deeper integration problems.
+        //
+        // FILES AFFECTED:
+        // - engines/boa/core/engine/src/builtins/element.rs (attachShadow method)
+        // - engines/boa/core/engine/src/builtins/shadow_root.rs (Shadow DOM core)
+        // - Multiple shadow_*.rs files for CSS scoping, traversal, etc.
+        //
+        // TODO: Investigate why Shadow DOM breaks basic DOM function callability
+        ShadowRoot::init(self);
+
+        HTMLSlotElement::init(self);
+        NodeList::init(self);
+        Element::init(self);
+        Attr::init(self);
+        Comment::init(self);
+            DOMTokenList::init(self);
+        processing_instruction::ProcessingInstruction::init(self);
+        cdata_section::CDATASection::init(self);
+        HTMLFormElement::init(self);
+        HTMLFormControlsCollection::init(self);
+        HTMLInputElement::init(self);
+        Selection::init(self);
+        Range::init(self);
+        Event::init(self);
+        EventTarget::init(self);
+        custom_event::CustomEvent::init(self);
+        message_event::MessageEvent::init(self);
+        Fetch::init(self);
+        XmlHttpRequest::init(self);
+        MutationObserver::init(self);
+        IntersectionObserver::init(self);
+        ResizeObserver::init(self);
+        Console::init(self);
+        Blob::init(self);
+        SetTimeout::init(self);
+        SetInterval::init(self);
+        ClearTimeout::init(self);
+        ClearInterval::init(self);
         AsyncFunction::init(self);
         AsyncGenerator::init(self);
         AsyncGeneratorFunction::init(self);
@@ -268,6 +500,18 @@ impl Realm {
         WeakRef::init(self);
         WeakMap::init(self);
         WeakSet::init(self);
+        Storage::init(self);
+        storage_event::StorageEvent::init(self);
+        storage_manager::StorageManager::init(self);
+        cache::Cache::init(self);
+        cache_storage::CacheStorage::init(self);
+        cookie_store::CookieStore::init(self);
+        file_system::FileSystemHandle::init(self);
+        file_system::FileSystemFileHandle::init(self);
+        file_system::FileSystemDirectoryHandle::init(self);
+        web_locks::LockManagerObject::init(self);
+        Navigator::init(self);
+        Performance::init(self);
         Atomics::init(self);
 
         #[cfg(feature = "annex-b")]
@@ -321,6 +565,160 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
             .configurable(true),
         context,
     )?;
+    // Create an actual Window object instead of just pointing to globalThis
+    let window_constructor = context.intrinsics().constructors().window().constructor();
+    let window_obj = Window::constructor(&window_constructor.clone().into(), &[], context)?;
+    global_object.define_property_or_throw(
+        js_string!("window"),
+        PropertyDescriptor::builder()
+            .value(window_obj.clone())
+            .writable(true)
+            .enumerable(false)
+            .configurable(true),
+        context,
+    )?;
+
+    // Also expose localStorage and sessionStorage as global properties for convenience
+    if let Some(window_object) = window_obj.as_object() {
+        if let Ok(local_storage) = window_object.get(js_string!("localStorage"), context) {
+            global_object.define_property_or_throw(
+                js_string!("localStorage"),
+                PropertyDescriptor::builder()
+                    .value(local_storage)
+                    .writable(false)
+                    .enumerable(false)
+                    .configurable(true),
+                context,
+            )?;
+        }
+        if let Ok(session_storage) = window_object.get(js_string!("sessionStorage"), context) {
+            global_object.define_property_or_throw(
+                js_string!("sessionStorage"),
+                PropertyDescriptor::builder()
+                    .value(session_storage)
+                    .writable(false)
+                    .enumerable(false)
+                    .configurable(true),
+                context,
+            )?;
+        }
+
+        // Also expose caches as global property (CacheStorage API)
+        use crate::builtins::cache_storage::CacheStorage;
+        let cache_storage = CacheStorage::create_cache_storage();
+        let cache_storage_prototype = context.intrinsics().constructors().cache_storage().prototype();
+        cache_storage.set_prototype(Some(cache_storage_prototype));
+        global_object.define_property_or_throw(
+            js_string!("caches"),
+            PropertyDescriptor::builder()
+                .value(cache_storage)
+                .writable(false)
+                .enumerable(false)
+                .configurable(true),
+            context,
+        )?;
+
+        // Also expose cookieStore as global property (Cookie Store API)
+        use crate::builtins::cookie_store::CookieStore;
+        let cookie_store = CookieStore::create_cookie_store();
+        let cookie_store_prototype = context.intrinsics().constructors().cookie_store().prototype();
+        cookie_store.set_prototype(Some(cookie_store_prototype));
+        global_object.define_property_or_throw(
+            js_string!("cookieStore"),
+            PropertyDescriptor::builder()
+                .value(cookie_store)
+                .writable(false)
+                .enumerable(false)
+                .configurable(true),
+            context,
+        )?;
+
+        // Add File System API global functions
+        use crate::builtins::file_system::{show_open_file_picker, show_save_file_picker, show_directory_picker};
+
+        let show_open_file_picker_fn = BuiltInBuilder::callable(context.realm(), show_open_file_picker)
+            .name(js_string!("showOpenFilePicker"))
+            .length(0)
+            .build();
+        global_object.define_property_or_throw(
+            js_string!("showOpenFilePicker"),
+            PropertyDescriptor::builder()
+                .value(show_open_file_picker_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+            context,
+        )?;
+
+        let show_save_file_picker_fn = BuiltInBuilder::callable(context.realm(), show_save_file_picker)
+            .name(js_string!("showSaveFilePicker"))
+            .length(0)
+            .build();
+        global_object.define_property_or_throw(
+            js_string!("showSaveFilePicker"),
+            PropertyDescriptor::builder()
+                .value(show_save_file_picker_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+            context,
+        )?;
+
+        let show_directory_picker_fn = BuiltInBuilder::callable(context.realm(), show_directory_picker)
+            .name(js_string!("showDirectoryPicker"))
+            .length(0)
+            .build();
+        global_object.define_property_or_throw(
+            js_string!("showDirectoryPicker"),
+            PropertyDescriptor::builder()
+                .value(show_directory_picker_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+            context,
+        )?;
+
+        // Also expose navigator as global for convenience
+        if let Ok(navigator) = window_object.get(js_string!("navigator"), context) {
+            global_object.define_property_or_throw(
+                js_string!("navigator"),
+                PropertyDescriptor::builder()
+                    .value(navigator)
+                    .writable(false)
+                    .enumerable(false)
+                    .configurable(true),
+                context,
+            )?;
+        }
+
+        // Also expose indexedDB as global for convenience
+        if let Ok(indexed_db) = window_object.get(js_string!("indexedDB"), context) {
+            global_object.define_property_or_throw(
+                js_string!("indexedDB"),
+                PropertyDescriptor::builder()
+                    .value(indexed_db)
+                    .writable(false)
+                    .enumerable(false)
+                    .configurable(true),
+                context,
+            )?;
+        }
+
+        // Add IDBKeyRange global constructor
+        {
+            use crate::builtins::indexed_db::IdbKeyRange;
+            let key_range_constructor = IdbKeyRange::create_constructor(context);
+            global_object.define_property_or_throw(
+                js_string!("IDBKeyRange"),
+                PropertyDescriptor::builder()
+                    .value(key_range_constructor)
+                    .writable(false)
+                    .enumerable(false)
+                    .configurable(true),
+                context,
+            )?;
+        }
+    }
     let restricted = PropertyDescriptor::builder()
         .writable(false)
         .enumerable(false)
@@ -345,6 +743,8 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<OrdinaryObject>(context)?;
     global_binding::<Math>(context)?;
     global_binding::<Json>(context)?;
+    global_binding::<css::Css>(context)?;
+    css::setup_css_worklets(context)?;
     global_binding::<Array>(context)?;
     global_binding::<Proxy>(context)?;
     global_binding::<ArrayBuffer>(context)?;
@@ -388,6 +788,47 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<AggregateError>(context)?;
     global_binding::<Reflect>(context)?;
     global_binding::<Promise>(context)?;
+    global_binding::<ReadableStream>(context)?;
+    global_binding::<WritableStream>(context)?;
+    global_binding::<TransformStream>(context)?;
+    global_binding::<CountQueuingStrategy>(context)?;
+    global_binding::<ByteLengthQueuingStrategy>(context)?;
+    global_binding::<WebSocket>(context)?;
+    global_binding::<Worker>(context)?;
+    global_binding::<SharedWorker>(context)?;
+    global_binding::<MessageChannel>(context)?;
+    global_binding::<BroadcastChannel>(context)?;
+    global_binding::<Crypto>(context)?;
+    global_binding::<AbortController>(context)?;
+    global_binding::<XmlHttpRequest>(context)?;
+    global_binding::<MutationObserver>(context)?;
+    global_binding::<IntersectionObserver>(context)?;
+    global_binding::<ResizeObserver>(context)?;
+    global_binding::<Console>(context)?;
+    global_binding::<Blob>(context)?;
+    global_binding::<Range>(context)?;
+    global_binding::<Event>(context)?;
+    global_binding::<EventTarget>(context)?;
+    global_binding::<custom_event::CustomEvent>(context)?;
+    global_binding::<message_event::MessageEvent>(context)?;
+    global_binding::<Node>(context)?;
+    global_binding::<Element>(context)?;
+    global_binding::<Attr>(context)?;
+    global_binding::<Comment>(context)?;
+    global_binding::<DOMTokenList>(context)?;
+    global_binding::<processing_instruction::ProcessingInstruction>(context)?;
+    global_binding::<cdata_section::CDATASection>(context)?;
+    global_binding::<CharacterData>(context)?;
+    global_binding::<Text>(context)?;
+    global_binding::<DocumentFragment>(context)?;
+    global_binding::<ShadowRoot>(context)?;
+    global_binding::<HTMLSlotElement>(context)?;
+    global_binding::<NodeList>(context)?;
+    global_binding::<Document>(context)?;
+    global_binding::<SetTimeout>(context)?;
+    global_binding::<SetInterval>(context)?;
+    global_binding::<ClearTimeout>(context)?;
+    global_binding::<ClearInterval>(context)?;
     global_binding::<EncodeUri>(context)?;
     global_binding::<EncodeUriComponent>(context)?;
     global_binding::<DecodeUri>(context)?;
@@ -395,7 +836,30 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<WeakRef>(context)?;
     global_binding::<WeakMap>(context)?;
     global_binding::<WeakSet>(context)?;
+    global_binding::<Storage>(context)?;
+    global_binding::<WebSocketStream>(context)?;
+    global_binding::<WebSocket>(context)?;
+    global_binding::<Fetch>(context)?;
+    global_binding::<Request>(context)?;
+    global_binding::<Response>(context)?;
+    global_binding::<Headers>(context)?;
     global_binding::<Atomics>(context)?;
+
+    // Add getSelection method to global object (window.getSelection)
+    let get_selection_func = BuiltInBuilder::callable(context.realm(), window_get_selection)
+        .name(js_string!("getSelection"))
+        .length(0)
+        .build();
+
+    global_object.define_property_or_throw(
+        js_string!("getSelection"),
+        PropertyDescriptor::builder()
+            .value(get_selection_func)
+            .writable(true)
+            .enumerable(true)
+            .configurable(true),
+        context,
+    )?;
 
     #[cfg(feature = "annex-b")]
     {
@@ -411,5 +875,30 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
         global_binding::<temporal::Temporal>(context)?;
     }
 
+    // Add crypto global object (lowercase instance, not constructor)
+    let crypto_obj = crypto::create_crypto_object(context)?;
+    global_object.define_property_or_throw(
+        js_string!("crypto"),
+        PropertyDescriptor::builder()
+            .value(crypto_obj)
+            .writable(false)
+            .enumerable(true)
+            .configurable(true),
+        context,
+    )?;
+
     Ok(())
 }
+
+/// `window.getSelection()` global function
+fn window_get_selection(
+    _this: &JsValue,
+    _args: &[JsValue],
+    context: &mut Context,
+) -> JsResult<JsValue> {
+    // Create a new Selection object
+    let selection_constructor = context.intrinsics().constructors().selection().constructor();
+    let selection_obj = selection_constructor.construct(&[], None, context)?;
+    Ok(selection_obj.into())
+}
+

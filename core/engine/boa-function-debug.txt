@@ -1,0 +1,5 @@
+=== create_dynamic_function debug ===
+args.len=1
+arg[0] raw = JsValue(String("super.a"))
+arg[0] as_string = "super.a"
+extracted_body = "super.a"

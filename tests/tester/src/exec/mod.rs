@@ -37,7 +37,7 @@ impl TestSuite {
         console: bool,
     ) -> SuiteResult {
         if verbose != 0 {
-            println!("Suite {}:", self.path.display());
+            eprintln!("Suite {}:", self.path.display());
         }
 
         let suites: Vec<_> = if parallel {
@@ -90,7 +90,7 @@ impl TestSuite {
         }
 
         if verbose != 0 {
-            println!();
+            eprintln!();
         }
 
         // Count passed tests and es specs
@@ -133,7 +133,7 @@ impl TestSuite {
         }
 
         if verbose != 0 {
-            println!(
+            eprintln!(
                 "Suite {} results: total: {}, passed: {}, ignored: {}, failed: {} {}, conformance: {:.2}%",
                 self.path.display(),
                 es_next.total,
@@ -205,7 +205,7 @@ impl Test {
         let result_text = text.into();
 
         if verbosity > 1 {
-            println!(
+            eprintln!(
                 "`{}`{}: {}",
                 self.path.display(),
                 if strict { " (strict)" } else { "" },
@@ -227,7 +227,7 @@ impl Test {
         }
 
         if verbosity > 2 {
-            println!(
+            eprintln!(
                 "`{}`{}: result text\n{result_text}\n",
                 self.path.display(),
                 if strict { " (strict)" } else { "" },
@@ -265,7 +265,7 @@ impl Test {
         }
 
         if verbosity > 1 {
-            println!(
+            eprintln!(
                 "`{}`{}: starting",
                 self.path.display(),
                 if strict { " (strict mode)" } else { "" }

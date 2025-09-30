@@ -47,6 +47,18 @@ pub struct RegExp {
     original_flags: JsString,
 }
 
+impl RegExp {
+    /// Gets the original source for structured cloning
+    pub(crate) fn get_original_source(&self) -> &JsString {
+        &self.original_source
+    }
+
+    /// Gets the original flags for structured cloning
+    pub(crate) fn get_original_flags(&self) -> &JsString {
+        &self.original_flags
+    }
+}
+
 impl IntrinsicObject for RegExp {
     fn init(realm: &Realm) {
         let get_species = BuiltInBuilder::callable(realm, Self::get_species)
@@ -159,6 +171,9 @@ impl IntrinsicObject for RegExp {
 
         #[cfg(feature = "annex-b")]
         let regexp = regexp.method(Self::compile, js_string!("compile"), 2);
+
+        // Chrome 136: RegExp.escape static method
+        let regexp = regexp.static_method(Self::escape, js_string!("escape"), 1);
 
         regexp.build();
     }
@@ -1923,6 +1938,46 @@ impl RegExp {
         this.set(js_string!("lastIndex"), 0, true, context)?;
 
         Ok(this.into())
+    }
+
+    /// `RegExp.escape ( S )`
+    ///
+    /// Escapes special regex characters in a string to make them literal.
+    /// This is a Chrome 136 feature proposal.
+    ///
+    /// More information:
+    ///  - [Chrome Platform Status][chrome]
+    ///
+    /// [chrome]: https://chromestatus.com/feature/6465170639945728
+    pub(crate) fn escape(
+        _: &JsValue,
+        args: &[JsValue],
+        context: &mut Context,
+    ) -> JsResult<JsValue> {
+        // 1. Let string be ? ToString(S).
+        let input = args.get_or_undefined(0);
+        let input_str = input.to_string(context)?;
+
+        // 2. Escape special regex characters to make them literal
+        // Characters to escape: . * + ? ^ $ { } ( ) | [ ] \
+        // We operate on the raw input string (not the escaped representation) so that
+        // backslashes are handled correctly. For a single backslash input (`"\\"`),
+        // the expected escaped result is four backslashes in the resulting JS string
+        // value (i.e. `"\\\\"`). To achieve this, replace each backslash `\` with `\\\\`.
+        let s = input_str.to_std_string_escaped();
+        let mut escaped = String::with_capacity(s.len());
+        for c in s.chars() {
+            match c {
+                '\\' => escaped.push_str("\\\\\\\\"), // replace '\' with '\\\\'
+                '.' | '*' | '+' | '?' | '^' | '$' | '{' | '}' | '(' | ')' | '|' | '[' | ']' => {
+                    escaped.push('\\');
+                    escaped.push(c);
+                }
+                _ => escaped.push(c),
+            }
+        }
+
+        Ok(JsValue::from(js_string!(escaped)))
     }
 }
 

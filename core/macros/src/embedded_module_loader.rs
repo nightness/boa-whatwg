@@ -3,6 +3,9 @@
 
 use proc_macro::TokenStream;
 use quote::{ToTokens, TokenStreamExt, quote};
+#[cfg(feature = "use_vfs")]
+use vfs::fs as fs;
+#[cfg(not(feature = "use_vfs"))]
 use std::fs;
 use std::path::PathBuf;
 use syn::parse::ParseStream;
@@ -128,7 +131,12 @@ fn find_all_files(dir: &mut fs::ReadDir, root: &PathBuf) -> Vec<PathBuf> {
         };
 
         let path = entry.path();
-        if path.is_dir() {
+        let is_dir = match fs::metadata(&path) {
+            Ok(m) => m.is_dir(),
+            Err(_) => false,
+        };
+
+        if is_dir {
             let Ok(mut sub_dir) = fs::read_dir(&path) else {
                 continue;
             };
