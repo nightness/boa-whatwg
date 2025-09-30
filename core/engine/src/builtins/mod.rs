@@ -11,7 +11,6 @@ pub mod transform_stream;
 pub mod queuing_strategy;
 pub mod websocket;
 pub mod websocket_stream;
-#[cfg(feature = "webassembly")]
 pub mod webassembly;
 pub mod worker;
 pub mod worker_error;
@@ -69,6 +68,9 @@ pub mod timers;
 pub mod blob;
 pub mod file;
 pub mod file_reader;
+pub mod event_source;
+pub mod rtc_peer_connection;
+pub mod rtc_data_channel;
 pub mod async_generator;
 pub mod async_generator_function;
 pub mod atomics;
@@ -187,6 +189,9 @@ pub(crate) use self::{
     blob::Blob,
     file::File,
     file_reader::FileReader,
+    event_source::EventSource,
+    rtc_peer_connection::RTCPeerConnectionBuiltin,
+    rtc_data_channel::RTCDataChannelBuiltin,
     xmlhttprequest::XmlHttpRequest,
     mutation_observer::MutationObserver,
     intersection_observer::IntersectionObserver,
@@ -392,6 +397,9 @@ impl Realm {
         ByteLengthQueuingStrategy::init(self);
         WebSocket::init(self);
         WebSocketStream::init(self);
+        EventSource::init(self);
+        RTCPeerConnectionBuiltin::init(self);
+        RTCDataChannelBuiltin::init(self);
         Worker::init(self);
         SharedWorker::init(self);
         ServiceWorker::init(self);

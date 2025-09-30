@@ -175,15 +175,10 @@ pub struct StandardConstructors {
     websocket: StandardConstructor,
     websocket_stream: StandardConstructor,
     // WebAssembly API constructors
-    #[cfg(feature = "webassembly")]
     webassembly_module: StandardConstructor,
-    #[cfg(feature = "webassembly")]
     webassembly_instance: StandardConstructor,
-    #[cfg(feature = "webassembly")]
     webassembly_memory: StandardConstructor,
-    #[cfg(feature = "webassembly")]
     webassembly_table: StandardConstructor,
-    #[cfg(feature = "webassembly")]
     webassembly_global: StandardConstructor,
     worker: StandardConstructor,
     shared_worker: StandardConstructor,
@@ -232,6 +227,9 @@ pub struct StandardConstructors {
     blob: StandardConstructor,
     file: StandardConstructor,
     file_reader: StandardConstructor,
+    event_source: StandardConstructor,
+    rtc_peer_connection: StandardConstructor,
+    rtc_data_channel: StandardConstructor,
     weak_ref: StandardConstructor,
     weak_map: StandardConstructor,
     weak_set: StandardConstructor,
@@ -346,15 +344,10 @@ impl Default for StandardConstructors {
             websocket: StandardConstructor::default(),
             websocket_stream: StandardConstructor::default(),
             // WebAssembly API constructors
-            #[cfg(feature = "webassembly")]
             webassembly_module: StandardConstructor::default(),
-            #[cfg(feature = "webassembly")]
             webassembly_instance: StandardConstructor::default(),
-            #[cfg(feature = "webassembly")]
             webassembly_memory: StandardConstructor::default(),
-            #[cfg(feature = "webassembly")]
             webassembly_table: StandardConstructor::default(),
-            #[cfg(feature = "webassembly")]
             webassembly_global: StandardConstructor::default(),
             worker: StandardConstructor::default(),
             shared_worker: StandardConstructor::default(),
@@ -403,6 +396,9 @@ impl Default for StandardConstructors {
             blob: StandardConstructor::default(),
             file: StandardConstructor::default(),
             file_reader: StandardConstructor::default(),
+            event_source: StandardConstructor::default(),
+            rtc_peer_connection: StandardConstructor::default(),
+            rtc_data_channel: StandardConstructor::default(),
             weak_ref: StandardConstructor::default(),
             weak_map: StandardConstructor::default(),
             weak_set: StandardConstructor::default(),
@@ -1020,6 +1016,42 @@ impl StandardConstructors {
         &self.file_reader
     }
 
+    /// Returns the `EventSource` constructor.
+    ///
+    /// More information:
+    ///  - [EventSource API reference][spec]
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/server-sent-events.html
+    #[inline]
+    #[must_use]
+    pub const fn event_source(&self) -> &StandardConstructor {
+        &self.event_source
+    }
+
+    /// Returns the `RTCPeerConnection` constructor.
+    ///
+    /// More information:
+    ///  - [RTCPeerConnection API reference][spec]
+    ///
+    /// [spec]: https://w3c.github.io/webrtc-pc/
+    #[inline]
+    #[must_use]
+    pub const fn rtc_peer_connection(&self) -> &StandardConstructor {
+        &self.rtc_peer_connection
+    }
+
+    /// Returns the `RTCDataChannel` constructor.
+    ///
+    /// More information:
+    ///  - [RTCDataChannel API reference][spec]
+    ///
+    /// [spec]: https://w3c.github.io/webrtc-pc/#rtcdatachannel
+    #[inline]
+    #[must_use]
+    pub const fn rtc_data_channel(&self) -> &StandardConstructor {
+        &self.rtc_data_channel
+    }
+
     /// Returns the `WebSocket` constructor.
     ///
     /// More information:
@@ -1050,7 +1082,6 @@ impl StandardConstructors {
     ///  - [WebAssembly.Module spec][spec]
     ///
     /// [spec]: https://webassembly.github.io/spec/js-api/#modules
-    #[cfg(feature = "webassembly")]
     #[inline]
     #[must_use]
     pub const fn webassembly_module(&self) -> &StandardConstructor {
@@ -1063,7 +1094,6 @@ impl StandardConstructors {
     ///  - [WebAssembly.Instance spec][spec]
     ///
     /// [spec]: https://webassembly.github.io/spec/js-api/#instances
-    #[cfg(feature = "webassembly")]
     #[inline]
     #[must_use]
     pub const fn webassembly_instance(&self) -> &StandardConstructor {
@@ -1076,7 +1106,6 @@ impl StandardConstructors {
     ///  - [WebAssembly.Memory spec][spec]
     ///
     /// [spec]: https://webassembly.github.io/spec/js-api/#memories
-    #[cfg(feature = "webassembly")]
     #[inline]
     #[must_use]
     pub const fn webassembly_memory(&self) -> &StandardConstructor {
@@ -1089,7 +1118,6 @@ impl StandardConstructors {
     ///  - [WebAssembly.Table spec][spec]
     ///
     /// [spec]: https://webassembly.github.io/spec/js-api/#tables
-    #[cfg(feature = "webassembly")]
     #[inline]
     #[must_use]
     pub const fn webassembly_table(&self) -> &StandardConstructor {
@@ -1102,7 +1130,6 @@ impl StandardConstructors {
     ///  - [WebAssembly.Global spec][spec]
     ///
     /// [spec]: https://webassembly.github.io/spec/js-api/#globals
-    #[cfg(feature = "webassembly")]
     #[inline]
     #[must_use]
     pub const fn webassembly_global(&self) -> &StandardConstructor {

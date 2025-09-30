@@ -7,23 +7,15 @@
 //! This implements the complete WebAssembly interface with real WASM execution
 //! using wasmtime as the backend runtime.
 
-#[cfg(feature = "webassembly")]
 pub(crate) mod module;
-#[cfg(feature = "webassembly")]
 pub(crate) mod instance;
-#[cfg(feature = "webassembly")]
 pub(crate) mod memory;
-#[cfg(feature = "webassembly")]
 pub(crate) mod table;
-#[cfg(feature = "webassembly")]
 pub(crate) mod global;
-#[cfg(feature = "webassembly")]
 pub(crate) mod runtime;
-#[cfg(feature = "webassembly")]
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "webassembly")]
 use crate::{
     builtins::{BuiltInObject, IntrinsicObject, BuiltInBuilder},
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
@@ -34,35 +26,22 @@ use crate::{
     realm::Realm, property::Attribute
 };
 
-#[cfg(feature = "webassembly")]
 use boa_gc::{Finalize, Trace};
-
-#[cfg(feature = "webassembly")]
 use std::collections::HashMap;
-#[cfg(feature = "webassembly")]
 use std::sync::{Arc, Mutex};
-#[cfg(feature = "webassembly")]
 use wasmtime::*;
 
-#[cfg(feature = "webassembly")]
 pub use module::WebAssemblyModule;
-#[cfg(feature = "webassembly")]
 pub use instance::WebAssemblyInstance;
-#[cfg(feature = "webassembly")]
 pub use memory::WebAssemblyMemory;
-#[cfg(feature = "webassembly")]
 pub use table::WebAssemblyTable;
-#[cfg(feature = "webassembly")]
 pub use global::WebAssemblyGlobal;
-#[cfg(feature = "webassembly")]
 pub use runtime::WebAssemblyRuntime;
 
 /// JavaScript `WebAssembly` global object implementation.
-#[cfg(feature = "webassembly")]
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct WebAssembly;
 
-#[cfg(feature = "webassembly")]
 impl IntrinsicObject for WebAssembly {
     fn init(realm: &Realm) {
         // Initialize all WebAssembly constructors first
@@ -113,12 +92,10 @@ impl IntrinsicObject for WebAssembly {
     }
 }
 
-#[cfg(feature = "webassembly")]
 impl BuiltInObject for WebAssembly {
     const NAME: JsString = StaticJsStrings::WEBASSEMBLY;
 }
 
-#[cfg(feature = "webassembly")]
 impl WebAssembly {
     /// Helper function for WebAssembly object which is not callable
     fn not_callable(
@@ -316,17 +293,3 @@ impl WebAssembly {
     }
 }
 
-// Re-export for when webassembly feature is disabled
-#[cfg(not(feature = "webassembly"))]
-pub(crate) struct WebAssembly;
-
-#[cfg(not(feature = "webassembly"))]
-impl IntrinsicObject for WebAssembly {
-    fn init(_realm: &Realm) {
-        // WebAssembly support is disabled
-    }
-
-    fn get(_intrinsics: &Intrinsics) -> JsObject {
-        JsObject::default()
-    }
-}

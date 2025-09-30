@@ -161,22 +161,19 @@ impl StaticJsStrings {
         (COUNT_QUEUING_STRATEGY, "CountQueuingStrategy"),
         (BYTE_LENGTH_QUEUING_STRATEGY, "ByteLengthQueuingStrategy"),
         // WebAssembly API
-        #[cfg(feature = "webassembly")]
         (WEBASSEMBLY, "WebAssembly"),
-        #[cfg(feature = "webassembly")]
         (WEBASSEMBLY_MODULE, "Module"),
-        #[cfg(feature = "webassembly")]
         (WEBASSEMBLY_INSTANCE, "Instance"),
-        #[cfg(feature = "webassembly")]
         (WEBASSEMBLY_MEMORY, "Memory"),
-        #[cfg(feature = "webassembly")]
         (WEBASSEMBLY_TABLE, "Table"),
-        #[cfg(feature = "webassembly")]
         (WEBASSEMBLY_GLOBAL, "Global"),
         (SET, "Set"),
         (STRING, "String"),
         (WEBSOCKET, "WebSocket"),
         (WEBSOCKET_STREAM, "WebSocketStream"),
+        (EVENT_SOURCE, "EventSource"),
+        (RTC_PEER_CONNECTION, "RTCPeerConnection"),
+        (RTC_DATA_CHANNEL, "RTCDataChannel"),
         (WORKER, "Worker"),
         (WORKER_NAVIGATOR, "WorkerNavigator"),
         (SHARED_WORKER, "SharedWorker"),
@@ -364,18 +361,15 @@ const RAW_STATICS: &[JsStr<'static>] = &[
     JsStr::latin1("String".as_bytes()),
     JsStr::latin1("WebSocket".as_bytes()),
     JsStr::latin1("WebSocketStream".as_bytes()),
+    JsStr::latin1("EventSource".as_bytes()),
+    JsStr::latin1("RTCPeerConnection".as_bytes()),
+    JsStr::latin1("RTCDataChannel".as_bytes()),
     // WebAssembly API
-    #[cfg(feature = "webassembly")]
     JsStr::latin1("WebAssembly".as_bytes()),
-    #[cfg(feature = "webassembly")]
     JsStr::latin1("Module".as_bytes()),
-    #[cfg(feature = "webassembly")]
     JsStr::latin1("Instance".as_bytes()),
-    #[cfg(feature = "webassembly")]
     JsStr::latin1("Memory".as_bytes()),
-    #[cfg(feature = "webassembly")]
     JsStr::latin1("Table".as_bytes()),
-    #[cfg(feature = "webassembly")]
     JsStr::latin1("Global".as_bytes()),
     JsStr::latin1("Worker".as_bytes()),
     JsStr::latin1("WorkerNavigator".as_bytes()),
