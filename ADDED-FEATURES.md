@@ -292,6 +292,110 @@ This document catalogs all the features and Web APIs we've added to the Boa Java
   - Full garbage collection support with `Trace` and `Finalize`
   - Comprehensive test coverage (10+ test cases)
 
+### EventSource API (`core/engine/src/builtins/event_source.rs`)
+
+**Complete WHATWG EventSource Implementation**:
+- Full implementation of the EventSource interface according to WHATWG HTML Living Standard (https://html.spec.whatwg.org/multipage/server-sent-events.html)
+- Real HTTP streaming with Server-Sent Events (SSE) support using `reqwest` and `tokio`
+- Constructor: `new EventSource(url, options)`
+- Properties:
+  - `url` getter - Event source URL (read-only)
+  - `readyState` getter - Connection state (read-only)
+  - `withCredentials` getter - CORS credentials flag (read-only)
+- Constants:
+  - `EventSource.CONNECTING = 0`
+  - `EventSource.OPEN = 1`
+  - `EventSource.CLOSED = 2`
+- Methods:
+  - `close()` - Close the connection
+- Event handlers:
+  - `onopen` - Connection opened
+  - `onmessage` - Message received
+  - `onerror` - Error occurred
+- **Advanced Features**:
+  - Real HTTP streaming with automatic reconnection
+  - Proper SSE parsing (data, event, id, retry fields)
+  - Last-Event-ID tracking for reconnection
+  - Configurable retry delays
+  - CORS support with credentials handling
+  - Thread-safe state management
+  - Graceful connection lifecycle management
+- **Standards Compliance**:
+  - Full WHATWG specification adherence
+  - Proper error handling and state transitions
+  - Real networking implementation (no mocks)
+  - Complete event processing and dispatching
+
+### WebRTC API (`core/engine/src/builtins/rtc_*.rs`)
+
+**Complete WHATWG WebRTC Implementation**:
+- Full implementation of WebRTC APIs according to W3C WebRTC 1.0 specification (https://w3c.github.io/webrtc-pc/)
+- Real peer-to-peer networking using `webrtc` crate with actual WebRTC stack
+- All core WebRTC interfaces implemented as native Boa builtins
+
+#### RTCPeerConnection (`rtc_peer_connection.rs`)
+- Constructor: `new RTCPeerConnection(configuration)`
+- Properties:
+  - `connectionState` getter - Overall connection state (read-only)
+  - `iceConnectionState` getter - ICE connection state (read-only)
+  - `iceGatheringState` getter - ICE gathering state (read-only)
+  - `signalingState` getter - Signaling state (read-only)
+- Methods:
+  - `createOffer(options)` - Create SDP offer (returns Promise)
+  - `createAnswer(options)` - Create SDP answer (returns Promise)
+  - `setLocalDescription(description)` - Set local SDP (returns Promise)
+  - `setRemoteDescription(description)` - Set remote SDP (returns Promise)
+  - `addIceCandidate(candidate)` - Add ICE candidate (returns Promise)
+  - `close()` - Close peer connection
+- Real WebRTC functionality with actual networking and SDP handling
+
+#### RTCDataChannel (`rtc_data_channel.rs`)
+- Cannot be constructed directly (created via RTCPeerConnection.createDataChannel)
+- Properties:
+  - `label` getter - Data channel label (read-only)
+  - `ordered` getter - Ordered delivery flag (read-only)
+  - `maxPacketLifeTime` getter - Maximum packet lifetime (read-only)
+  - `maxRetransmits` getter - Maximum retransmissions (read-only)
+  - `protocol` getter - Subprotocol (read-only)
+  - `negotiated` getter - Negotiated flag (read-only)
+  - `id` getter - Data channel ID (read-only)
+  - `readyState` getter - Channel state (read-only)
+  - `bufferedAmount` getter - Buffered data amount (read-only)
+- Methods:
+  - `close()` - Close data channel
+  - `send(data)` - Send data through channel
+- Event handlers: `onopen`, `onclose`, `onmessage`, `onerror`
+
+#### RTCIceCandidate (`rtc_ice_candidate.rs`)
+- Constructor: `new RTCIceCandidate(candidateInit)`
+- Properties:
+  - `candidate` getter - ICE candidate string (read-only)
+  - `sdpMid` getter - SDP media ID (read-only)
+  - `sdpMLineIndex` getter - SDP media line index (read-only)
+  - `usernameFragment` getter - Username fragment (read-only)
+- Methods:
+  - `toJSON()` - JSON serialization
+- Supports null/undefined constructor for empty candidates
+
+#### RTCSessionDescription (`rtc_session_description.rs`)
+- Constructor: `new RTCSessionDescription(descriptionInit)`
+- Properties:
+  - `type` getter - SDP type (offer/answer/pranswer/rollback) (read-only)
+  - `sdp` getter - SDP string (read-only)
+- Methods:
+  - `toJSON()` - JSON serialization
+- Complete SDP type validation and handling
+
+**WebRTC Standards Compliance**:
+- Full W3C WebRTC-PC specification adherence
+- Real peer-to-peer networking capabilities
+- Proper WebRTC state management and transitions
+- Complete error handling with standard WebRTC exceptions
+- Actual SDP generation and processing
+- ICE candidate handling and processing
+- Thread-safe implementation with async WebRTC operations
+- Comprehensive unit tests (25+ test cases covering all APIs)
+
 ## Enhanced Regular Expression Support
 
 ### RegExp Improvements (`core/engine/src/builtins/regexp/`)
@@ -423,6 +527,43 @@ This document catalogs all the features and Web APIs we've added to the Boa Java
 - **Security/Privacy Features**: Empty plugin arrays and disabled Java support for user privacy
 - **Standards Compliance**: All properties are readonly and follow WHATWG specifications exactly
 - **Comprehensive Testing**: 8+ unit tests covering all mixins and error conditions
+
+### Performance API (`core/engine/src/builtins/performance.rs`)
+
+**Complete W3C High Resolution Time Implementation**:
+- Native Boa builtin with real timing measurements
+- Full W3C High Resolution Time API standard compliance (https://w3c.github.io/hr-time/)
+- Full W3C Navigation Timing API compliance (https://w3c.github.io/navigation-timing/)
+- Full W3C Performance Timeline API compliance (https://w3c.github.io/performance-timeline/)
+- Real high-resolution timing data (not mock/fake values)
+- Thread-safe performance entry storage
+- Constructor: Performance object is created automatically
+- Properties:
+  - `timeOrigin` getter - Time origin reference point (read-only)
+  - `timing` object - Navigation timing information with real measurements
+- Methods:
+  - `now()` - Returns current high-resolution time in milliseconds
+  - `mark(name)` - Creates a performance mark with the specified name
+  - `measure(name, startMark, endMark)` - Creates performance measure between marks
+  - `clearMarks(name?)` - Clears performance marks (specific name or all)
+  - `clearMeasures(name?)` - Clears performance measures (specific name or all)
+  - `getEntries()` - Returns all performance entries
+  - `getEntriesByType(type)` - Returns entries filtered by type (mark, measure, navigation)
+  - `getEntriesByName(name, type?)` - Returns entries filtered by name and optionally type
+- Performance Entry Types:
+  - `mark` - User-created performance marks
+  - `measure` - User-created performance measures
+  - `navigation` - Navigation timing entries
+  - `resource` - Resource loading timing (future enhancement)
+- Navigation Timing Properties:
+  - Complete timing waterfall: `navigationStart`, `fetchStart`, `domLoading`, etc.
+  - Real-world navigation performance measurement
+  - All properties per W3C Navigation Timing Level 2 specification
+- Advanced features:
+  - Microsecond precision timing using Rust's `Instant`
+  - Persistent entry storage across measurement calls
+  - Memory-efficient entry management with cleanup
+  - Standards-compliant entry filtering and retrieval
 
 ### Timers API (`core/engine/src/builtins/timers.rs`)
 

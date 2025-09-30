@@ -104,7 +104,7 @@ impl WebAssemblyModule {
     ///
     /// Returns an array containing descriptions of all the declared exports
     /// of the given Module.
-    fn exports(
+    pub fn exports(
         _this: &JsValue,
         args: &[JsValue],
         context: &mut Context,
@@ -156,7 +156,7 @@ impl WebAssemblyModule {
     ///
     /// Returns an array containing descriptions of all the declared imports
     /// of the given Module.
-    fn imports(
+    pub fn imports(
         _this: &JsValue,
         args: &[JsValue],
         context: &mut Context,
@@ -209,7 +209,7 @@ impl WebAssemblyModule {
     ///
     /// Returns an array containing the contents of all custom sections in the
     /// given module with the given string name.
-    fn custom_sections(
+    pub fn custom_sections(
         _this: &JsValue,
         args: &[JsValue],
         context: &mut Context,

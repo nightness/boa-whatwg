@@ -39,6 +39,10 @@ impl IntrinsicObject for Window {
             .name(js_string!("get navigator"))
             .build();
 
+        let performance_func = BuiltInBuilder::callable(realm, get_performance)
+            .name(js_string!("get performance"))
+            .build();
+
         let screen_func = BuiltInBuilder::callable(realm, get_screen)
             .name(js_string!("get screen"))
             .build();
@@ -98,6 +102,12 @@ impl IntrinsicObject for Window {
             .accessor(
                 js_string!("navigator"),
                 Some(navigator_func),
+                None,
+                Attribute::CONFIGURABLE,
+            )
+            .accessor(
+                js_string!("performance"),
+                Some(performance_func),
                 None,
                 Attribute::CONFIGURABLE,
             )
@@ -1749,4 +1759,21 @@ fn get_selection(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> J
     )?;
 
     Ok(selection_instance)
+}
+
+/// `window.performance` getter
+fn get_performance(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    // Create a new Performance instance using the Performance constructor
+    use crate::builtins::performance::Performance;
+    use crate::builtins::IntrinsicObject;
+
+    let performance_constructor = Performance::get(context.intrinsics());
+    let performance_args = [];
+    let performance_instance = Performance::constructor(
+        &performance_constructor.clone().into(),
+        &performance_args,
+        context,
+    )?;
+
+    Ok(performance_instance)
 }

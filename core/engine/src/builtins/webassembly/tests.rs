@@ -8,6 +8,7 @@
 use crate::{
     Context, JsValue, js_string, JsResult,
     builtins::webassembly::*,
+    builtins::BuiltInConstructor,
 };
 use boa_gc::Gc;
 

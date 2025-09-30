@@ -72,6 +72,8 @@ pub mod event_source;
 pub mod rtc_peer_connection;
 pub mod rtc_data_channel;
 pub mod rtc_ice_candidate;
+pub mod rtc_session_description;
+pub mod webrtc_tests;
 pub mod async_generator;
 pub mod async_generator_function;
 pub mod atomics;
@@ -112,6 +114,7 @@ pub mod file_system;
 pub mod web_locks;
 pub mod indexed_db;
 pub mod navigator;
+pub mod performance;
 
 mod builder;
 
@@ -194,6 +197,7 @@ pub(crate) use self::{
     rtc_peer_connection::RTCPeerConnectionBuiltin,
     rtc_data_channel::RTCDataChannelBuiltin,
     rtc_ice_candidate::RTCIceCandidateBuiltin,
+    rtc_session_description::RTCSessionDescriptionBuiltin,
     xmlhttprequest::XmlHttpRequest,
     mutation_observer::MutationObserver,
     intersection_observer::IntersectionObserver,
@@ -237,6 +241,7 @@ use crate::{
         web_locks::{LockManagerObject, Lock},
         indexed_db::IdbFactory,
         navigator::Navigator,
+        performance::Performance,
     },
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
     js_string,
@@ -403,6 +408,7 @@ impl Realm {
         RTCPeerConnectionBuiltin::init(self);
         RTCDataChannelBuiltin::init(self);
         RTCIceCandidateBuiltin::init(self);
+        RTCSessionDescriptionBuiltin::init(self);
         Worker::init(self);
         SharedWorker::init(self);
         ServiceWorker::init(self);
@@ -505,6 +511,7 @@ impl Realm {
         file_system::FileSystemDirectoryHandle::init(self);
         web_locks::LockManagerObject::init(self);
         Navigator::init(self);
+        Performance::init(self);
         Atomics::init(self);
 
         #[cfg(feature = "annex-b")]
