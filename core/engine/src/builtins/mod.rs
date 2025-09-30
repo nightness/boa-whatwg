@@ -71,6 +71,7 @@ pub mod file_reader;
 pub mod event_source;
 pub mod rtc_peer_connection;
 pub mod rtc_data_channel;
+pub mod rtc_ice_candidate;
 pub mod async_generator;
 pub mod async_generator_function;
 pub mod atomics;
@@ -192,6 +193,7 @@ pub(crate) use self::{
     event_source::EventSource,
     rtc_peer_connection::RTCPeerConnectionBuiltin,
     rtc_data_channel::RTCDataChannelBuiltin,
+    rtc_ice_candidate::RTCIceCandidateBuiltin,
     xmlhttprequest::XmlHttpRequest,
     mutation_observer::MutationObserver,
     intersection_observer::IntersectionObserver,
@@ -400,6 +402,7 @@ impl Realm {
         EventSource::init(self);
         RTCPeerConnectionBuiltin::init(self);
         RTCDataChannelBuiltin::init(self);
+        RTCIceCandidateBuiltin::init(self);
         Worker::init(self);
         SharedWorker::init(self);
         ServiceWorker::init(self);

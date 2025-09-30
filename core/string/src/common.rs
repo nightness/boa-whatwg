@@ -174,6 +174,7 @@ impl StaticJsStrings {
         (EVENT_SOURCE, "EventSource"),
         (RTC_PEER_CONNECTION, "RTCPeerConnection"),
         (RTC_DATA_CHANNEL, "RTCDataChannel"),
+        (RTC_ICE_CANDIDATE, "RTCIceCandidate"),
         (WORKER, "Worker"),
         (WORKER_NAVIGATOR, "WorkerNavigator"),
         (SHARED_WORKER, "SharedWorker"),
@@ -364,6 +365,7 @@ const RAW_STATICS: &[JsStr<'static>] = &[
     JsStr::latin1("EventSource".as_bytes()),
     JsStr::latin1("RTCPeerConnection".as_bytes()),
     JsStr::latin1("RTCDataChannel".as_bytes()),
+    JsStr::latin1("RTCIceCandidate".as_bytes()),
     // WebAssembly API
     JsStr::latin1("WebAssembly".as_bytes()),
     JsStr::latin1("Module".as_bytes()),

@@ -230,6 +230,7 @@ pub struct StandardConstructors {
     event_source: StandardConstructor,
     rtc_peer_connection: StandardConstructor,
     rtc_data_channel: StandardConstructor,
+    rtc_ice_candidate: StandardConstructor,
     weak_ref: StandardConstructor,
     weak_map: StandardConstructor,
     weak_set: StandardConstructor,
@@ -399,6 +400,7 @@ impl Default for StandardConstructors {
             event_source: StandardConstructor::default(),
             rtc_peer_connection: StandardConstructor::default(),
             rtc_data_channel: StandardConstructor::default(),
+            rtc_ice_candidate: StandardConstructor::default(),
             weak_ref: StandardConstructor::default(),
             weak_map: StandardConstructor::default(),
             weak_set: StandardConstructor::default(),
@@ -1050,6 +1052,18 @@ impl StandardConstructors {
     #[must_use]
     pub const fn rtc_data_channel(&self) -> &StandardConstructor {
         &self.rtc_data_channel
+    }
+
+    /// Returns the `RTCIceCandidate` constructor.
+    ///
+    /// More information:
+    ///  - [RTCIceCandidate API reference][spec]
+    ///
+    /// [spec]: https://w3c.github.io/webrtc-pc/#rtcicecandidate-interface
+    #[inline]
+    #[must_use]
+    pub const fn rtc_ice_candidate(&self) -> &StandardConstructor {
+        &self.rtc_ice_candidate
     }
 
     /// Returns the `WebSocket` constructor.
