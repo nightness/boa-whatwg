@@ -230,6 +230,8 @@ pub struct StandardConstructors {
     event_source: StandardConstructor,
     rtc_peer_connection: StandardConstructor,
     rtc_data_channel: StandardConstructor,
+    rtc_ice_candidate: StandardConstructor,
+    rtc_session_description: StandardConstructor,
     weak_ref: StandardConstructor,
     weak_map: StandardConstructor,
     weak_set: StandardConstructor,
@@ -245,6 +247,7 @@ pub struct StandardConstructors {
     lock_manager: StandardConstructor,
     idb_factory: StandardConstructor,
     navigator: StandardConstructor,
+    performance: StandardConstructor,
     #[cfg(feature = "intl")]
     collator: StandardConstructor,
     #[cfg(feature = "intl")]
@@ -399,6 +402,8 @@ impl Default for StandardConstructors {
             event_source: StandardConstructor::default(),
             rtc_peer_connection: StandardConstructor::default(),
             rtc_data_channel: StandardConstructor::default(),
+            rtc_ice_candidate: StandardConstructor::default(),
+            rtc_session_description: StandardConstructor::default(),
             weak_ref: StandardConstructor::default(),
             weak_map: StandardConstructor::default(),
             weak_set: StandardConstructor::default(),
@@ -414,6 +419,7 @@ impl Default for StandardConstructors {
             lock_manager: StandardConstructor::default(),
             idb_factory: StandardConstructor::default(),
             navigator: StandardConstructor::default(),
+            performance: StandardConstructor::default(),
             #[cfg(feature = "intl")]
             collator: StandardConstructor::default(),
             #[cfg(feature = "intl")]
@@ -1050,6 +1056,30 @@ impl StandardConstructors {
     #[must_use]
     pub const fn rtc_data_channel(&self) -> &StandardConstructor {
         &self.rtc_data_channel
+    }
+
+    /// Returns the `RTCIceCandidate` constructor.
+    ///
+    /// More information:
+    ///  - [RTCIceCandidate API reference][spec]
+    ///
+    /// [spec]: https://w3c.github.io/webrtc-pc/#rtcicecandidate-interface
+    #[inline]
+    #[must_use]
+    pub const fn rtc_ice_candidate(&self) -> &StandardConstructor {
+        &self.rtc_ice_candidate
+    }
+
+    /// Returns the `RTCSessionDescription` constructor.
+    ///
+    /// More information:
+    ///  - [RTCSessionDescription API reference][spec]
+    ///
+    /// [spec]: https://w3c.github.io/webrtc-pc/#rtcsessiondescription-class
+    #[inline]
+    #[must_use]
+    pub const fn rtc_session_description(&self) -> &StandardConstructor {
+        &self.rtc_session_description
     }
 
     /// Returns the `WebSocket` constructor.
@@ -1728,6 +1758,20 @@ impl StandardConstructors {
     #[must_use]
     pub const fn navigator(&self) -> &StandardConstructor {
         &self.navigator
+    }
+
+    /// Returns the `Performance` constructor.
+    ///
+    /// More information:
+    ///  - [W3C High Resolution Time Specification][spec]
+    ///  - [MDN documentation][mdn]
+    ///
+    /// [spec]: https://w3c.github.io/hr-time/
+    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Performance
+    #[inline]
+    #[must_use]
+    pub const fn performance(&self) -> &StandardConstructor {
+        &self.performance
     }
 
     /// Returns the `Intl.Collator` constructor.
