@@ -887,6 +887,18 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
         context,
     )?;
 
+    // Add performance global object (instance, not constructor)
+    let performance_obj = performance::create_performance_object(context)?;
+    global_object.define_property_or_throw(
+        js_string!("performance"),
+        PropertyDescriptor::builder()
+            .value(performance_obj)
+            .writable(false)
+            .enumerable(true)
+            .configurable(true),
+        context,
+    )?;
+
     Ok(())
 }
 

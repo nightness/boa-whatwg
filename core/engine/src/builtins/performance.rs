@@ -214,34 +214,17 @@ impl IntrinsicObject for Performance {
             .static_method(Self::get_entries, js_string!("getEntries"), 0)
             .static_method(Self::get_entries_by_type, js_string!("getEntriesByType"), 1)
             .static_method(Self::get_entries_by_name, js_string!("getEntriesByName"), 2)
-            .build();
-
-        // Add properties after building the object
-        let global = realm.global_object();
-        let mut temp_context = Context::default();
-        if let Some(performance) = global.get(js_string!("performance"), &mut temp_context).ok().and_then(|v| v.as_object()) {
-            performance.define_property_or_throw(
+            .static_property(
                 js_string!("timeOrigin"),
-                crate::property::PropertyDescriptor::builder()
-                    .value(performance_now())
-                    .writable(false)
-                    .enumerable(false)
-                    .configurable(false)
-                    .build(),
-                &mut temp_context,
-            ).ok();
-
-            performance.define_property_or_throw(
+                performance_now(),
+                Attribute::READONLY,
+            )
+            .static_property(
                 js_string!("timing"),
-                crate::property::PropertyDescriptor::builder()
-                    .value(Self::create_timing_object(realm.intrinsics()))
-                    .writable(false)
-                    .enumerable(false)
-                    .configurable(false)
-                    .build(),
-                &mut temp_context,
-            ).ok();
-        }
+                Self::create_timing_object(realm.intrinsics()),
+                Attribute::READONLY,
+            )
+            .build();
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
@@ -250,7 +233,7 @@ impl IntrinsicObject for Performance {
 }
 
 impl BuiltInObject for Performance {
-    const NAME: JsString = js_string!("Performance");
+    const NAME: JsString = js_string!("performance");
 }
 
 impl BuiltInConstructor for Performance {
@@ -271,7 +254,70 @@ impl BuiltInConstructor for Performance {
     }
 }
 
+/// Create a performance object instance for global scope
+pub(crate) fn create_performance_object(context: &mut Context) -> JsResult<JsValue> {
+    let performance_obj = JsObject::with_object_proto(context.intrinsics());
+
+    // Add methods as function objects
+    let now_func = BuiltInBuilder::callable(context.realm(), Performance::now)
+        .name(js_string!("now"))
+        .length(0)
+        .build();
+    performance_obj.set(js_string!("now"), now_func, false, context)?;
+
+    let mark_func = BuiltInBuilder::callable(context.realm(), Performance::mark)
+        .name(js_string!("mark"))
+        .length(1)
+        .build();
+    performance_obj.set(js_string!("mark"), mark_func, false, context)?;
+
+    let measure_func = BuiltInBuilder::callable(context.realm(), Performance::measure)
+        .name(js_string!("measure"))
+        .length(3)
+        .build();
+    performance_obj.set(js_string!("measure"), measure_func, false, context)?;
+
+    let clear_marks_func = BuiltInBuilder::callable(context.realm(), Performance::clear_marks)
+        .name(js_string!("clearMarks"))
+        .length(0)
+        .build();
+    performance_obj.set(js_string!("clearMarks"), clear_marks_func, false, context)?;
+
+    let clear_measures_func = BuiltInBuilder::callable(context.realm(), Performance::clear_measures)
+        .name(js_string!("clearMeasures"))
+        .length(0)
+        .build();
+    performance_obj.set(js_string!("clearMeasures"), clear_measures_func, false, context)?;
+
+    let get_entries_func = BuiltInBuilder::callable(context.realm(), Performance::get_entries)
+        .name(js_string!("getEntries"))
+        .length(0)
+        .build();
+    performance_obj.set(js_string!("getEntries"), get_entries_func, false, context)?;
+
+    let get_entries_by_type_func = BuiltInBuilder::callable(context.realm(), Performance::get_entries_by_type)
+        .name(js_string!("getEntriesByType"))
+        .length(1)
+        .build();
+    performance_obj.set(js_string!("getEntriesByType"), get_entries_by_type_func, false, context)?;
+
+    let get_entries_by_name_func = BuiltInBuilder::callable(context.realm(), Performance::get_entries_by_name)
+        .name(js_string!("getEntriesByName"))
+        .length(2)
+        .build();
+    performance_obj.set(js_string!("getEntriesByName"), get_entries_by_name_func, false, context)?;
+
+    // Add properties
+    performance_obj.set(js_string!("timeOrigin"), performance_now(), false, context)?;
+    performance_obj.set(js_string!("timing"), Performance::create_timing_object(context.intrinsics()), false, context)?;
+
+    Ok(performance_obj.into())
+}
+
 impl Performance {
+    const STANDARD_CONSTRUCTOR: fn(&crate::context::intrinsics::StandardConstructors) -> &crate::context::intrinsics::StandardConstructor =
+        crate::context::intrinsics::StandardConstructors::performance;
+
     /// `performance.now()` - Returns current high-resolution time
     fn now(_this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
         Ok(JsValue::from(performance_now()))

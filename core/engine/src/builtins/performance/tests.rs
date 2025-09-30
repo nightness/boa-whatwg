@@ -1,6 +1,6 @@
 //! Tests for the Performance API implementation
 
-use crate::{run_test_actions, TestAction, Context, Source, JsValue, JsString};
+use crate::{run_test_actions, TestAction, Context, Source, JsValue, JsString, js_string};
 
 #[test]
 fn performance_exists() {
@@ -349,9 +349,25 @@ fn performance_api_methods_exist() {
 fn performance_direct_context_test() {
     let mut context = Context::default();
 
+    // Test what's actually in the global object
+    let global_obj = context.global_object();
+    let performance_prop = global_obj.get(js_string!("performance"), &mut context);
+    eprintln!("Global performance property result: {:?}", performance_prop);
+
+    // Compare with console for reference
+    let console_prop = global_obj.get(js_string!("console"), &mut context);
+    eprintln!("Global console property result: {:?}", console_prop);
+
     // Test that performance object exists
-    let result = context.eval(Source::from_bytes("typeof performance")).unwrap();
-    assert_eq!(result, JsValue::from(JsString::from("object")));
+    let result = context.eval(Source::from_bytes("typeof performance"));
+    eprintln!("typeof performance result: {:?}", result);
+
+    // Also check console for comparison
+    let console_result = context.eval(Source::from_bytes("typeof console"));
+    eprintln!("typeof console result: {:?}", console_result);
+
+    assert!(result.is_ok(), "Performance access should not error: {:?}", result);
+    assert_eq!(result.unwrap(), JsValue::from(JsString::from("object")));
 
     // Test performance.now() returns a number
     let result = context.eval(Source::from_bytes("typeof performance.now()")).unwrap();
