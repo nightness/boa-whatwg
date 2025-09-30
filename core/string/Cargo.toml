@@ -20,6 +20,9 @@ static_assertions.workspace = true
 paste.workspace = true
 fast-float2.workspace = true
 
+[features]
+webassembly = []
+
 [lints]
 workspace = true
 

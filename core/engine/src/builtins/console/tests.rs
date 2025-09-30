@@ -71,12 +71,75 @@ fn console_group() {
 }
 
 #[test]
+fn console_group_indentation() {
+    run_test_actions([
+        TestAction::run("console.log('Level 0')"),
+        TestAction::run("console.group('Group Level 1')"),
+        TestAction::run("console.log('Level 1')"),
+        TestAction::run("console.group('Group Level 2')"),
+        TestAction::run("console.log('Level 2')"),
+        TestAction::run("console.warn('Warning at Level 2')"),
+        TestAction::run("console.groupEnd()"),
+        TestAction::run("console.log('Back to Level 1')"),
+        TestAction::run("console.groupEnd()"),
+        TestAction::run("console.log('Back to Level 0')"),
+    ]);
+}
+
+#[test]
+fn console_group_collapsed() {
+    run_test_actions([
+        TestAction::run("console.groupCollapsed('Collapsed Group')"),
+        TestAction::run("console.log('Inside collapsed group')"),
+        TestAction::run("console.error('Error in collapsed group')"),
+        TestAction::run("console.groupEnd()"),
+        TestAction::run("console.log('Outside group')"),
+    ]);
+}
+
+#[test]
+fn console_group_nested() {
+    run_test_actions([
+        TestAction::run("console.group('Outer')"),
+        TestAction::run("console.group('Middle')"),
+        TestAction::run("console.group('Inner')"),
+        TestAction::run("console.log('Deeply nested')"),
+        TestAction::run("console.groupEnd()"), // End inner
+        TestAction::run("console.groupEnd()"), // End middle
+        TestAction::run("console.groupEnd()"), // End outer
+        TestAction::run("console.log('Back to root')"),
+    ]);
+}
+
+#[test]
 fn console_time() {
     run_test_actions([
         TestAction::run("console.time('timer1')"),
         TestAction::run("console.timeLog('timer1', 'checkpoint')"),
         TestAction::run("console.timeEnd('timer1')"),
         TestAction::run("console.time()"), // default timer
+        TestAction::run("console.timeEnd()"),
+    ]);
+}
+
+#[test]
+fn console_time_state_management() {
+    run_test_actions([
+        // Test timer creation and end
+        TestAction::run("console.time('test1')"),
+        TestAction::run("console.timeEnd('test1')"),
+
+        // Test timer that doesn't exist
+        TestAction::run("console.timeEnd('nonexistent')"),
+
+        // Test duplicate timer warning
+        TestAction::run("console.time('duplicate')"),
+        TestAction::run("console.time('duplicate')"),
+        TestAction::run("console.timeEnd('duplicate')"),
+
+        // Test default timer
+        TestAction::run("console.time()"),
+        TestAction::run("console.timeLog()"),
         TestAction::run("console.timeEnd()"),
     ]);
 }
@@ -91,6 +154,33 @@ fn console_count() {
         TestAction::run("console.count('counter1')"),
         TestAction::run("console.count()"), // default counter
         TestAction::run("console.countReset()"),
+    ]);
+}
+
+#[test]
+fn console_count_state_management() {
+    run_test_actions([
+        // Test counter increment
+        TestAction::run("console.count('test')"), // Should show 1
+        TestAction::run("console.count('test')"), // Should show 2
+        TestAction::run("console.count('test')"), // Should show 3
+
+        // Test different counters
+        TestAction::run("console.count('other')"), // Should show 1
+        TestAction::run("console.count('test')"),  // Should show 4
+
+        // Test counter reset
+        TestAction::run("console.countReset('test')"),
+        TestAction::run("console.count('test')"), // Should show 1 again
+
+        // Test reset nonexistent counter
+        TestAction::run("console.countReset('nonexistent')"),
+
+        // Test default counter
+        TestAction::run("console.count()"), // Should show default: 1
+        TestAction::run("console.count()"), // Should show default: 2
+        TestAction::run("console.countReset()"),
+        TestAction::run("console.count()"), // Should show default: 1
     ]);
 }
 
@@ -120,6 +210,44 @@ fn console_dir() {
         TestAction::run("console.dir({nested: {object: true}})"),
         TestAction::run("console.dir(function test() {})"),
         TestAction::run("console.dirxml('<div>HTML</div>')"),
+    ]);
+}
+
+#[test]
+fn console_dir_enhanced() {
+    run_test_actions([
+        TestAction::run("console.dir({})"), // Empty object
+        TestAction::run("console.dir([])"), // Empty array
+        TestAction::run("console.dir(42)"), // Number
+        TestAction::run("console.dir('string')"), // String
+        TestAction::run("console.dir(true)"), // Boolean
+        TestAction::run("console.dir(null)"), // Null
+        TestAction::run("console.dir(undefined)"), // Undefined
+        TestAction::run("console.dir({a: 1, b: 2})"), // Object with properties
+    ]);
+}
+
+#[test]
+fn console_table_enhanced() {
+    run_test_actions([
+        TestAction::run("console.table([1, 2, 3])"), // Array
+        TestAction::run("console.table({a: 1, b: 2})"), // Object
+        TestAction::run("console.table([{name: 'Alice', age: 30}, {name: 'Bob', age: 25}])"), // Array of objects
+        TestAction::run("console.table('not tabular')"), // Non-tabular data
+        TestAction::run("console.table(null)"), // Null data
+    ]);
+}
+
+#[test]
+fn console_trace_enhanced() {
+    run_test_actions([
+        TestAction::run("console.trace()"), // No message
+        TestAction::run("console.trace('Custom trace message')"), // With message
+        TestAction::run("console.trace('Multiple', 'arguments', 123)"), // Multiple args
+        // Test trace with grouping
+        TestAction::run("console.group('Test Group')"),
+        TestAction::run("console.trace('Trace inside group')"),
+        TestAction::run("console.groupEnd()"),
     ]);
 }
 

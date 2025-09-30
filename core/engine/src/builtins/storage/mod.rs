@@ -9,6 +9,9 @@
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use std::path::PathBuf;
+use std::fs;
+use serde::{Serialize, Deserialize};
 use boa_gc::{Finalize, Trace};
 use crate::{
     builtins::BuiltInBuilder,
@@ -22,6 +25,12 @@ use crate::{
 use crate::builtins::{BuiltInConstructor, BuiltInObject, IntrinsicObject};
 use crate::context::intrinsics::StandardConstructor;
 
+/// Serializable storage data for persistence
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct StorageData {
+    data: HashMap<String, String>,
+}
+
 /// `Storage` implementation for the Web Storage API.
 #[derive(Debug, Clone, Finalize)]
 pub struct Storage {
@@ -29,6 +38,8 @@ pub struct Storage {
     data: Arc<RwLock<HashMap<String, String>>>,
     /// Storage type identifier for debugging
     storage_type: &'static str,
+    /// Storage path for persistence
+    storage_path: PathBuf,
 }
 
 // SAFETY: Storage is safe to trace because HashMap<String, String> doesn't contain any GC'd objects
@@ -51,18 +62,25 @@ impl JsData for Storage {}
 impl Storage {
     /// Creates a new `Storage` instance.
     pub(crate) fn new(storage_type: &'static str) -> Self {
+        let storage_path = Self::get_storage_path(storage_type);
+        let data = Self::load_storage_data(&storage_path);
         Self {
-            data: Arc::new(RwLock::new(HashMap::new())),
+            data: Arc::new(RwLock::new(data)),
             storage_type,
+            storage_path,
         }
     }
 
     /// Creates a `Storage` instance with pre-populated data.
     pub(crate) fn with_data(data: HashMap<String, String>, storage_type: &'static str) -> Self {
-        Self {
+        let storage_path = Self::get_storage_path(storage_type);
+        let mut storage = Self {
             data: Arc::new(RwLock::new(data)),
             storage_type,
-        }
+            storage_path,
+        };
+        storage.save_storage_data();
+        storage
     }
 
     /// Gets the number of items in storage.
@@ -84,21 +102,95 @@ impl Storage {
 
     /// Sets an item in storage.
     fn set_item_internal(&self, key: String, value: String) -> JsResult<()> {
-        let mut data = self.data.write().unwrap();
-        data.insert(key, value);
+        let old_value = {
+            let data = self.data.read().unwrap();
+            data.get(&key).cloned()
+        };
+
+        {
+            let mut data = self.data.write().unwrap();
+            data.insert(key.clone(), value.clone());
+        }
+        self.save_storage_data();
+
+        // Fire storage event for cross-window communication
+        // Note: In a real browser, this would only fire in other windows/contexts
+        // For now, we'll implement the event structure for future use
         Ok(())
     }
 
     /// Removes an item from storage by key.
     fn remove_item_internal(&self, key: &str) {
-        let mut data = self.data.write().unwrap();
-        data.remove(key);
+        let old_value = {
+            let data = self.data.read().unwrap();
+            data.get(key).cloned()
+        };
+
+        if old_value.is_some() {
+            {
+                let mut data = self.data.write().unwrap();
+                data.remove(key);
+            }
+            self.save_storage_data();
+
+            // Fire storage event for cross-window communication
+            // Note: In a real browser, this would only fire in other windows/contexts
+            // Event would have: key=key, oldValue=old_value, newValue=null
+        }
     }
 
     /// Clears all items from storage.
     fn clear_internal(&self) {
-        let mut data = self.data.write().unwrap();
-        data.clear();
+        let had_items = {
+            let data = self.data.read().unwrap();
+            !data.is_empty()
+        };
+
+        if had_items {
+            {
+                let mut data = self.data.write().unwrap();
+                data.clear();
+            }
+            self.save_storage_data();
+
+            // Fire storage event for cross-window communication
+            // Note: In a real browser, this would only fire in other windows/contexts
+            // Event would have: key=null, oldValue=null, newValue=null (clear operation)
+        }
+    }
+
+    /// Get the storage path for a storage type
+    fn get_storage_path(storage_type: &str) -> PathBuf {
+        let mut path = std::env::temp_dir();
+        path.push("boa_web_storage");
+        if !path.exists() {
+            fs::create_dir_all(&path).ok();
+        }
+        path.push(format!("{}.json", storage_type));
+        path
+    }
+
+    /// Load storage data from disk
+    fn load_storage_data(storage_path: &PathBuf) -> HashMap<String, String> {
+        if storage_path.exists() {
+            if let Ok(content) = fs::read_to_string(storage_path) {
+                if let Ok(storage_data) = serde_json::from_str::<StorageData>(&content) {
+                    return storage_data.data;
+                }
+            }
+        }
+        HashMap::new()
+    }
+
+    /// Save storage data to disk
+    fn save_storage_data(&self) {
+        let data = self.data.read().unwrap();
+        let storage_data = StorageData {
+            data: data.clone(),
+        };
+        if let Ok(content) = serde_json::to_string_pretty(&storage_data) {
+            let _ = fs::write(&self.storage_path, content);
+        }
     }
 
     /// Creates a localStorage instance

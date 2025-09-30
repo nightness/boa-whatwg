@@ -168,8 +168,27 @@ pub struct StandardConstructors {
     date_time_format: StandardConstructor,
     promise: StandardConstructor,
     readable_stream: StandardConstructor,
+    writable_stream: StandardConstructor,
+    transform_stream: StandardConstructor,
+    count_queuing_strategy: StandardConstructor,
+    byte_length_queuing_strategy: StandardConstructor,
     websocket: StandardConstructor,
     websocket_stream: StandardConstructor,
+    // WebAssembly API constructors
+    webassembly_module: StandardConstructor,
+    webassembly_instance: StandardConstructor,
+    webassembly_memory: StandardConstructor,
+    webassembly_table: StandardConstructor,
+    webassembly_global: StandardConstructor,
+    worker: StandardConstructor,
+    shared_worker: StandardConstructor,
+    service_worker: StandardConstructor,
+    service_worker_container: StandardConstructor,
+    worklet: StandardConstructor,
+    message_channel: StandardConstructor,
+    message_port: StandardConstructor,
+    broadcast_channel: StandardConstructor,
+    crypto: StandardConstructor,
     request: StandardConstructor,
     response: StandardConstructor,
     headers: StandardConstructor,
@@ -203,12 +222,26 @@ pub struct StandardConstructors {
     event: StandardConstructor,
     event_target: StandardConstructor,
     custom_event: StandardConstructor,
+    message_event: StandardConstructor,
     console: StandardConstructor,
     blob: StandardConstructor,
+    file: StandardConstructor,
+    file_reader: StandardConstructor,
+    event_source: StandardConstructor,
+    rtc_peer_connection: StandardConstructor,
+    rtc_data_channel: StandardConstructor,
     weak_ref: StandardConstructor,
     weak_map: StandardConstructor,
     weak_set: StandardConstructor,
     storage: StandardConstructor,
+    storage_event: StandardConstructor,
+    storage_manager: StandardConstructor,
+    cache: StandardConstructor,
+    cache_storage: StandardConstructor,
+    cookie_store: StandardConstructor,
+    file_system_handle: StandardConstructor,
+    file_system_file_handle: StandardConstructor,
+    file_system_directory_handle: StandardConstructor,
     lock_manager: StandardConstructor,
     idb_factory: StandardConstructor,
     navigator: StandardConstructor,
@@ -304,8 +337,27 @@ impl Default for StandardConstructors {
             date_time_format: StandardConstructor::default(),
             promise: StandardConstructor::default(),
             readable_stream: StandardConstructor::default(),
+            writable_stream: StandardConstructor::default(),
+            transform_stream: StandardConstructor::default(),
+            count_queuing_strategy: StandardConstructor::default(),
+            byte_length_queuing_strategy: StandardConstructor::default(),
             websocket: StandardConstructor::default(),
             websocket_stream: StandardConstructor::default(),
+            // WebAssembly API constructors
+            webassembly_module: StandardConstructor::default(),
+            webassembly_instance: StandardConstructor::default(),
+            webassembly_memory: StandardConstructor::default(),
+            webassembly_table: StandardConstructor::default(),
+            webassembly_global: StandardConstructor::default(),
+            worker: StandardConstructor::default(),
+            shared_worker: StandardConstructor::default(),
+            service_worker: StandardConstructor::default(),
+            service_worker_container: StandardConstructor::default(),
+            worklet: StandardConstructor::default(),
+            message_channel: StandardConstructor::default(),
+            message_port: StandardConstructor::default(),
+            broadcast_channel: StandardConstructor::default(),
+            crypto: StandardConstructor::default(),
             request: StandardConstructor::default(),
             response: StandardConstructor::default(),
             headers: StandardConstructor::default(),
@@ -339,12 +391,26 @@ impl Default for StandardConstructors {
             event: StandardConstructor::default(),
             event_target: StandardConstructor::default(),
             custom_event: StandardConstructor::default(),
+            message_event: StandardConstructor::default(),
             console: StandardConstructor::default(),
             blob: StandardConstructor::default(),
+            file: StandardConstructor::default(),
+            file_reader: StandardConstructor::default(),
+            event_source: StandardConstructor::default(),
+            rtc_peer_connection: StandardConstructor::default(),
+            rtc_data_channel: StandardConstructor::default(),
             weak_ref: StandardConstructor::default(),
             weak_map: StandardConstructor::default(),
             weak_set: StandardConstructor::default(),
             storage: StandardConstructor::default(),
+            storage_event: StandardConstructor::default(),
+            storage_manager: StandardConstructor::default(),
+            cache: StandardConstructor::default(),
+            cache_storage: StandardConstructor::default(),
+            cookie_store: StandardConstructor::default(),
+            file_system_handle: StandardConstructor::default(),
+            file_system_file_handle: StandardConstructor::default(),
+            file_system_directory_handle: StandardConstructor::default(),
             lock_manager: StandardConstructor::default(),
             idb_factory: StandardConstructor::default(),
             navigator: StandardConstructor::default(),
@@ -926,6 +992,66 @@ impl StandardConstructors {
         &self.blob
     }
 
+    /// Returns the `File` constructor.
+    ///
+    /// More information:
+    ///  - [File API reference][spec]
+    ///
+    /// [spec]: https://w3c.github.io/FileAPI/#file-section
+    #[inline]
+    #[must_use]
+    pub const fn file(&self) -> &StandardConstructor {
+        &self.file
+    }
+
+    /// Returns the `FileReader` constructor.
+    ///
+    /// More information:
+    ///  - [File API reference][spec]
+    ///
+    /// [spec]: https://w3c.github.io/FileAPI/#filereader-section
+    #[inline]
+    #[must_use]
+    pub const fn file_reader(&self) -> &StandardConstructor {
+        &self.file_reader
+    }
+
+    /// Returns the `EventSource` constructor.
+    ///
+    /// More information:
+    ///  - [EventSource API reference][spec]
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/server-sent-events.html
+    #[inline]
+    #[must_use]
+    pub const fn event_source(&self) -> &StandardConstructor {
+        &self.event_source
+    }
+
+    /// Returns the `RTCPeerConnection` constructor.
+    ///
+    /// More information:
+    ///  - [RTCPeerConnection API reference][spec]
+    ///
+    /// [spec]: https://w3c.github.io/webrtc-pc/
+    #[inline]
+    #[must_use]
+    pub const fn rtc_peer_connection(&self) -> &StandardConstructor {
+        &self.rtc_peer_connection
+    }
+
+    /// Returns the `RTCDataChannel` constructor.
+    ///
+    /// More information:
+    ///  - [RTCDataChannel API reference][spec]
+    ///
+    /// [spec]: https://w3c.github.io/webrtc-pc/#rtcdatachannel
+    #[inline]
+    #[must_use]
+    pub const fn rtc_data_channel(&self) -> &StandardConstructor {
+        &self.rtc_data_channel
+    }
+
     /// Returns the `WebSocket` constructor.
     ///
     /// More information:
@@ -948,6 +1074,174 @@ impl StandardConstructors {
     #[must_use]
     pub const fn websocket_stream(&self) -> &StandardConstructor {
         &self.websocket_stream
+    }
+
+    /// Returns the `WebAssembly.Module` constructor.
+    ///
+    /// More information:
+    ///  - [WebAssembly.Module spec][spec]
+    ///
+    /// [spec]: https://webassembly.github.io/spec/js-api/#modules
+    #[inline]
+    #[must_use]
+    pub const fn webassembly_module(&self) -> &StandardConstructor {
+        &self.webassembly_module
+    }
+
+    /// Returns the `WebAssembly.Instance` constructor.
+    ///
+    /// More information:
+    ///  - [WebAssembly.Instance spec][spec]
+    ///
+    /// [spec]: https://webassembly.github.io/spec/js-api/#instances
+    #[inline]
+    #[must_use]
+    pub const fn webassembly_instance(&self) -> &StandardConstructor {
+        &self.webassembly_instance
+    }
+
+    /// Returns the `WebAssembly.Memory` constructor.
+    ///
+    /// More information:
+    ///  - [WebAssembly.Memory spec][spec]
+    ///
+    /// [spec]: https://webassembly.github.io/spec/js-api/#memories
+    #[inline]
+    #[must_use]
+    pub const fn webassembly_memory(&self) -> &StandardConstructor {
+        &self.webassembly_memory
+    }
+
+    /// Returns the `WebAssembly.Table` constructor.
+    ///
+    /// More information:
+    ///  - [WebAssembly.Table spec][spec]
+    ///
+    /// [spec]: https://webassembly.github.io/spec/js-api/#tables
+    #[inline]
+    #[must_use]
+    pub const fn webassembly_table(&self) -> &StandardConstructor {
+        &self.webassembly_table
+    }
+
+    /// Returns the `WebAssembly.Global` constructor.
+    ///
+    /// More information:
+    ///  - [WebAssembly.Global spec][spec]
+    ///
+    /// [spec]: https://webassembly.github.io/spec/js-api/#globals
+    #[inline]
+    #[must_use]
+    pub const fn webassembly_global(&self) -> &StandardConstructor {
+        &self.webassembly_global
+    }
+
+    /// Returns the `Worker` constructor.
+    ///
+    /// More information:
+    ///  - [Worker spec][spec]
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/workers.html
+    #[inline]
+    #[must_use]
+    pub const fn worker(&self) -> &StandardConstructor {
+        &self.worker
+    }
+
+    /// Returns the `SharedWorker` constructor.
+    ///
+    /// More information:
+    ///  - [SharedWorker spec][spec]
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/workers.html#shared-workers
+    #[inline]
+    #[must_use]
+    pub const fn shared_worker(&self) -> &StandardConstructor {
+        &self.shared_worker
+    }
+
+    /// Returns the `ServiceWorker` constructor.
+    ///
+    /// More information:
+    ///  - [ServiceWorker spec][spec]
+    ///
+    /// [spec]: https://w3c.github.io/ServiceWorker/
+    #[inline]
+    #[must_use]
+    pub const fn service_worker(&self) -> &StandardConstructor {
+        &self.service_worker
+    }
+
+    /// Returns the `ServiceWorkerContainer` constructor.
+    ///
+    /// More information:
+    ///  - [ServiceWorker spec][spec]
+    ///
+    /// [spec]: https://w3c.github.io/ServiceWorker/#serviceworkercontainer-interface
+    #[inline]
+    #[must_use]
+    pub const fn service_worker_container(&self) -> &StandardConstructor {
+        &self.service_worker_container
+    }
+
+    /// Returns the `Worklet` constructor.
+    ///
+    /// More information:
+    ///  - [Worklet spec][spec]
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/worklets.html
+    #[inline]
+    #[must_use]
+    pub const fn worklet(&self) -> &StandardConstructor {
+        &self.worklet
+    }
+
+    /// Returns the `MessageChannel` constructor.
+    ///
+    /// More information:
+    ///  - [MessageChannel spec][spec]
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/web-messaging.html#message-channels
+    #[inline]
+    #[must_use]
+    pub const fn message_channel(&self) -> &StandardConstructor {
+        &self.message_channel
+    }
+
+    /// Returns the `MessagePort` constructor.
+    ///
+    /// More information:
+    ///  - [MessagePort spec][spec]
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/web-messaging.html#message-ports
+    #[inline]
+    #[must_use]
+    pub const fn message_port(&self) -> &StandardConstructor {
+        &self.message_port
+    }
+
+    /// Returns the `BroadcastChannel` constructor.
+    ///
+    /// More information:
+    ///  - [BroadcastChannel spec][spec]
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/web-messaging.html#broadcasting-to-other-browsing-contexts
+    #[inline]
+    #[must_use]
+    pub const fn broadcast_channel(&self) -> &StandardConstructor {
+        &self.broadcast_channel
+    }
+
+    /// Returns the `Crypto` constructor.
+    ///
+    /// More information:
+    ///  - [Web Crypto API spec][spec]
+    ///
+    /// [spec]: https://w3c.github.io/webcrypto/
+    #[inline]
+    #[must_use]
+    pub const fn crypto(&self) -> &StandardConstructor {
+        &self.crypto
     }
 
     /// Returns the `Request` constructor.
@@ -1214,6 +1508,13 @@ impl StandardConstructors {
         &self.custom_event
     }
 
+    /// Returns the `MessageEvent` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn message_event(&self) -> &StandardConstructor {
+        &self.message_event
+    }
+
     /// Returns the `ProcessingInstruction` constructor.
     #[inline]
     #[must_use]
@@ -1315,6 +1616,86 @@ impl StandardConstructors {
     #[must_use]
     pub const fn storage(&self) -> &StandardConstructor {
         &self.storage
+    }
+
+    /// Returns the `StorageEvent` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Specification](https://html.spec.whatwg.org/multipage/webstorage.html#the-storageevent-interface)
+    #[inline]
+    #[must_use]
+    pub const fn storage_event(&self) -> &StandardConstructor {
+        &self.storage_event
+    }
+
+    /// Returns the `StorageManager` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Storage Standard](https://storage.spec.whatwg.org/)
+    #[inline]
+    #[must_use]
+    pub const fn storage_manager(&self) -> &StandardConstructor {
+        &self.storage_manager
+    }
+
+    /// Returns the `Cache` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Service Worker Specification](https://w3c.github.io/ServiceWorker/#cache-interface)
+    #[inline]
+    #[must_use]
+    pub const fn cache(&self) -> &StandardConstructor {
+        &self.cache
+    }
+
+    /// Returns the `CacheStorage` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Service Worker Specification](https://w3c.github.io/ServiceWorker/#cachestorage-interface)
+    #[inline]
+    #[must_use]
+    pub const fn cache_storage(&self) -> &StandardConstructor {
+        &self.cache_storage
+    }
+
+    /// Returns the `CookieStore` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Cookie Store API Specification](https://wicg.github.io/cookie-store/)
+    #[inline]
+    #[must_use]
+    pub const fn cookie_store(&self) -> &StandardConstructor {
+        &self.cookie_store
+    }
+
+    /// Returns the `FileSystemHandle` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG File System API Specification](https://fs.spec.whatwg.org/)
+    #[inline]
+    #[must_use]
+    pub const fn file_system_handle(&self) -> &StandardConstructor {
+        &self.file_system_handle
+    }
+
+    /// Returns the `FileSystemFileHandle` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG File System API Specification](https://fs.spec.whatwg.org/)
+    #[inline]
+    #[must_use]
+    pub const fn file_system_file_handle(&self) -> &StandardConstructor {
+        &self.file_system_file_handle
+    }
+
+    /// Returns the `FileSystemDirectoryHandle` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG File System API Specification](https://fs.spec.whatwg.org/)
+    #[inline]
+    #[must_use]
+    pub const fn file_system_directory_handle(&self) -> &StandardConstructor {
+        &self.file_system_directory_handle
     }
 
     /// Returns the `LockManager` constructor.
@@ -1555,6 +1936,55 @@ impl StandardConstructors {
     #[cfg(feature = "temporal")]
     pub const fn calendar(&self) -> &StandardConstructor {
         &self.calendar
+    }
+
+
+    /// Returns the `WritableStream` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Streams spec][spec]
+    ///
+    /// [spec]: https://streams.spec.whatwg.org/#writablestream
+    #[inline]
+    #[must_use]
+    pub const fn writable_stream(&self) -> &StandardConstructor {
+        &self.writable_stream
+    }
+
+    /// Returns the `TransformStream` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Streams spec][spec]
+    ///
+    /// [spec]: https://streams.spec.whatwg.org/#transformstream
+    #[inline]
+    #[must_use]
+    pub const fn transform_stream(&self) -> &StandardConstructor {
+        &self.transform_stream
+    }
+
+    /// Returns the `CountQueuingStrategy` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Streams spec][spec]
+    ///
+    /// [spec]: https://streams.spec.whatwg.org/#countqueuingstrategy
+    #[inline]
+    #[must_use]
+    pub const fn count_queuing_strategy(&self) -> &StandardConstructor {
+        &self.count_queuing_strategy
+    }
+
+    /// Returns the `ByteLengthQueuingStrategy` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG Streams spec][spec]
+    ///
+    /// [spec]: https://streams.spec.whatwg.org/#bytelengthqueuingstrategy
+    #[inline]
+    #[must_use]
+    pub const fn byte_length_queuing_strategy(&self) -> &StandardConstructor {
+        &self.byte_length_queuing_strategy
     }
 }
 

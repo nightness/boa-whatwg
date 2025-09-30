@@ -9,7 +9,7 @@ fn main() {
 
     let src = "Function('super()')()";
     match context.eval(Source::from_bytes(src)) {
-        Ok(v) => println!("Result: {}", v.display()),
+        Ok(v) => eprintln!("Result: {}", v.display()),
         Err(e) => eprintln!("Error: {}", e),
     }
 }

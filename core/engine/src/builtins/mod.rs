@@ -5,8 +5,29 @@ pub mod array;
 pub mod array_buffer;
 pub mod async_function;
 pub mod readable_stream;
+pub mod readable_stream_reader;
+pub mod writable_stream;
+pub mod transform_stream;
+pub mod queuing_strategy;
 pub mod websocket;
 pub mod websocket_stream;
+pub mod webassembly;
+pub mod worker;
+pub mod worker_error;
+pub mod worker_events;
+pub mod worker_navigator;
+pub mod worker_script_loader;
+pub mod worker_global_scope;
+pub mod structured_clone;
+pub mod shared_worker;
+pub mod service_worker;
+pub mod service_worker_container;
+pub mod worklet;
+pub mod message_channel;
+pub mod message_port;
+pub mod message_event;
+pub mod broadcast_channel;
+pub mod crypto;
 pub mod document;
 pub mod document_parse;
 pub mod form;
@@ -45,6 +66,11 @@ pub mod resize_observer;
 pub mod console;
 pub mod timers;
 pub mod blob;
+pub mod file;
+pub mod file_reader;
+pub mod event_source;
+pub mod rtc_peer_connection;
+pub mod rtc_data_channel;
 pub mod async_generator;
 pub mod async_generator_function;
 pub mod atomics;
@@ -76,6 +102,12 @@ pub mod weak;
 pub mod weak_map;
 pub mod weak_set;
 pub mod storage;
+pub mod storage_event;
+pub mod storage_manager;
+pub mod cache;
+pub mod cache_storage;
+pub mod cookie_store;
+pub mod file_system;
 pub mod web_locks;
 pub mod indexed_db;
 pub mod navigator;
@@ -119,8 +151,20 @@ pub(crate) use self::{
     promise::Promise,
     proxy::Proxy,
     readable_stream::ReadableStream,
+    writable_stream::WritableStream,
+    transform_stream::TransformStream,
+    queuing_strategy::{CountQueuingStrategy, ByteLengthQueuingStrategy},
     websocket::WebSocket,
     websocket_stream::WebSocketStream,
+    worker::Worker,
+    shared_worker::SharedWorker,
+    service_worker::ServiceWorker,
+    service_worker_container::ServiceWorkerContainer,
+    worklet::Worklet,
+    message_channel::MessageChannel,
+    message_port::MessagePort,
+    broadcast_channel::BroadcastChannel,
+    crypto::Crypto,
     document::Document,
     form::{HTMLFormElement, HTMLFormControlsCollection, HTMLInputElement},
     window::Window,
@@ -143,6 +187,11 @@ pub(crate) use self::{
     event_target::EventTarget,
     console::Console,
     blob::Blob,
+    file::File,
+    file_reader::FileReader,
+    event_source::EventSource,
+    rtc_peer_connection::RTCPeerConnectionBuiltin,
+    rtc_data_channel::RTCDataChannelBuiltin,
     xmlhttprequest::XmlHttpRequest,
     mutation_observer::MutationObserver,
     intersection_observer::IntersectionObserver,
@@ -342,8 +391,23 @@ impl Realm {
         GeneratorFunction::init(self);
         Promise::init(self);
         ReadableStream::init(self);
+        WritableStream::init(self);
+        TransformStream::init(self);
+        CountQueuingStrategy::init(self);
+        ByteLengthQueuingStrategy::init(self);
         WebSocket::init(self);
         WebSocketStream::init(self);
+        EventSource::init(self);
+        RTCPeerConnectionBuiltin::init(self);
+        RTCDataChannelBuiltin::init(self);
+        Worker::init(self);
+        SharedWorker::init(self);
+        ServiceWorker::init(self);
+        Worklet::init(self);
+        MessageChannel::init(self);
+        MessagePort::init(self);
+        BroadcastChannel::init(self);
+        Crypto::init(self);
         AbortController::init(self);
         Request::init(self);
         Response::init(self);
@@ -405,6 +469,7 @@ impl Realm {
         Event::init(self);
         EventTarget::init(self);
         custom_event::CustomEvent::init(self);
+        message_event::MessageEvent::init(self);
         Fetch::init(self);
         XmlHttpRequest::init(self);
         MutationObserver::init(self);
@@ -427,6 +492,14 @@ impl Realm {
         WeakMap::init(self);
         WeakSet::init(self);
         Storage::init(self);
+        storage_event::StorageEvent::init(self);
+        storage_manager::StorageManager::init(self);
+        cache::Cache::init(self);
+        cache_storage::CacheStorage::init(self);
+        cookie_store::CookieStore::init(self);
+        file_system::FileSystemHandle::init(self);
+        file_system::FileSystemFileHandle::init(self);
+        file_system::FileSystemDirectoryHandle::init(self);
         web_locks::LockManagerObject::init(self);
         Navigator::init(self);
         Atomics::init(self);
@@ -520,6 +593,81 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
             )?;
         }
 
+        // Also expose caches as global property (CacheStorage API)
+        use crate::builtins::cache_storage::CacheStorage;
+        let cache_storage = CacheStorage::create_cache_storage();
+        let cache_storage_prototype = context.intrinsics().constructors().cache_storage().prototype();
+        cache_storage.set_prototype(Some(cache_storage_prototype));
+        global_object.define_property_or_throw(
+            js_string!("caches"),
+            PropertyDescriptor::builder()
+                .value(cache_storage)
+                .writable(false)
+                .enumerable(false)
+                .configurable(true),
+            context,
+        )?;
+
+        // Also expose cookieStore as global property (Cookie Store API)
+        use crate::builtins::cookie_store::CookieStore;
+        let cookie_store = CookieStore::create_cookie_store();
+        let cookie_store_prototype = context.intrinsics().constructors().cookie_store().prototype();
+        cookie_store.set_prototype(Some(cookie_store_prototype));
+        global_object.define_property_or_throw(
+            js_string!("cookieStore"),
+            PropertyDescriptor::builder()
+                .value(cookie_store)
+                .writable(false)
+                .enumerable(false)
+                .configurable(true),
+            context,
+        )?;
+
+        // Add File System API global functions
+        use crate::builtins::file_system::{show_open_file_picker, show_save_file_picker, show_directory_picker};
+
+        let show_open_file_picker_fn = BuiltInBuilder::callable(context.realm(), show_open_file_picker)
+            .name(js_string!("showOpenFilePicker"))
+            .length(0)
+            .build();
+        global_object.define_property_or_throw(
+            js_string!("showOpenFilePicker"),
+            PropertyDescriptor::builder()
+                .value(show_open_file_picker_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+            context,
+        )?;
+
+        let show_save_file_picker_fn = BuiltInBuilder::callable(context.realm(), show_save_file_picker)
+            .name(js_string!("showSaveFilePicker"))
+            .length(0)
+            .build();
+        global_object.define_property_or_throw(
+            js_string!("showSaveFilePicker"),
+            PropertyDescriptor::builder()
+                .value(show_save_file_picker_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+            context,
+        )?;
+
+        let show_directory_picker_fn = BuiltInBuilder::callable(context.realm(), show_directory_picker)
+            .name(js_string!("showDirectoryPicker"))
+            .length(0)
+            .build();
+        global_object.define_property_or_throw(
+            js_string!("showDirectoryPicker"),
+            PropertyDescriptor::builder()
+                .value(show_directory_picker_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+            context,
+        )?;
+
         // Also expose navigator as global for convenience
         if let Ok(navigator) = window_object.get(js_string!("navigator"), context) {
             global_object.define_property_or_throw(
@@ -539,6 +687,21 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
                 js_string!("indexedDB"),
                 PropertyDescriptor::builder()
                     .value(indexed_db)
+                    .writable(false)
+                    .enumerable(false)
+                    .configurable(true),
+                context,
+            )?;
+        }
+
+        // Add IDBKeyRange global constructor
+        {
+            use crate::builtins::indexed_db::IdbKeyRange;
+            let key_range_constructor = IdbKeyRange::create_constructor(context);
+            global_object.define_property_or_throw(
+                js_string!("IDBKeyRange"),
+                PropertyDescriptor::builder()
+                    .value(key_range_constructor)
                     .writable(false)
                     .enumerable(false)
                     .configurable(true),
@@ -616,7 +779,16 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<Reflect>(context)?;
     global_binding::<Promise>(context)?;
     global_binding::<ReadableStream>(context)?;
+    global_binding::<WritableStream>(context)?;
+    global_binding::<TransformStream>(context)?;
+    global_binding::<CountQueuingStrategy>(context)?;
+    global_binding::<ByteLengthQueuingStrategy>(context)?;
     global_binding::<WebSocket>(context)?;
+    global_binding::<Worker>(context)?;
+    global_binding::<SharedWorker>(context)?;
+    global_binding::<MessageChannel>(context)?;
+    global_binding::<BroadcastChannel>(context)?;
+    global_binding::<Crypto>(context)?;
     global_binding::<AbortController>(context)?;
     global_binding::<XmlHttpRequest>(context)?;
     global_binding::<MutationObserver>(context)?;
@@ -628,6 +800,7 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<Event>(context)?;
     global_binding::<EventTarget>(context)?;
     global_binding::<custom_event::CustomEvent>(context)?;
+    global_binding::<message_event::MessageEvent>(context)?;
     global_binding::<Node>(context)?;
     global_binding::<Element>(context)?;
     global_binding::<Attr>(context)?;
@@ -691,6 +864,18 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     {
         global_binding::<temporal::Temporal>(context)?;
     }
+
+    // Add crypto global object (lowercase instance, not constructor)
+    let crypto_obj = crypto::create_crypto_object(context)?;
+    global_object.define_property_or_throw(
+        js_string!("crypto"),
+        PropertyDescriptor::builder()
+            .value(crypto_obj)
+            .writable(false)
+            .enumerable(true)
+            .configurable(true),
+        context,
+    )?;
 
     Ok(())
 }

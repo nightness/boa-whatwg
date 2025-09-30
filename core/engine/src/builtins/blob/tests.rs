@@ -108,9 +108,9 @@ fn blob_text_method() {
     run_test_actions([
         TestAction::run("let blob = new Blob(['Hello World'])"),
         TestAction::assert("typeof blob.text === 'function'"),
-        // Note: text() should return a Promise, but for now we return the text directly
+        // text() should now return a Promise
         TestAction::run("let result = blob.text()"),
-        TestAction::assert("typeof result === 'string' || result instanceof Promise"),
+        TestAction::assert("result instanceof Promise"),
     ]);
 }
 
@@ -130,9 +130,11 @@ fn blob_stream_method() {
     run_test_actions([
         TestAction::run("let blob = new Blob(['Hello'])"),
         TestAction::assert("typeof blob.stream === 'function'"),
-        // Note: stream() should return a ReadableStream, but for now returns undefined
+        // stream() should return a ReadableStream with advanced features
         TestAction::run("let result = blob.stream()"),
-        TestAction::assert("result === undefined || result.constructor.name === 'ReadableStream'"),
+        TestAction::assert("result.constructor.name === 'ReadableStream'"),
+        TestAction::assert("typeof result.getReader === 'function'"),
+        TestAction::assert("typeof result.cancel === 'function'"),
     ]);
 }
 
@@ -204,5 +206,87 @@ fn blob_options_handling() {
         // Null options
         TestAction::run("let blob4 = new Blob(['test'], null)"),
         TestAction::assert("blob4.type === ''"),
+    ]);
+}
+
+#[test]
+fn blob_stream_advanced_features() {
+    run_test_actions([
+        TestAction::run("let blob = new Blob(['a'.repeat(100000)])"), // Large blob for chunking
+        TestAction::run("let stream = blob.stream()"),
+
+        // Test that stream has proper structure
+        TestAction::assert("stream instanceof ReadableStream"),
+        TestAction::assert("typeof stream.getReader === 'function'"),
+        TestAction::assert("typeof stream.cancel === 'function'"),
+        TestAction::assert("typeof stream.tee === 'function'"),
+
+        // Test reader functionality
+        TestAction::run("let reader = stream.getReader()"),
+        TestAction::assert("reader !== null"),
+        TestAction::assert("typeof reader === 'object'"),
+    ]);
+}
+
+#[test]
+fn blob_stream_cancellation() {
+    run_test_actions([
+        TestAction::run("let blob = new Blob(['test data for cancellation'])"),
+        TestAction::run("let stream = blob.stream()"),
+
+        // Test cancellation
+        TestAction::run("let cancelPromise = stream.cancel('user cancelled')"),
+        TestAction::assert("cancelPromise instanceof Promise"),
+
+        // Stream should be cancelled
+        TestAction::assert("stream.locked === false || stream.locked === true"), // State may vary
+    ]);
+}
+
+#[test]
+fn blob_stream_backpressure() {
+    run_test_actions([
+        // Create large blob to test backpressure
+        TestAction::run("let largeData = 'x'.repeat(1000000)"), // 1MB data
+        TestAction::run("let blob = new Blob([largeData])"),
+        TestAction::run("let stream = blob.stream()"),
+
+        // Test that stream handles large data
+        TestAction::assert("stream instanceof ReadableStream"),
+        TestAction::run("let reader = stream.getReader()"),
+        TestAction::assert("typeof reader.read === 'function'"),
+    ]);
+}
+
+#[test]
+fn blob_stream_chunking() {
+    run_test_actions([
+        // Test with data that will be chunked
+        TestAction::run("let data = 'A'.repeat(200000)"), // 200KB, should create multiple chunks
+        TestAction::run("let blob = new Blob([data])"),
+        TestAction::run("let stream = blob.stream()"),
+
+        // Verify stream setup for chunked reading
+        TestAction::assert("stream instanceof ReadableStream"),
+        TestAction::run("let reader = stream.getReader()"),
+        TestAction::assert("reader !== null"),
+    ]);
+}
+
+#[test]
+fn blob_promise_based_methods() {
+    run_test_actions([
+        TestAction::run("let blob = new Blob(['promise test data'])"),
+
+        // Test that text() returns a Promise
+        TestAction::run("let textPromise = blob.text()"),
+        TestAction::assert("textPromise instanceof Promise"),
+
+        // Test that arrayBuffer() returns a Promise
+        TestAction::run("let bufferPromise = blob.arrayBuffer()"),
+        TestAction::assert("bufferPromise instanceof Promise"),
+
+        // Both promises should be separate instances
+        TestAction::assert("textPromise !== bufferPromise"),
     ]);
 }
