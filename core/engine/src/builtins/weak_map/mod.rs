@@ -51,7 +51,6 @@ impl IntrinsicObject for WeakMap {
 impl BuiltInObject for WeakMap {
     const NAME: JsString = StaticJsStrings::WEAK_MAP;
 
-    const ATTRIBUTE: Attribute = Attribute::WRITABLE.union(Attribute::CONFIGURABLE);
 }
 
 impl BuiltInConstructor for WeakMap {

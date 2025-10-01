@@ -41,6 +41,9 @@ pub mod shape;
 
 pub(crate) use builtins::*;
 
+// Export builtin object wrappers for external browser API crates
+pub use builtins::{JsArray, JsPromise};
+
 pub use datatypes::JsData;
 pub use jsobject::*;
 

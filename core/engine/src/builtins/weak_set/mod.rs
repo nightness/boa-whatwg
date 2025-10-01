@@ -49,7 +49,6 @@ impl IntrinsicObject for WeakSet {
 impl BuiltInObject for WeakSet {
     const NAME: JsString = StaticJsStrings::WEAK_SET;
 
-    const ATTRIBUTE: Attribute = Attribute::WRITABLE.union(Attribute::CONFIGURABLE);
 }
 
 impl BuiltInConstructor for WeakSet {

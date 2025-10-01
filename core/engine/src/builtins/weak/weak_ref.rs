@@ -44,8 +44,6 @@ impl IntrinsicObject for WeakRef {
 
 impl BuiltInObject for WeakRef {
     const NAME: JsString = StaticJsStrings::WEAK_REF;
-
-    const ATTRIBUTE: Attribute = Attribute::WRITABLE.union(Attribute::CONFIGURABLE);
 }
 
 impl BuiltInConstructor for WeakRef {

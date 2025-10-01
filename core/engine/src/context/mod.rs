@@ -524,8 +524,6 @@ impl Context {
 
         let old_realm = self.enter_realm(realm);
 
-        builtins::set_default_global_bindings(self)?;
-
         Ok(self.enter_realm(old_realm))
     }
 
@@ -1124,8 +1122,6 @@ impl ContextBuilder {
             can_block: self.can_block,
             data: HostDefined::default(),
         };
-
-        builtins::set_default_global_bindings(&mut context)?;
 
         Ok(context)
     }

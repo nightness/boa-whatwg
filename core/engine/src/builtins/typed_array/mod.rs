@@ -85,9 +85,6 @@ impl<T: TypedArrayMarker> IntrinsicObject for T {
 
 impl<T: TypedArrayMarker> BuiltInObject for T {
     const NAME: JsString = <Self as TypedArrayMarker>::ERASED.js_name();
-    const ATTRIBUTE: Attribute = Attribute::WRITABLE
-        .union(Attribute::NON_ENUMERABLE)
-        .union(Attribute::CONFIGURABLE);
 }
 
 impl<T: TypedArrayMarker> BuiltInConstructor for T {
