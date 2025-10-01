@@ -209,7 +209,7 @@ pub struct ArrayBuffer {
 }
 
 impl ArrayBuffer {
-    pub(crate) fn from_data(data: Vec<u8>, detach_key: JsValue) -> Self {
+    pub fn from_data(data: Vec<u8>, detach_key: JsValue) -> Self {
         Self {
             data: Some(data),
             max_byte_len: None,
@@ -221,7 +221,7 @@ impl ArrayBuffer {
         self.data.as_ref().map_or(0, Vec::len)
     }
 
-    pub(crate) fn bytes(&self) -> Option<&[u8]> {
+    pub fn bytes(&self) -> Option<&[u8]> {
         self.data.as_deref()
     }
 

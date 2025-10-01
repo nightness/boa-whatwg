@@ -49,12 +49,12 @@ pub struct RegExp {
 
 impl RegExp {
     /// Gets the original source for structured cloning
-    pub(crate) fn get_original_source(&self) -> &JsString {
+    pub fn get_original_source(&self) -> &JsString {
         &self.original_source
     }
 
     /// Gets the original flags for structured cloning
-    pub(crate) fn get_original_flags(&self) -> &JsString {
+    pub fn get_original_flags(&self) -> &JsString {
         &self.original_flags
     }
 }

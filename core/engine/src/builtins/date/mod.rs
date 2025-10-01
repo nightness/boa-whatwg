@@ -54,7 +54,7 @@ impl Date {
     }
 
     /// Gets the internal time value for structured cloning
-    pub(crate) fn get_time_value(&self) -> f64 {
+    pub fn get_time_value(&self) -> f64 {
         self.0
     }
 }

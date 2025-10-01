@@ -86,7 +86,7 @@ pub(crate) use self::{
     symbol::Symbol,
     typed_array::{
         BigInt64Array, BigUint64Array, Float32Array, Float64Array, Int16Array, Int32Array,
-        Int8Array, Uint16Array, Uint32Array, Uint8ClampedArray, TypedArray,
+        Int8Array, Uint16Array, Uint32Array, Uint8Array, Uint8ClampedArray, TypedArray,
     },
     uri::UriFunctions,
     weak::WeakRef,
@@ -207,7 +207,6 @@ pub(crate) fn init(realm: &Realm) {
         Symbol { Symbol },
         Map { Map },
         Set { Set },
-        TypedArray,
         Int8Array { Int8Array },
         Uint8Array { Uint8Array },
         Uint8ClampedArray { Uint8ClampedArray },
@@ -231,11 +230,6 @@ pub(crate) fn init(realm: &Realm) {
         #[cfg(feature = "temporal")]
         Temporal,
     }
-
-    // Initialize special intrinsics that don't follow the standard pattern
-    UriFunctions::init(realm);
-    IteratorPrototypes::init(realm);
-    TypedArray::init(realm);
 }
 
 /// Public function to allow external crates (like thalora-browser-apis) to register global bindings.

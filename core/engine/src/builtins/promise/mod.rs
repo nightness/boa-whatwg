@@ -1505,7 +1505,7 @@ impl Promise {
     ///  - [ECMAScript reference][spec]
     ///
     /// [spec]: https://tc39.es/ecma262/#sec-promise-resolve
-    pub(crate) fn promise_resolve(
+    pub fn promise_resolve(
         c: &JsObject,
         x: JsValue,
         context: &mut Context,
