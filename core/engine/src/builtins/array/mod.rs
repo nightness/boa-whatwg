@@ -56,7 +56,7 @@ pub(crate) enum Direction {
 /// JavaScript `Array` built-in implementation.
 #[derive(Debug, Clone, Copy, Trace, Finalize)]
 #[boa_gc(empty_trace)]
-pub(crate) struct Array;
+pub struct Array;
 
 /// Definitions of the internal object methods for array exotic objects.
 ///

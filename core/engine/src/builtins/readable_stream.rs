@@ -233,7 +233,7 @@ impl ReadableStream {
 
 /// Internal data for ReadableStream instances
 #[derive(Debug, Trace, Finalize, JsData)]
-pub(crate) struct ReadableStreamData {
+pub struct ReadableStreamData {
     #[unsafe_ignore_trace]
     underlying_source: JsValue,
     #[unsafe_ignore_trace]
@@ -290,7 +290,7 @@ impl ReadableStreamData {
 }
 
 #[derive(Debug, Clone, PartialEq, Trace, Finalize)]
-pub(crate) enum StreamState {
+pub enum StreamState {
     Readable,
     Closed,
     Errored,

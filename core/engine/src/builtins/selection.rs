@@ -144,7 +144,7 @@ impl SelectionData {
 
 /// The `Selection` object.
 #[derive(Debug, Clone, Trace, Finalize)]
-pub(crate) struct Selection;
+pub struct Selection;
 
 impl IntrinsicObject for Selection {
     fn init(realm: &Realm) {

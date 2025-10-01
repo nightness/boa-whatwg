@@ -141,7 +141,7 @@ const OWN_PROPS: usize = 3;
 /// type of object that is being constructed.
 #[derive(Debug)]
 #[must_use = "You need to call the `build` method in order for this to correctly assign the inner data"]
-pub(crate) struct BuiltInBuilder<'ctx, Kind> {
+pub struct BuiltInBuilder<'ctx, Kind> {
     realm: &'ctx Realm,
     object: JsObject,
     kind: Kind,

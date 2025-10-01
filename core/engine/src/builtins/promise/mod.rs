@@ -168,7 +168,7 @@ pub(crate) use if_abrupt_reject_promise;
 ///
 /// [spec]: https://tc39.es/ecma262/#sec-promisecapability-records
 #[derive(Debug, Clone, Finalize)]
-pub(crate) struct PromiseCapability {
+pub struct PromiseCapability {
     /// The `[[Promise]]` field.
     pub(crate) promise: JsObject,
 

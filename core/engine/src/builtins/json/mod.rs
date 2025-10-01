@@ -44,7 +44,7 @@ mod tests;
 
 /// JavaScript `JSON` global object.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct Json;
+pub struct Json;
 
 impl IntrinsicObject for Json {
     fn init(realm: &Realm) {

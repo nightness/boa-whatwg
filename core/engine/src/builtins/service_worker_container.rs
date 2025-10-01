@@ -24,7 +24,7 @@ use url::Url;
 
 /// JavaScript `ServiceWorkerContainer` builtin implementation.
 #[derive(Debug, Copy, Clone)]
-pub(crate) struct ServiceWorkerContainer;
+pub struct ServiceWorkerContainer;
 
 /// Service worker registration information
 #[derive(Debug, Clone)]

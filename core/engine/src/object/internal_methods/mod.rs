@@ -1155,7 +1155,7 @@ pub(crate) fn validate_and_apply_property_descriptor(
 ///
 /// [spec]: https://tc39.es/ecma262/#sec-getprototypefromconstructor
 #[track_caller]
-pub(crate) fn get_prototype_from_constructor<F>(
+pub fn get_prototype_from_constructor<F>(
     constructor: &JsValue,
     default: F,
     context: &mut Context,
