@@ -39,7 +39,7 @@ use ordered_map::OrderedMap;
 mod tests;
 
 #[derive(Debug, Clone)]
-pub(crate) struct Map;
+pub struct Map;
 
 impl IntrinsicObject for Map {
     fn init(realm: &Realm) {

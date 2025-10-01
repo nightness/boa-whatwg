@@ -132,7 +132,7 @@ fn canonicalize_keyed_collection_value(value: JsValue) -> JsValue {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Set;
+pub struct Set;
 
 impl IntrinsicObject for Set {
     fn get(intrinsics: &Intrinsics) -> JsObject {
