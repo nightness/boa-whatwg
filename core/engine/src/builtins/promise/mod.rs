@@ -1478,7 +1478,7 @@ impl Promise {
     ///
     /// [spec]: https://tc39.es/ecma262/#sec-promise.resolve
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/resolve
-    pub(crate) fn resolve(
+    pub fn resolve(
         this: &JsValue,
         args: &[JsValue],
         context: &mut Context,

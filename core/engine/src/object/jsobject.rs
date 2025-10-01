@@ -183,7 +183,7 @@ impl JsObject {
     /// the provided `data`.
     ///
     /// [`OrdinaryObjectCreate`]: https://tc39.es/ecma262/#sec-ordinaryobjectcreate
-    pub(crate) fn from_proto_and_data_with_shared_shape<O: Into<Option<Self>>, T: NativeObject>(
+    pub fn from_proto_and_data_with_shared_shape<O: Into<Option<Self>>, T: NativeObject>(
         root_shape: &RootShape,
         prototype: O,
         data: T,

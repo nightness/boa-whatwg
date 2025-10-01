@@ -49,7 +49,7 @@ impl DomSync {
 
 /// JavaScript `Element` builtin implementation.
 #[derive(Debug, Copy, Clone)]
-pub(crate) struct Element;
+pub struct Element;
 
 impl IntrinsicObject for Element {
     fn init(realm: &Realm) {

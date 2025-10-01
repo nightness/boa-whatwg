@@ -135,9 +135,16 @@ pub(crate) mod options;
 #[cfg(feature = "temporal")]
 pub mod temporal;
 
+// Public exports - make Array, Json, Promise public for external browser API crates
+pub use self::{
+    array::Array,
+    json::Json,
+    promise::Promise,
+};
+
+// Internal-only exports
 pub(crate) use self::{
     abort_controller::AbortController,
-    array::Array,
     async_function::AsyncFunction,
     bigint::BigInt,
     boolean::Boolean,
@@ -148,12 +155,10 @@ pub(crate) use self::{
     },
     eval::Eval,
     function::BuiltInFunctionObject,
-    json::Json,
     map::Map,
     math::Math,
     number::{IsFinite, IsNaN, Number, ParseFloat, ParseInt},
     object::OrdinaryObject,
-    promise::Promise,
     proxy::Proxy,
     readable_stream::ReadableStream,
     writable_stream::WritableStream,
@@ -212,13 +217,6 @@ pub(crate) use self::{
         BigInt64Array, BigUint64Array, Float32Array, Float64Array, Int8Array, Int16Array,
         Int32Array, Uint8Array, Uint8ClampedArray, Uint16Array, Uint32Array,
     },
-};
-
-// Public exports for external browser API crates
-pub use self::{
-    array::Array,
-    json::Json,
-    promise::Promise,
 };
 
 use crate::{

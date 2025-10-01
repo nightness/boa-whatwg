@@ -174,7 +174,7 @@ impl MessageEventData {
 }
 
 /// Create a MessageEvent from structured clone data
-pub(crate) fn create_message_event(
+pub fn create_message_event(
     data: JsValue,
     origin: Option<&str>,
     source: Option<JsValue>,

@@ -149,7 +149,7 @@ pub struct BuiltInBuilder<'ctx, Kind> {
 }
 
 impl<'ctx> BuiltInBuilder<'ctx, OrdinaryObject> {
-    pub(crate) fn with_intrinsic<I: IntrinsicObject>(
+    pub fn with_intrinsic<I: IntrinsicObject>(
         realm: &'ctx Realm,
     ) -> BuiltInBuilder<'ctx, OrdinaryObject> {
         BuiltInBuilder {
@@ -185,7 +185,7 @@ impl BuiltInConstructorWithPrototype<'_> {
     ///
     /// Default is `0`.
     #[inline]
-    pub(crate) const fn length(mut self, length: usize) -> Self {
+    pub const fn length(mut self, length: usize) -> Self {
         self.length = length;
         self
     }
@@ -193,13 +193,13 @@ impl BuiltInConstructorWithPrototype<'_> {
     /// Specify the name of the constructor function.
     ///
     /// Default is `""`
-    pub(crate) fn name(mut self, name: JsString) -> Self {
+    pub fn name(mut self, name: JsString) -> Self {
         self.name = name;
         self
     }
 
     /// Adds a new static method to the builtin object.
-    pub(crate) fn static_method<B>(
+    pub fn static_method<B>(
         mut self,
         function: NativeFunctionPointer,
         binding: B,
@@ -229,7 +229,7 @@ impl BuiltInConstructorWithPrototype<'_> {
     }
 
     /// Adds a new static data property to the builtin object.
-    pub(crate) fn static_property<K, V>(mut self, key: K, value: V, attribute: Attribute) -> Self
+    pub fn static_property<K, V>(mut self, key: K, value: V, attribute: Attribute) -> Self
     where
         K: Into<PropertyKey>,
         V: Into<JsValue>,
@@ -244,7 +244,7 @@ impl BuiltInConstructorWithPrototype<'_> {
     }
 
     /// Adds a new static accessor property to the builtin object.
-    pub(crate) fn static_accessor<K>(
+    pub fn static_accessor<K>(
         mut self,
         key: K,
         get: Option<JsFunction>,
@@ -279,7 +279,7 @@ impl BuiltInConstructorWithPrototype<'_> {
     }
 
     /// Adds a new method to the constructor's prototype.
-    pub(crate) fn method<B>(
+    pub fn method<B>(
         mut self,
         function: NativeFunctionPointer,
         binding: B,
@@ -309,7 +309,7 @@ impl BuiltInConstructorWithPrototype<'_> {
     }
 
     /// Adds a new data property to the constructor's prototype.
-    pub(crate) fn property<K, V>(mut self, key: K, value: V, attribute: Attribute) -> Self
+    pub fn property<K, V>(mut self, key: K, value: V, attribute: Attribute) -> Self
     where
         K: Into<PropertyKey>,
         V: Into<JsValue>,
@@ -324,7 +324,7 @@ impl BuiltInConstructorWithPrototype<'_> {
     }
 
     /// Adds new accessor property to the constructor's prototype.
-    pub(crate) fn accessor<K>(
+    pub fn accessor<K>(
         mut self,
         key: K,
         get: Option<JsFunction>,
@@ -365,7 +365,7 @@ impl BuiltInConstructorWithPrototype<'_> {
         self
     }
 
-    pub(crate) fn build(mut self) {
+    pub fn build(mut self) {
         let length = self.length;
         let name = self.name.clone();
         let prototype = self.prototype.clone();
@@ -461,7 +461,7 @@ impl BuiltInCallable<'_> {
     ///
     /// Default is `0`.
     #[inline]
-    pub(crate) const fn length(mut self, length: usize) -> Self {
+    pub const fn length(mut self, length: usize) -> Self {
         self.length = length;
         self
     }
@@ -469,12 +469,12 @@ impl BuiltInCallable<'_> {
     /// Specify the name of the constructor function.
     ///
     /// Default is `""`
-    pub(crate) fn name(mut self, name: JsString) -> Self {
+    pub fn name(mut self, name: JsString) -> Self {
         self.name = name;
         self
     }
 
-    pub(crate) fn build(self) -> JsFunction {
+    pub fn build(self) -> JsFunction {
         let object = self.realm.intrinsics().templates().function().create(
             NativeFunctionObject {
                 f: NativeFunction::from_fn_ptr(self.function),
@@ -490,7 +490,7 @@ impl BuiltInCallable<'_> {
 }
 
 impl<'ctx> BuiltInBuilder<'ctx, OrdinaryObject> {
-    pub(crate) fn callable(
+    pub fn callable(
         realm: &'ctx Realm,
         function: NativeFunctionPointer,
     ) -> BuiltInCallable<'ctx> {
@@ -502,7 +502,7 @@ impl<'ctx> BuiltInBuilder<'ctx, OrdinaryObject> {
         }
     }
 
-    pub(crate) fn callable_with_intrinsic<I: IntrinsicObject>(
+    pub fn callable_with_intrinsic<I: IntrinsicObject>(
         realm: &'ctx Realm,
         function: NativeFunctionPointer,
     ) -> BuiltInBuilder<'ctx, Callable<OrdinaryFunction>> {
@@ -520,7 +520,7 @@ impl<'ctx> BuiltInBuilder<'ctx, OrdinaryObject> {
         }
     }
 
-    pub(crate) fn callable_with_object(
+    pub fn callable_with_object(
         realm: &'ctx Realm,
         object: JsObject,
         function: NativeFunctionPointer,
@@ -542,7 +542,7 @@ impl<'ctx> BuiltInBuilder<'ctx, OrdinaryObject> {
 
 impl<'ctx> BuiltInBuilder<'ctx, Callable<Constructor>> {
     /// Create a new builder for a constructor function setting the properties ahead of time for optimizations (less reallocations)
-    pub(crate) fn from_standard_constructor<SC: BuiltInConstructor>(
+    pub fn from_standard_constructor<SC: BuiltInConstructor>(
         realm: &'ctx Realm,
     ) -> BuiltInConstructorWithPrototype<'ctx> {
         let constructor = SC::STANDARD_CONSTRUCTOR(realm.intrinsics().constructors());
@@ -566,7 +566,7 @@ impl<'ctx> BuiltInBuilder<'ctx, Callable<Constructor>> {
 
 impl<T> BuiltInBuilder<'_, T> {
     /// Adds a new static method to the builtin object.
-    pub(crate) fn static_method<B>(
+    pub fn static_method<B>(
         self,
         function: NativeFunctionPointer,
         binding: B,
@@ -593,7 +593,7 @@ impl<T> BuiltInBuilder<'_, T> {
     }
 
     /// Adds a new static data property to the builtin object.
-    pub(crate) fn static_property<K, V>(self, key: K, value: V, attribute: Attribute) -> Self
+    pub fn static_property<K, V>(self, key: K, value: V, attribute: Attribute) -> Self
     where
         K: Into<PropertyKey>,
         V: Into<JsValue>,
@@ -621,7 +621,7 @@ impl<FnTyp> BuiltInBuilder<'_, Callable<FnTyp>> {
     ///
     /// Default is `0`.
     #[inline]
-    pub(crate) const fn length(mut self, length: usize) -> Self {
+    pub const fn length(mut self, length: usize) -> Self {
         self.kind.length = length;
         self
     }
@@ -629,7 +629,7 @@ impl<FnTyp> BuiltInBuilder<'_, Callable<FnTyp>> {
     /// Specify the name of the constructor function.
     ///
     /// Default is `""`
-    pub(crate) fn name(mut self, name: JsString) -> Self {
+    pub fn name(mut self, name: JsString) -> Self {
         self.kind.name = name;
         self
     }
@@ -637,7 +637,7 @@ impl<FnTyp> BuiltInBuilder<'_, Callable<FnTyp>> {
 
 impl BuiltInBuilder<'_, OrdinaryObject> {
     /// Build the builtin object.
-    pub(crate) fn build(self) -> JsObject {
+    pub fn build(self) -> JsObject {
         self.kind.apply_to(&self.object);
 
         self.object.set_prototype(Some(self.prototype));
@@ -648,7 +648,7 @@ impl BuiltInBuilder<'_, OrdinaryObject> {
 
 impl<FnTyp: ApplyToObject + IsConstructor> BuiltInBuilder<'_, Callable<FnTyp>> {
     /// Build the builtin callable.
-    pub(crate) fn build(self) -> JsFunction {
+    pub fn build(self) -> JsFunction {
         self.kind.apply_to(&self.object);
 
         self.object.set_prototype(Some(self.prototype));
