@@ -67,6 +67,87 @@ impl Intrinsics {
     pub(crate) const fn templates(&self) -> &ObjectTemplates {
         &self.templates
     }
+
+    /// Initialize all intrinsic objects by calling their `init()` methods.
+    ///
+    /// This populates each intrinsic object with its methods and properties according to
+    /// the ECMAScript specification.
+    ///
+    /// [spec]: https://tc39.es/ecma262/#sec-createintrinsics
+    pub(crate) fn initialize(&self, realm: &crate::realm::Realm) {
+        use crate::builtins::{self, IntrinsicObject};
+
+        builtins::function::BuiltInFunctionObject::init(realm);
+        builtins::object::OrdinaryObject::init(realm);
+        builtins::math::Math::init(realm);
+        builtins::json::Json::init(realm);
+        builtins::array::Array::init(realm);
+        builtins::proxy::Proxy::init(realm);
+        builtins::array_buffer::ArrayBuffer::init(realm);
+        builtins::array_buffer::SharedArrayBuffer::init(realm);
+        builtins::bigint::BigInt::init(realm);
+        builtins::boolean::Boolean::init(realm);
+        builtins::date::Date::init(realm);
+        builtins::dataview::DataView::init(realm);
+        builtins::map::Map::init(realm);
+        builtins::number::Number::init(realm);
+        builtins::number::IsFinite::init(realm);
+        builtins::number::IsNaN::init(realm);
+        builtins::number::ParseInt::init(realm);
+        builtins::number::ParseFloat::init(realm);
+        builtins::eval::Eval::init(realm);
+        builtins::set::Set::init(realm);
+        builtins::string::String::init(realm);
+        builtins::regexp::RegExp::init(realm);
+        builtins::symbol::Symbol::init(realm);
+        builtins::error::Error::init(realm);
+        builtins::error::RangeError::init(realm);
+        builtins::error::ReferenceError::init(realm);
+        builtins::error::TypeError::init(realm);
+        builtins::error::SyntaxError::init(realm);
+        builtins::error::EvalError::init(realm);
+        builtins::error::UriError::init(realm);
+        builtins::error::AggregateError::init(realm);
+        builtins::reflect::Reflect::init(realm);
+        builtins::promise::Promise::init(realm);
+        builtins::uri::EncodeUri::init(realm);
+        builtins::uri::EncodeUriComponent::init(realm);
+        builtins::uri::DecodeUri::init(realm);
+        builtins::uri::DecodeUriComponent::init(realm);
+        builtins::weak::WeakRef::init(realm);
+        builtins::weak_map::WeakMap::init(realm);
+        builtins::weak_set::WeakSet::init(realm);
+        builtins::atomics::Atomics::init(realm);
+
+        // Typed arrays
+        builtins::typed_array::Int8Array::init(realm);
+        builtins::typed_array::Uint8Array::init(realm);
+        builtins::typed_array::Uint8ClampedArray::init(realm);
+        builtins::typed_array::Int16Array::init(realm);
+        builtins::typed_array::Uint16Array::init(realm);
+        builtins::typed_array::Int32Array::init(realm);
+        builtins::typed_array::Uint32Array::init(realm);
+        builtins::typed_array::BigInt64Array::init(realm);
+        builtins::typed_array::BigUint64Array::init(realm);
+        builtins::typed_array::Float32Array::init(realm);
+        builtins::typed_array::Float64Array::init(realm);
+
+        #[cfg(feature = "annex-b")]
+        {
+            builtins::escape::Escape::init(realm);
+            builtins::escape::Unescape::init(realm);
+        }
+
+        #[cfg(feature = "intl")]
+        {
+            builtins::intl::Intl::init(realm);
+        }
+
+        #[cfg(feature = "temporal")]
+        {
+            builtins::temporal::Temporal::init(realm);
+        }
+    }
 }
 
 /// Stores a constructor (such as `Object`) and its corresponding prototype.

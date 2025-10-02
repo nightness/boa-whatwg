@@ -1123,6 +1123,8 @@ impl ContextBuilder {
             data: HostDefined::default(),
         };
 
+        builtins::set_default_global_bindings(&mut context)?;
+
         Ok(context)
     }
 }

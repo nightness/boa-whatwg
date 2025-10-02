@@ -127,6 +127,7 @@ sys-locale = "0.3.2"
 temporal_rs = { version = "0.0.14", default-features = false, features = [
     "tzdb",
 ] }
+timezone_provider = "=0.0.15"
 web-time = "1.1.0"
 criterion = "0.5.1"
 float-cmp = "0.10.0"

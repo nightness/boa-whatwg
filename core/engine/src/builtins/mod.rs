@@ -131,6 +131,11 @@ pub trait IntrinsicObject {
 pub trait BuiltInObject: IntrinsicObject {
     /// The binding name of the built-in object.
     const NAME: JsString;
+
+    /// Property attribute flags of the built-in. Check [`Attribute`] for more information.
+    const ATTRIBUTE: Attribute = Attribute::WRITABLE
+        .union(Attribute::NON_ENUMERABLE)
+        .union(Attribute::CONFIGURABLE);
 }
 
 /// Trait representing a built-in constructor.
@@ -230,6 +235,139 @@ pub(crate) fn init(realm: &Realm) {
         #[cfg(feature = "temporal")]
         Temporal,
     }
+}
+
+/// Helper function to register a global builtin object in the context.
+fn global_binding<B: BuiltInObject>(context: &mut Context) -> JsResult<()> {
+    let name = B::NAME;
+    let attr = B::ATTRIBUTE;
+    let intrinsic = B::get(context.intrinsics());
+    let global_object = context.global_object();
+
+    global_object.define_property_or_throw(
+        name,
+        PropertyDescriptor::builder()
+            .value(intrinsic)
+            .writable(attr.writable())
+            .enumerable(attr.enumerable())
+            .configurable(attr.configurable())
+            .build(),
+        context,
+    )?;
+    Ok(())
+}
+
+/// Initialize the default global bindings (intrinsic objects) for a new context.
+///
+/// This function is called automatically when a context is created.
+pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()> {
+    use crate::js_string;
+
+    // First, initialize all intrinsic objects with their methods and properties
+    let realm = context.realm().clone();
+    realm.intrinsics().initialize(&realm);
+
+    let global_object = context.global_object();
+
+    global_object.define_property_or_throw(
+        js_string!("globalThis"),
+        PropertyDescriptor::builder()
+            .value(context.realm().global_this().clone())
+            .writable(true)
+            .enumerable(false)
+            .configurable(true),
+        context,
+    )?;
+    let restricted = PropertyDescriptor::builder()
+        .writable(false)
+        .enumerable(false)
+        .configurable(false);
+    global_object.define_property_or_throw(
+        js_string!("Infinity"),
+        restricted.clone().value(f64::INFINITY),
+        context,
+    )?;
+    global_object.define_property_or_throw(
+        js_string!("NaN"),
+        restricted.clone().value(f64::NAN),
+        context,
+    )?;
+    global_object.define_property_or_throw(
+        js_string!("undefined"),
+        restricted.value(JsValue::undefined()),
+        context,
+    )?;
+
+    global_binding::<BuiltInFunctionObject>(context)?;
+    global_binding::<OrdinaryObject>(context)?;
+    global_binding::<Math>(context)?;
+    global_binding::<Json>(context)?;
+    global_binding::<Array>(context)?;
+    global_binding::<Proxy>(context)?;
+    global_binding::<ArrayBuffer>(context)?;
+    global_binding::<array_buffer::SharedArrayBuffer>(context)?;
+    global_binding::<BigInt>(context)?;
+    global_binding::<Boolean>(context)?;
+    global_binding::<Date>(context)?;
+    global_binding::<DataView>(context)?;
+    global_binding::<Map>(context)?;
+    global_binding::<number::IsFinite>(context)?;
+    global_binding::<number::IsNaN>(context)?;
+    global_binding::<number::ParseInt>(context)?;
+    global_binding::<number::ParseFloat>(context)?;
+    global_binding::<Number>(context)?;
+    global_binding::<Eval>(context)?;
+    global_binding::<Set>(context)?;
+    global_binding::<String>(context)?;
+    global_binding::<RegExp>(context)?;
+    global_binding::<Int8Array>(context)?;
+    global_binding::<Uint8Array>(context)?;
+    global_binding::<Uint8ClampedArray>(context)?;
+    global_binding::<Int16Array>(context)?;
+    global_binding::<Uint16Array>(context)?;
+    global_binding::<Int32Array>(context)?;
+    global_binding::<Uint32Array>(context)?;
+    global_binding::<BigInt64Array>(context)?;
+    global_binding::<BigUint64Array>(context)?;
+    #[cfg(feature = "float16")]
+    global_binding::<typed_array::Float16Array>(context)?;
+    global_binding::<Float32Array>(context)?;
+    global_binding::<Float64Array>(context)?;
+    global_binding::<Symbol>(context)?;
+    global_binding::<Error>(context)?;
+    global_binding::<error::RangeError>(context)?;
+    global_binding::<error::ReferenceError>(context)?;
+    global_binding::<error::TypeError>(context)?;
+    global_binding::<error::SyntaxError>(context)?;
+    global_binding::<error::EvalError>(context)?;
+    global_binding::<error::UriError>(context)?;
+    global_binding::<error::AggregateError>(context)?;
+    global_binding::<reflect::Reflect>(context)?;
+    global_binding::<Promise>(context)?;
+    global_binding::<uri::EncodeUri>(context)?;
+    global_binding::<uri::EncodeUriComponent>(context)?;
+    global_binding::<uri::DecodeUri>(context)?;
+    global_binding::<uri::DecodeUriComponent>(context)?;
+    global_binding::<WeakRef>(context)?;
+    global_binding::<WeakMap>(context)?;
+    global_binding::<WeakSet>(context)?;
+    global_binding::<atomics::Atomics>(context)?;
+
+    #[cfg(feature = "annex-b")]
+    {
+        global_binding::<escape::Escape>(context)?;
+        global_binding::<escape::Unescape>(context)?;
+    }
+
+    #[cfg(feature = "intl")]
+    global_binding::<intl::Intl>(context)?;
+
+    #[cfg(feature = "temporal")]
+    {
+        global_binding::<temporal::Temporal>(context)?;
+    }
+
+    Ok(())
 }
 
 /// Public function to allow external crates (like thalora-browser-apis) to register global bindings.

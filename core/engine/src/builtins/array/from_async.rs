@@ -1,7 +1,7 @@
 use boa_gc::{Finalize, Trace};
 
 use super::Array;
-use crate::builtins::AsyncFromSyncIterator;
+use crate::builtins::iterable::AsyncFromSyncIterator;
 use crate::builtins::iterable::IteratorRecord;
 use crate::builtins::promise::ResolvingFunctions;
 use crate::native_function::{CoroutineState, NativeCoroutine};

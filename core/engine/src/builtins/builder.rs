@@ -15,7 +15,7 @@ use super::{BuiltInConstructor, IntrinsicObject, function::ConstructorKind};
 /// Marker for a constructor function.
 // TODO: Remove this marker and use `Constructor` directly.
 #[allow(dead_code)]
-pub(crate) struct Constructor {
+pub struct Constructor {
     prototype: JsObject,
     inherits: JsPrototype,
     attributes: Attribute,
@@ -27,7 +27,7 @@ pub(crate) struct Constructor {
 pub(crate) struct ConstructorNoProto;
 
 /// Marker for an ordinary function.
-pub(crate) struct OrdinaryFunction;
+pub struct OrdinaryFunction;
 
 /// Indicates if the marker is a constructor.
 pub(crate) trait IsConstructor {
@@ -47,7 +47,7 @@ impl IsConstructor for OrdinaryFunction {
 }
 
 /// Marker for a callable object.
-pub(crate) struct Callable<Kind> {
+pub struct Callable<Kind> {
     function: NativeFunctionPointer,
     name: JsString,
     length: usize,
@@ -56,7 +56,7 @@ pub(crate) struct Callable<Kind> {
 }
 
 /// Marker for an ordinary object.
-pub(crate) struct OrdinaryObject;
+pub struct OrdinaryObject;
 
 /// Applies the pending builder data to the object.
 pub(crate) trait ApplyToObject {
@@ -161,7 +161,7 @@ impl<'ctx> BuiltInBuilder<'ctx, OrdinaryObject> {
     }
 }
 
-pub(crate) struct BuiltInConstructorWithPrototype<'ctx> {
+pub struct BuiltInConstructorWithPrototype<'ctx> {
     realm: &'ctx Realm,
     function: NativeFunctionPointer,
     name: JsString,
@@ -449,7 +449,7 @@ impl BuiltInConstructorWithPrototype<'_> {
     }
 }
 
-pub(crate) struct BuiltInCallable<'ctx> {
+pub struct BuiltInCallable<'ctx> {
     realm: &'ctx Realm,
     function: NativeFunctionPointer,
     name: JsString,
