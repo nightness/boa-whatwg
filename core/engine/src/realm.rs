@@ -113,6 +113,15 @@ impl Realm {
         &self.inner.intrinsics
     }
 
+    /// Returns a mutable reference to the intrinsics.
+    ///
+    /// This is needed for external crates to register browser API constructors.
+    #[inline]
+    #[must_use]
+    pub fn intrinsics_mut(&mut self) -> &mut Intrinsics {
+        &mut self.inner.intrinsics
+    }
+
     /// Returns an immutable reference to the [`ECMAScript specification`][spec] defined
     /// [`\[\[\HostDefined]\]`][`HostDefined`] field of the [`Realm`].
     ///

@@ -64,6 +64,14 @@ impl Intrinsics {
         &self.constructors
     }
 
+    /// Returns a mutable reference to the standard constructors.
+    ///
+    /// This is needed for external crates (like thalora-browser-apis) to register
+    /// their constructors in the intrinsics after extraction from Boa.
+    pub fn constructors_mut(&mut self) -> &mut StandardConstructors {
+        &mut self.constructors
+    }
+
     pub(crate) const fn templates(&self) -> &ObjectTemplates {
         &self.templates
     }
@@ -168,7 +176,9 @@ impl Default for StandardConstructor {
 
 impl StandardConstructor {
     /// Creates a new `StandardConstructor` from the constructor and the prototype.
-    pub(crate) fn new(constructor: JsFunction, prototype: JsObject) -> Self {
+    ///
+    /// Made public for external crates (like thalora-browser-apis) to register their constructors.
+    pub fn new(constructor: JsFunction, prototype: JsObject) -> Self {
         Self {
             constructor,
             prototype,
@@ -1839,6 +1849,14 @@ impl StandardConstructors {
     #[must_use]
     pub const fn navigator(&self) -> &StandardConstructor {
         &self.navigator
+    }
+
+    /// Sets the `Navigator` constructor.
+    ///
+    /// This is needed for external crates to register Navigator after extraction from Boa.
+    #[inline]
+    pub fn set_navigator(&mut self, constructor: StandardConstructor) {
+        self.navigator = constructor;
     }
 
     /// Returns the `Performance` constructor.
