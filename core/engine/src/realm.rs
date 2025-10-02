@@ -71,6 +71,9 @@ struct Inner {
     loaded_modules: GcRefCell<FxHashMap<JsString, Module>>,
     host_classes: GcRefCell<FxHashMap<TypeId, StandardConstructor>>,
 
+    /// External constructor registrations (for browser APIs extracted to separate crates)
+    external_constructors: GcRefCell<FxHashMap<&'static str, StandardConstructor>>,
+
     host_defined: GcRefCell<HostDefined>,
 }
 
@@ -99,6 +102,7 @@ impl Realm {
                 template_map: GcRefCell::default(),
                 loaded_modules: GcRefCell::default(),
                 host_classes: GcRefCell::default(),
+                external_constructors: GcRefCell::default(),
                 host_defined: GcRefCell::default(),
             }),
         };
@@ -113,13 +117,25 @@ impl Realm {
         &self.inner.intrinsics
     }
 
-    /// Returns a mutable reference to the intrinsics.
+    /// Register an external constructor in this realm.
     ///
-    /// This is needed for external crates to register browser API constructors.
-    #[inline]
+    /// This is needed for external crates (like thalora-browser-apis) to register
+    /// their constructors after extraction from Boa.
+    pub fn register_external_constructor(&self, name: &'static str, constructor: StandardConstructor) {
+        self.inner
+            .external_constructors
+            .borrow_mut()
+            .insert(name, constructor);
+    }
+
+    /// Get an external constructor registered in this realm.
     #[must_use]
-    pub fn intrinsics_mut(&mut self) -> &mut Intrinsics {
-        &mut self.inner.intrinsics
+    pub fn get_external_constructor(&self, name: &str) -> Option<StandardConstructor> {
+        self.inner
+            .external_constructors
+            .borrow()
+            .get(name)
+            .cloned()
     }
 
     /// Returns an immutable reference to the [`ECMAScript specification`][spec] defined

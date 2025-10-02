@@ -434,14 +434,6 @@ impl Context {
         self.vm.realm.intrinsics()
     }
 
-    /// Returns a mutable reference to the intrinsics.
-    ///
-    /// This is needed for external crates to register browser API constructors.
-    #[inline]
-    #[must_use]
-    pub fn intrinsics_mut(&mut self) -> &mut Intrinsics {
-        self.vm.realm.intrinsics_mut()
-    }
 
     /// Returns the currently active realm.
     #[inline]
