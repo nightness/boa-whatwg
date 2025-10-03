@@ -354,7 +354,7 @@ impl BuiltInConstructorWithPrototype<'_> {
     ///
     /// Default is `Object.prototype`.
     #[allow(clippy::missing_const_for_fn)]
-    pub(crate) fn inherits(mut self, prototype: JsPrototype) -> Self {
+    pub fn inherits(mut self, prototype: JsPrototype) -> Self {
         self.inherits = prototype;
         self
     }
