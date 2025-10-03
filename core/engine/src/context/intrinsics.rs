@@ -291,6 +291,7 @@ pub struct StandardConstructors {
     document: StandardConstructor,
     window: StandardConstructor,
     history: StandardConstructor,
+    location: StandardConstructor,
     pageswap_event: StandardConstructor,
     node: StandardConstructor,
     character_data: StandardConstructor,
@@ -463,6 +464,7 @@ impl Default for StandardConstructors {
             document: StandardConstructor::default(),
             window: StandardConstructor::default(),
             history: StandardConstructor::default(),
+            location: StandardConstructor::default(),
             pageswap_event: StandardConstructor::default(),
             node: StandardConstructor::default(),
             character_data: StandardConstructor::default(),
@@ -1495,6 +1497,18 @@ impl StandardConstructors {
     #[must_use]
     pub const fn history(&self) -> &StandardConstructor {
         &self.history
+    }
+
+    /// Returns the `Location` constructor.
+    ///
+    /// More information:
+    ///  - [Location API reference][spec]
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/history.html#the-location-interface
+    #[inline]
+    #[must_use]
+    pub const fn location(&self) -> &StandardConstructor {
+        &self.location
     }
 
     /// Returns the `PageSwapEvent` constructor.
