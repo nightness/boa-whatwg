@@ -2403,7 +2403,7 @@ impl IntrinsicObjects {
             temporal: JsObject::with_null_proto(),
             #[cfg(feature = "temporal")]
             now: JsObject::with_null_proto(),
-            css: JsObject::default(),
+            css: JsObject::with_null_proto(),
         })
     }
 
