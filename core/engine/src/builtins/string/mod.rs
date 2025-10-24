@@ -199,9 +199,9 @@ impl BuiltInObject for String {
 }
 
 impl BuiltInConstructor for String {
-    const LENGTH: usize = 1;
-    const P: usize = 36;
-    const SP: usize = 3;
+    const CONSTRUCTOR_ARGUMENTS: usize = 1;
+    const PROTOTYPE_STORAGE_SLOTS: usize = 52;
+    const CONSTRUCTOR_STORAGE_SLOTS: usize = 3;
 
     const STANDARD_CONSTRUCTOR: fn(&StandardConstructors) -> &StandardConstructor =
         StandardConstructors::string;
@@ -2286,7 +2286,7 @@ impl String {
             IntegerOrInfinity::Integer(int_start) => int_start,
             // 7. Else, set intStart to min(intStart, size).
             //
-            // NOTE: size will always we smaller than +∞
+            // NOTE: size will always be smaller than +∞
             IntegerOrInfinity::PositiveInfinity => size,
         } as usize;
 

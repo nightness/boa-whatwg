@@ -10,7 +10,9 @@ pub use hooks::{DefaultHooks, HostHooks};
 pub use icu::IcuError;
 use intrinsics::Intrinsics;
 #[cfg(feature = "temporal")]
-use temporal_rs::tzdb::FsTzdbProvider;
+use temporal_rs::provider::TimeZoneProvider;
+#[cfg(feature = "temporal")]
+use timezone_provider::tzif::CompiledTzdbProvider;
 
 use crate::job::Job;
 use crate::module::DynModuleLoader;
@@ -57,10 +59,9 @@ thread_local! {
 ///
 /// ```rust
 /// use boa_engine::{
-///     js_string,
+///     Context, Source, js_string,
 ///     object::ObjectInitializer,
 ///     property::{Attribute, PropertyDescriptor},
-///     Context, Source,
 /// };
 ///
 /// let script = r#"
@@ -107,7 +108,7 @@ pub struct Context {
     can_block: bool,
 
     #[cfg(feature = "temporal")]
-    tz_provider: FsTzdbProvider,
+    tz_provider: CompiledTzdbProvider,
 
     /// Intl data provider.
     #[cfg(feature = "intl")]
@@ -215,16 +216,19 @@ impl Context {
     /// # Example
     /// ```
     /// use boa_engine::{
-    ///     js_string,
+    ///     Context, js_string,
     ///     object::ObjectInitializer,
     ///     property::{Attribute, PropertyDescriptor},
-    ///     Context,
     /// };
     ///
     /// let mut context = Context::default();
     ///
     /// context
-    ///     .register_global_property(js_string!("myPrimitiveProperty"), 10, Attribute::all())
+    ///     .register_global_property(
+    ///         js_string!("myPrimitiveProperty"),
+    ///         10,
+    ///         Attribute::all(),
+    ///     )
     ///     .expect("property shouldn't exist");
     ///
     /// let object = ObjectInitializer::new(&mut context)
@@ -232,7 +236,11 @@ impl Context {
     ///     .property(js_string!("y"), 1, Attribute::all())
     ///     .build();
     /// context
-    ///     .register_global_property(js_string!("myObjectProperty"), object, Attribute::all())
+    ///     .register_global_property(
+    ///         js_string!("myObjectProperty"),
+    ///         object,
+    ///         Attribute::all(),
+    ///     )
     ///     .expect("property shouldn't exist");
     /// ```
     pub fn register_global_property<K, V>(
@@ -883,7 +891,7 @@ impl Context {
 
     /// Get the Time Zone Provider
     #[cfg(feature = "temporal")]
-    pub(crate) fn tz_provider(&self) -> &FsTzdbProvider {
+    pub(crate) fn tz_provider(&self) -> &impl TimeZoneProvider {
         &self.tz_provider
     }
 }
@@ -1094,7 +1102,7 @@ impl ContextBuilder {
             vm,
             strict: false,
             #[cfg(feature = "temporal")]
-            tz_provider: FsTzdbProvider::default(),
+            tz_provider: CompiledTzdbProvider::default(),
             #[cfg(feature = "intl")]
             intl_provider: if let Some(icu) = self.icu {
                 icu

@@ -18,6 +18,7 @@ mod tests;
 
 use std::ops::{Deref, DerefMut};
 
+use aligned_vec::{ABox, AVec, ConstAlign};
 pub use shared::SharedArrayBuffer;
 use std::sync::atomic::Ordering;
 
@@ -27,7 +28,7 @@ use crate::{
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
     error::JsNativeError,
     js_string,
-    object::{JsObject, Object, internal_methods::get_prototype_from_constructor},
+    object::{JsObject, internal_methods::get_prototype_from_constructor},
     property::Attribute,
     realm::Realm,
     string::StaticJsStrings,
@@ -40,6 +41,10 @@ use self::utils::{SliceRef, SliceRefMut};
 use super::{
     Array, BuiltInBuilder, BuiltInConstructor, DataView, IntrinsicObject, typed_array::TypedArray,
 };
+
+/// `Vec`, but aligned to a 64-bit memory address.
+pub type AlignedVec<T> = AVec<T, ConstAlign<64>>;
+pub(crate) type AlignedBox<T> = ABox<T, ConstAlign<64>>;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum BufferRef<B, S> {
@@ -160,10 +165,7 @@ impl BufferObject {
     #[track_caller]
     pub(crate) fn as_buffer_mut(
         &self,
-    ) -> BufferRefMut<
-        GcRefMut<'_, Object<ArrayBuffer>, ArrayBuffer>,
-        GcRefMut<'_, Object<SharedArrayBuffer>, SharedArrayBuffer>,
-    > {
+    ) -> BufferRefMut<GcRefMut<'_, ArrayBuffer>, GcRefMut<'_, SharedArrayBuffer>> {
         match self {
             Self::Buffer(buf) => {
                 BufferRefMut::Buffer(GcRefMut::map(buf.borrow_mut(), |o| o.data_mut()))
@@ -199,7 +201,8 @@ impl BufferObject {
 #[derive(Debug, Clone, Trace, Finalize, JsData)]
 pub struct ArrayBuffer {
     /// The `[[ArrayBufferData]]` internal slot.
-    data: Option<Vec<u8>>,
+    #[unsafe_ignore_trace]
+    data: Option<AlignedVec<u8>>,
 
     /// The `[[ArrayBufferMaxByteLength]]` internal slot.
     max_byte_len: Option<u64>,
@@ -209,7 +212,7 @@ pub struct ArrayBuffer {
 }
 
 impl ArrayBuffer {
-    pub fn from_data(data: Vec<u8>, detach_key: JsValue) -> Self {
+    pub(crate) fn from_data(data: AlignedVec<u8>, detach_key: JsValue) -> Self {
         Self {
             data: Some(data),
             max_byte_len: None,
@@ -218,7 +221,7 @@ impl ArrayBuffer {
     }
 
     pub(crate) fn len(&self) -> usize {
-        self.data.as_ref().map_or(0, Vec::len)
+        self.data.as_ref().map_or(0, AlignedVec::len)
     }
 
     pub fn bytes(&self) -> Option<&[u8]> {
@@ -229,7 +232,7 @@ impl ArrayBuffer {
         self.data.as_deref_mut()
     }
 
-    pub(crate) fn vec_mut(&mut self) -> Option<&mut Vec<u8>> {
+    pub(crate) fn vec_mut(&mut self) -> Option<&mut AlignedVec<u8>> {
         self.data.as_mut()
     }
 
@@ -296,7 +299,7 @@ impl ArrayBuffer {
     /// # Errors
     ///
     /// Throws an error if the provided detach key is invalid.
-    pub fn detach(&mut self, key: &JsValue) -> JsResult<Option<Vec<u8>>> {
+    pub fn detach(&mut self, key: &JsValue) -> JsResult<Option<AlignedVec<u8>>> {
         if !JsValue::same_value(&self.detach_key, key) {
             return Err(JsNativeError::typ()
                 .with_message("Cannot detach array buffer with different key")
@@ -410,9 +413,9 @@ impl BuiltInObject for ArrayBuffer {
 }
 
 impl BuiltInConstructor for ArrayBuffer {
-    const P: usize = 9;
-    const SP: usize = 2;
-    const LENGTH: usize = 1;
+    const PROTOTYPE_STORAGE_SLOTS: usize = 13;
+    const CONSTRUCTOR_STORAGE_SLOTS: usize = 3;
+    const CONSTRUCTOR_ARGUMENTS: usize = 1;
 
     const STANDARD_CONSTRUCTOR: fn(&StandardConstructors) -> &StandardConstructor =
         StandardConstructors::array_buffer;
@@ -945,7 +948,7 @@ pub(crate) fn create_byte_data_block(
     size: u64,
     max_buffer_size: Option<u64>,
     context: &mut Context,
-) -> JsResult<Vec<u8>> {
+) -> JsResult<AlignedVec<u8>> {
     let alloc_size = max_buffer_size.unwrap_or(size);
 
     assert!(size <= alloc_size);
@@ -962,9 +965,17 @@ pub(crate) fn create_byte_data_block(
         JsNativeError::range().with_message(format!("couldn't allocate the data block: {e}"))
     })?;
 
-    let mut data_block = Vec::new();
+    let mut data_block = AlignedVec::<u8>::new(64);
     data_block.try_reserve_exact(alloc_size).map_err(|e| {
-        JsNativeError::range().with_message(format!("couldn't allocate the data block: {e}"))
+        let message = match e {
+            aligned_vec::TryReserveError::CapacityOverflow => {
+                format!("capacity overflow for size {size} while allocating data block")
+            }
+            aligned_vec::TryReserveError::AllocError { layout } => {
+                format!("invalid layout {layout:?} while allocating data block")
+            }
+        };
+        JsNativeError::range().with_message(message)
     })?;
 
     // since size <= alloc_size, then `size` must also fit inside a `usize`.

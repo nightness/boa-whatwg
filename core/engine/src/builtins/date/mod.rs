@@ -191,9 +191,9 @@ impl BuiltInObject for Date {
 }
 
 impl BuiltInConstructor for Date {
-    const LENGTH: usize = 7;
-    const P: usize = 47;
-    const SP: usize = 3;
+    const CONSTRUCTOR_ARGUMENTS: usize = 7;
+    const PROTOTYPE_STORAGE_SLOTS: usize = 48;
+    const CONSTRUCTOR_STORAGE_SLOTS: usize = 3;
 
     const STANDARD_CONSTRUCTOR: fn(&StandardConstructors) -> &StandardConstructor =
         StandardConstructors::date;
@@ -1604,7 +1604,7 @@ impl Date {
         let tv = this.to_primitive(context, PreferredType::Number)?;
 
         // 3. If Type(tv) is Number and tv is not finite, return null.
-        if tv.as_number().map(f64::is_finite) == Some(false) {
+        if tv.as_number().is_some_and(|x| !f64::is_finite(x)) {
             return Ok(JsValue::null());
         }
 

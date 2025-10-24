@@ -70,7 +70,7 @@ trace = ["js"]
 annex-b = ["boa_ast/annex-b", "boa_parser/annex-b"]
 
 # Enable Boa's Temporal proposal implementation
-temporal = ["dep:icu_calendar", "dep:temporal_rs", "dep:iana-time-zone"]
+temporal = ["dep:icu_calendar", "dep:temporal_rs", "dep:iana-time-zone", "dep:timezone_provider", "timezone_provider/tzif"]
 
 # Enable experimental features, like Stage 3 proposals.
 experimental = ["temporal"]
@@ -100,7 +100,7 @@ futures-lite.workspace = true
 base64 = "0.22"
 float16 = { version = "0.1", optional = true }
 lz4_flex = { workspace = true, optional = true }
-xsum = { version = "0.1.1", optional = true }
+xsum = { version = "0.1.6", optional = true }
 serde = { workspace = true, features = ["derive", "rc"] }
 serde_json.workspace = true
 rand.workspace = true
@@ -116,7 +116,6 @@ fast-float2.workspace = true
 tap.workspace = true
 small_btree.workspace = true
 paste.workspace = true
-
 thiserror.workspace = true
 dashmap.workspace = true
 num_enum.workspace = true
@@ -138,6 +137,7 @@ hashbrown.workspace = true
 either = { workspace = true, optional = true }
 static_assertions.workspace = true
 futures-channel.workspace = true
+aligned-vec.workspace = true
 
 # WebAssembly runtime - Complete implementation with wasmtime
 wasmtime = { version = "21.0", features = ["component-model", "async", "runtime", "cranelift", "cache", "pooling-allocator"] }
@@ -209,6 +209,7 @@ futures-concurrency.workspace = true
 
 # temporal deps
 temporal_rs = { workspace = true, optional = true }
+timezone_provider = { workspace = true, optional = true }
 iana-time-zone = { version = "0.1.64", optional = true }
 
 [target.'cfg(all(target_family = "wasm", not(any(target_os = "emscripten", target_os = "wasi"))))'.dependencies]

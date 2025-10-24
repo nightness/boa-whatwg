@@ -1,4 +1,3 @@
-use boa_engine::object::Object;
 use boa_engine::value::TryFromJs;
 use boa_engine::{Context, JsNativeError, JsObject, JsResult, JsValue, NativeObject};
 use boa_gc::{GcRef, GcRefMut};
@@ -133,8 +132,10 @@ impl<'a> IntoIterator for JsRest<'a> {
 /// # use boa_engine::{Context, JsValue, IntoJsFunctionCopied};
 /// # use boa_engine::interop::JsAll;
 /// # let mut context = Context::default();
-/// let sums = (|args: JsAll<i32>, context: &mut Context| -> i32 { args.iter().sum() })
-///     .into_js_function_copied(&mut context);
+/// let sums = (|args: JsAll<i32>, context: &mut Context| -> i32 {
+///     args.iter().sum()
+/// })
+/// .into_js_function_copied(&mut context);
 ///
 /// let result = sums
 ///     .call(
@@ -265,7 +266,7 @@ impl<T: NativeObject> JsClass<T> {
     ///
     /// Panics if the object is currently mutably borrowed.
     #[must_use]
-    pub fn borrow_mut(&self) -> GcRefMut<'_, Object<T>, T> {
+    pub fn borrow_mut(&self) -> GcRefMut<'_, T> {
         GcRefMut::map(self.inner.borrow_mut(), |obj| obj.data_mut())
     }
 }

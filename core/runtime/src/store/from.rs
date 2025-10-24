@@ -1,10 +1,11 @@
 //! All methods for serializing a [`JsValue`] into a [`JsValueStore`].
 
 use crate::store::{JsValueStore, StringStore, ValueStoreInner, unsupported_type};
-use boa_engine::builtins::array_buffer::ArrayBuffer;
+use boa_engine::builtins::array_buffer::{AlignedVec, ArrayBuffer};
 use boa_engine::builtins::error::Error;
 use boa_engine::object::builtins::{
-    JsArray, JsArrayBuffer, JsDataView, JsDate, JsMap, JsRegExp, JsSet, JsTypedArray,
+    JsArray, JsArrayBuffer, JsDataView, JsDate, JsMap, JsRegExp, JsSet, JsSharedArrayBuffer,
+    JsTypedArray,
 };
 use boa_engine::property::PropertyKey;
 use boa_engine::{Context, JsError, JsObject, JsResult, JsString, JsValue, JsVariant, js_error};
@@ -25,6 +26,12 @@ impl SeenMap {
         let addr = std::ptr::from_ref(original.as_ref()).addr();
         self.0.insert(addr, object);
     }
+}
+
+/// Return true if an object is transferable.
+pub(super) fn is_transferable(object: &JsObject) -> bool {
+    // The only transferable object supported for now is ArrayBuffer.
+    object.downcast_mut::<ArrayBuffer>().is_some()
 }
 
 /// The core logic of the [`JsValueStore::try_from_js`] function.
@@ -112,11 +119,21 @@ fn try_from_array_buffer_clone(
     seen: &mut SeenMap,
 ) -> JsResult<JsValueStore> {
     let data = buffer.data().ok_or_else(unsupported_type)?;
-    let data = data.to_vec();
+    let data = AlignedVec::from_slice(0, &data);
     let new_value = JsValueStore::new(ValueStoreInner::ArrayBuffer(data));
     seen.insert(original, new_value.clone());
 
     Ok(new_value)
+}
+
+fn try_from_shared_array_buffer(
+    original: &JsObject,
+    buffer: &JsSharedArrayBuffer,
+    seen: &mut SeenMap,
+) -> JsValueStore {
+    let new_value = JsValueStore::new(ValueStoreInner::SharedArrayBuffer(buffer.inner()));
+    seen.insert(original, new_value.clone());
+    new_value
 }
 
 fn clone_typed_array(
@@ -235,6 +252,8 @@ fn try_from_js_object_clone(
         return try_from_set(object, &set, transfer, seen, context);
     } else if let Ok(ref buffer) = JsArrayBuffer::from_object(object.clone()) {
         return try_from_array_buffer_clone(object, buffer, seen);
+    } else if let Ok(ref buffer) = JsSharedArrayBuffer::from_object(object.clone()) {
+        return Ok(try_from_shared_array_buffer(object, buffer, seen));
     } else if let Ok(ref typed_array) = JsTypedArray::from_object(object.clone()) {
         return clone_typed_array(object, typed_array, transfer, seen, context);
     } else if let Ok(ref date) = JsDate::from_object(object.clone()) {
