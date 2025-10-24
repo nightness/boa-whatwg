@@ -36,9 +36,9 @@ impl BuiltInObject for WebAssemblyInstance {
 }
 
 impl BuiltInConstructor for WebAssemblyInstance {
-    const LENGTH: usize = 1;
-    const P: usize = 1; // exports property
-    const SP: usize = 0; // no static properties
+    const CONSTRUCTOR_ARGUMENTS: usize = 1;
+    const PROTOTYPE_STORAGE_SLOTS: usize = 1; // exports property
+    const CONSTRUCTOR_STORAGE_SLOTS: usize = 0; // no static properties
 
     const STANDARD_CONSTRUCTOR: fn(&StandardConstructors) -> &StandardConstructor =
         StandardConstructors::webassembly_instance;

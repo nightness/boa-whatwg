@@ -49,9 +49,9 @@ impl BuiltInObject for WebAssemblyGlobal {
 }
 
 impl BuiltInConstructor for WebAssemblyGlobal {
-    const LENGTH: usize = 2;
-    const P: usize = 2; // value property, valueOf method
-    const SP: usize = 0; // no static properties
+    const CONSTRUCTOR_ARGUMENTS: usize = 2;
+    const PROTOTYPE_STORAGE_SLOTS: usize = 2; // value property, valueOf method
+    const CONSTRUCTOR_STORAGE_SLOTS: usize = 0; // no static properties
 
     const STANDARD_CONSTRUCTOR: fn(&StandardConstructors) -> &StandardConstructor =
         StandardConstructors::webassembly_global;

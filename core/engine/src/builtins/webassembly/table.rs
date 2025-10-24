@@ -49,9 +49,9 @@ impl BuiltInObject for WebAssemblyTable {
 }
 
 impl BuiltInConstructor for WebAssemblyTable {
-    const LENGTH: usize = 1;
-    const P: usize = 4; // length property, get, set, grow methods
-    const SP: usize = 0; // no static properties
+    const CONSTRUCTOR_ARGUMENTS: usize = 1;
+    const PROTOTYPE_STORAGE_SLOTS: usize = 4; // length property, get, set, grow methods
+    const CONSTRUCTOR_STORAGE_SLOTS: usize = 0; // no static properties
 
     const STANDARD_CONSTRUCTOR: fn(&StandardConstructors) -> &StandardConstructor =
         StandardConstructors::webassembly_table;

@@ -47,9 +47,9 @@ impl BuiltInObject for WebAssemblyMemory {
 }
 
 impl BuiltInConstructor for WebAssemblyMemory {
-    const LENGTH: usize = 1;
-    const P: usize = 2; // buffer property, grow method
-    const SP: usize = 0; // no static properties
+    const CONSTRUCTOR_ARGUMENTS: usize = 1;
+    const PROTOTYPE_STORAGE_SLOTS: usize = 2; // buffer property, grow method
+    const CONSTRUCTOR_STORAGE_SLOTS: usize = 0; // no static properties
 
     const STANDARD_CONSTRUCTOR: fn(&StandardConstructors) -> &StandardConstructor =
         StandardConstructors::webassembly_memory;
