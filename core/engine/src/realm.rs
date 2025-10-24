@@ -107,6 +107,8 @@ impl Realm {
             }),
         };
 
+        realm.initialize();
+
         Ok(realm)
     }
 
