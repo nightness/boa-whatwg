@@ -34,9 +34,9 @@ pub mod weak;
 pub mod weak_map;
 pub mod weak_set;
 
-mod builder;
+pub mod builder;
 
-use builder::BuiltInBuilder;
+pub use builder::BuiltInBuilder;
 use error::Error;
 use num_traits::Zero;
 
@@ -119,7 +119,7 @@ use crate::{
 /// the specification and which usually have realm-specific identities.
 ///
 /// [Well-Known Intrinsic Object]: https://tc39.es/ecma262/#sec-well-known-intrinsic-objects
-pub(crate) trait IntrinsicObject {
+pub trait IntrinsicObject {
     /// Initializes the intrinsic object.
     ///
     /// This is where the methods, properties, static methods and the constructor of a built-in must
@@ -135,7 +135,7 @@ pub(crate) trait IntrinsicObject {
 /// This trait must be implemented for any global built-in that lives in the global context of a script.
 ///
 /// [built-in object]: https://tc39.es/ecma262/#sec-built-in-object
-pub(crate) trait BuiltInObject: IntrinsicObject {
+pub trait BuiltInObject: IntrinsicObject {
     /// Binding name of the builtin inside the global object.
     ///
     /// E.g. If you want access the properties of a `Complex` built-in with the name `Cplx` you must
@@ -157,7 +157,7 @@ pub(crate) trait BuiltInObject: IntrinsicObject {
 /// construct an object instance e.g. `Array`, `Map` or `Object`.
 ///
 /// [built-in object]: https://tc39.es/ecma262/#sec-built-in-object
-pub(crate) trait BuiltInConstructor: BuiltInObject {
+pub trait BuiltInConstructor: BuiltInObject {
     /// The minimum storage slots that need to be allocated for the constructor's
     /// prototype object.
     ///

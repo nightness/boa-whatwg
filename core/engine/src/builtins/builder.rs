@@ -379,7 +379,7 @@ impl BuiltInConstructorWithPrototype<'_> {
     }
 
     #[track_caller]
-    pub(crate) fn build(mut self) {
+    pub fn build(mut self) {
         let length = self.length;
         let name = self.name.clone();
         let prototype = self.prototype.clone();
@@ -588,7 +588,7 @@ impl<'ctx> BuiltInBuilder<'ctx, Callable<Constructor>> {
     ///
     /// This sets the properties ahead of time for optimizations
     /// (less reallocations).
-    pub(crate) fn from_standard_constructor<SC: BuiltInConstructor>(
+    pub fn from_standard_constructor<SC: BuiltInConstructor>(
         realm: &'ctx Realm,
     ) -> BuiltInConstructorWithPrototype<'ctx> {
         let constructor = SC::STANDARD_CONSTRUCTOR(realm.intrinsics().constructors());
