@@ -1,12 +1,13 @@
 //! Boa's implementation of ECMAScript's `IteratorRecord` and iterator prototype objects.
 
 use crate::{
-    Context, JsResult, JsValue,
-    builtins::{BuiltInBuilder, IntrinsicObject},
+    Context, JsArgs, JsResult, JsValue,
+    builtins::{BuiltInBuilder, IntrinsicObject, Array},
     context::intrinsics::Intrinsics,
     error::JsNativeError,
     js_string,
     object::JsObject,
+    property::PropertyDescriptor,
     realm::Realm,
     symbol::JsSymbol,
 };
@@ -176,13 +177,543 @@ pub(crate) struct Iterator;
 
 impl IntrinsicObject for Iterator {
     fn init(realm: &Realm) {
-        BuiltInBuilder::with_intrinsic::<Self>(realm)
+        let iterator_prototype = BuiltInBuilder::with_intrinsic::<Self>(realm)
             .static_method(|v, _, _| Ok(v.clone()), JsSymbol::iterator(), 0)
             .build();
+
+        // Add ES2025 Iterator Helper methods manually
+        let map_fn = BuiltInBuilder::callable(realm, Self::map)
+            .name(js_string!("map"))
+            .length(1)
+            .build();
+        iterator_prototype.insert(
+            js_string!("map"),
+            PropertyDescriptor::builder()
+                .value(map_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+        );
+
+        let filter_fn = BuiltInBuilder::callable(realm, Self::filter)
+            .name(js_string!("filter"))
+            .length(1)
+            .build();
+        iterator_prototype.insert(
+            js_string!("filter"),
+            PropertyDescriptor::builder()
+                .value(filter_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+        );
+
+        let take_fn = BuiltInBuilder::callable(realm, Self::take)
+            .name(js_string!("take"))
+            .length(1)
+            .build();
+        iterator_prototype.insert(
+            js_string!("take"),
+            PropertyDescriptor::builder()
+                .value(take_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+        );
+
+        let drop_fn = BuiltInBuilder::callable(realm, Self::drop)
+            .name(js_string!("drop"))
+            .length(1)
+            .build();
+        iterator_prototype.insert(
+            js_string!("drop"),
+            PropertyDescriptor::builder()
+                .value(drop_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+        );
+
+        let flat_map_fn = BuiltInBuilder::callable(realm, Self::flat_map)
+            .name(js_string!("flatMap"))
+            .length(1)
+            .build();
+        iterator_prototype.insert(
+            js_string!("flatMap"),
+            PropertyDescriptor::builder()
+                .value(flat_map_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+        );
+
+        let reduce_fn = BuiltInBuilder::callable(realm, Self::reduce)
+            .name(js_string!("reduce"))
+            .length(1)
+            .build();
+        iterator_prototype.insert(
+            js_string!("reduce"),
+            PropertyDescriptor::builder()
+                .value(reduce_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+        );
+
+        let to_array_fn = BuiltInBuilder::callable(realm, Self::to_array)
+            .name(js_string!("toArray"))
+            .length(0)
+            .build();
+        iterator_prototype.insert(
+            js_string!("toArray"),
+            PropertyDescriptor::builder()
+                .value(to_array_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+        );
+
+        let for_each_fn = BuiltInBuilder::callable(realm, Self::for_each)
+            .name(js_string!("forEach"))
+            .length(1)
+            .build();
+        iterator_prototype.insert(
+            js_string!("forEach"),
+            PropertyDescriptor::builder()
+                .value(for_each_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+        );
+
+        let some_fn = BuiltInBuilder::callable(realm, Self::some)
+            .name(js_string!("some"))
+            .length(1)
+            .build();
+        iterator_prototype.insert(
+            js_string!("some"),
+            PropertyDescriptor::builder()
+                .value(some_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+        );
+
+        let every_fn = BuiltInBuilder::callable(realm, Self::every)
+            .name(js_string!("every"))
+            .length(1)
+            .build();
+        iterator_prototype.insert(
+            js_string!("every"),
+            PropertyDescriptor::builder()
+                .value(every_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+        );
+
+        let find_fn = BuiltInBuilder::callable(realm, Self::find)
+            .name(js_string!("find"))
+            .length(1)
+            .build();
+        iterator_prototype.insert(
+            js_string!("find"),
+            PropertyDescriptor::builder()
+                .value(find_fn)
+                .writable(true)
+                .enumerable(false)
+                .configurable(true),
+        );
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
         intrinsics.objects().iterator_prototypes().iterator()
+    }
+}
+
+impl Iterator {
+    /// `Iterator.prototype.map ( mapper )`
+    ///
+    /// More information:
+    ///  - [ES2025 spec][spec]
+    ///
+    /// [spec]: https://tc39.es/proposal-iterator-helpers/#sec-iteratorprototype.map
+    fn map(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        // 1. Let O be the this value.
+        // 2. If O is not an Object, throw a TypeError exception.
+        let o = this.as_object().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.map called on non-object")
+        })?;
+
+        // 3. If IsCallable(mapper) is false, throw a TypeError exception.
+        let mapper = args.get_or_undefined(0).as_callable().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.map mapper must be callable")
+        })?;
+
+        // Get the iterator's next method
+        let next_method = o.get(js_string!("next"), context)?;
+
+        // Create an IteratorRecord
+        let mut iter = IteratorRecord::new(o.clone(), next_method);
+
+        let mut result = Vec::new();
+        let mut counter = 0u64;
+
+        loop {
+            // Get next value
+            let next_result = iter.next(None, context)?;
+            if next_result.complete(context)? {
+                break;
+            }
+
+            let value = next_result.value(context)?;
+            let mapped = mapper.call(&JsValue::undefined(), &[value, counter.into()], context)?;
+            result.push(mapped);
+            counter += 1;
+        }
+
+        // Return as array
+        Ok(Array::create_array_from_list(result, context).into())
+    }
+
+    /// `Iterator.prototype.filter ( predicate )`
+    fn filter(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        let o = this.as_object().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.filter called on non-object")
+        })?;
+
+        let predicate = args.get_or_undefined(0).as_callable().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.filter predicate must be callable")
+        })?;
+
+        let next_method = o.get(js_string!("next"), context)?;
+        let mut iter = IteratorRecord::new(o.clone(), next_method);
+
+        let mut result = Vec::new();
+        let mut counter = 0u64;
+
+        loop {
+            let next_result = iter.next(None, context)?;
+            if next_result.complete(context)? {
+                break;
+            }
+
+            let value = next_result.value(context)?;
+            let test = predicate.call(&JsValue::undefined(), &[value.clone(), counter.into()], context)?;
+
+            if test.to_boolean() {
+                result.push(value);
+            }
+            counter += 1;
+        }
+
+        Ok(Array::create_array_from_list(result, context).into())
+    }
+
+    /// `Iterator.prototype.take ( limit )`
+    fn take(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        let o = this.as_object().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.take called on non-object")
+        })?;
+
+        let limit = args.get_or_undefined(0).to_number(context)? as usize;
+
+        let next_method = o.get(js_string!("next"), context)?;
+        let mut iter = IteratorRecord::new(o.clone(), next_method);
+
+        let mut result = Vec::new();
+
+        for _ in 0..limit {
+            let next_result = iter.next(None, context)?;
+            if next_result.complete(context)? {
+                break;
+            }
+
+            result.push(next_result.value(context)?);
+        }
+
+        Ok(Array::create_array_from_list(result, context).into())
+    }
+
+    /// `Iterator.prototype.drop ( limit )`
+    fn drop(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        let o = this.as_object().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.drop called on non-object")
+        })?;
+
+        let limit = args.get_or_undefined(0).to_number(context)? as usize;
+
+        let next_method = o.get(js_string!("next"), context)?;
+        let mut iter = IteratorRecord::new(o.clone(), next_method);
+
+        // Skip the first `limit` items
+        for _ in 0..limit {
+            let next_result = iter.next(None, context)?;
+            if next_result.complete(context)? {
+                return Ok(Array::create_array_from_list(Vec::new(), context).into());
+            }
+        }
+
+        // Collect remaining items
+        let mut result = Vec::new();
+        loop {
+            let next_result = iter.next(None, context)?;
+            if next_result.complete(context)? {
+                break;
+            }
+
+            result.push(next_result.value(context)?);
+        }
+
+        Ok(Array::create_array_from_list(result, context).into())
+    }
+
+    /// `Iterator.prototype.flatMap ( mapper )`
+    fn flat_map(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        let o = this.as_object().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.flatMap called on non-object")
+        })?;
+
+        let mapper = args.get_or_undefined(0).as_callable().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.flatMap mapper must be callable")
+        })?;
+
+        let next_method = o.get(js_string!("next"), context)?;
+        let mut iter = IteratorRecord::new(o.clone(), next_method);
+
+        let mut result = Vec::new();
+        let mut counter = 0u64;
+
+        loop {
+            let next_result = iter.next(None, context)?;
+            if next_result.complete(context)? {
+                break;
+            }
+
+            let value = next_result.value(context)?;
+            let mapped = mapper.call(&JsValue::undefined(), &[value, counter.into()], context)?;
+
+            // Flatten one level - check if mapped value is iterable
+            if let Some(mapped_obj) = mapped.as_object() {
+                if let Ok(iter_fn) = mapped_obj.get(JsSymbol::iterator(), context) {
+                    if let Some(iter_callable) = iter_fn.as_callable() {
+                        let inner_iter_value = iter_callable.call(&mapped, &[], context)?;
+                        if let Some(inner_obj) = inner_iter_value.as_object() {
+                            if let Ok(inner_next) = inner_obj.get(js_string!("next"), context) {
+                                let mut inner_record = IteratorRecord::new(inner_obj.clone(), inner_next);
+                                // Iterate and collect from inner iterator
+                                loop {
+                                    let inner_result = inner_record.next(None, context)?;
+                                    if inner_result.complete(context)? {
+                                        break;
+                                    }
+                                    result.push(inner_result.value(context)?);
+                                }
+                                counter += 1;
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Not iterable or failed to get iterator, just push the value
+            result.push(mapped);
+            counter += 1;
+        }
+
+        Ok(Array::create_array_from_list(result, context).into())
+    }
+
+    /// `Iterator.prototype.reduce ( reducer [, initialValue] )`
+    fn reduce(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        let o = this.as_object().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.reduce called on non-object")
+        })?;
+
+        let reducer = args.get_or_undefined(0).as_callable().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.reduce reducer must be callable")
+        })?;
+
+        let next_method = o.get(js_string!("next"), context)?;
+        let mut iter = IteratorRecord::new(o.clone(), next_method);
+
+        let mut accumulator = if args.len() > 1 {
+            args[1].clone()
+        } else {
+            // Get first value as initial accumulator
+            let next_result = iter.next(None, context)?;
+            if next_result.complete(context)? {
+                return Err(JsNativeError::typ().with_message("Reduce of empty iterator with no initial value").into());
+            }
+            next_result.value(context)?
+        };
+
+        let mut counter = 0u64;
+
+        loop {
+            let next_result = iter.next(None, context)?;
+            if next_result.complete(context)? {
+                break;
+            }
+
+            let value = next_result.value(context)?;
+            accumulator = reducer.call(&JsValue::undefined(), &[accumulator, value, counter.into()], context)?;
+            counter += 1;
+        }
+
+        Ok(accumulator)
+    }
+
+    /// `Iterator.prototype.toArray ()`
+    fn to_array(this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        let o = this.as_object().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.toArray called on non-object")
+        })?;
+
+        let next_method = o.get(js_string!("next"), context)?;
+        let mut iter = IteratorRecord::new(o.clone(), next_method);
+
+        let mut result = Vec::new();
+
+        loop {
+            let next_result = iter.next(None, context)?;
+            if next_result.complete(context)? {
+                break;
+            }
+
+            result.push(next_result.value(context)?);
+        }
+
+        Ok(Array::create_array_from_list(result, context).into())
+    }
+
+    /// `Iterator.prototype.forEach ( fn )`
+    fn for_each(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        let o = this.as_object().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.forEach called on non-object")
+        })?;
+
+        let func = args.get_or_undefined(0).as_callable().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.forEach fn must be callable")
+        })?;
+
+        let next_method = o.get(js_string!("next"), context)?;
+        let mut iter = IteratorRecord::new(o.clone(), next_method);
+
+        let mut counter = 0u64;
+
+        loop {
+            let next_result = iter.next(None, context)?;
+            if next_result.complete(context)? {
+                break;
+            }
+
+            let value = next_result.value(context)?;
+            func.call(&JsValue::undefined(), &[value, counter.into()], context)?;
+            counter += 1;
+        }
+
+        Ok(JsValue::undefined())
+    }
+
+    /// `Iterator.prototype.some ( predicate )`
+    fn some(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        let o = this.as_object().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.some called on non-object")
+        })?;
+
+        let predicate = args.get_or_undefined(0).as_callable().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.some predicate must be callable")
+        })?;
+
+        let next_method = o.get(js_string!("next"), context)?;
+        let mut iter = IteratorRecord::new(o.clone(), next_method);
+
+        let mut counter = 0u64;
+
+        loop {
+            let next_result = iter.next(None, context)?;
+            if next_result.complete(context)? {
+                break;
+            }
+
+            let value = next_result.value(context)?;
+            let test = predicate.call(&JsValue::undefined(), &[value, counter.into()], context)?;
+
+            if test.to_boolean() {
+                return Ok(JsValue::from(true));
+            }
+            counter += 1;
+        }
+
+        Ok(JsValue::from(false))
+    }
+
+    /// `Iterator.prototype.every ( predicate )`
+    fn every(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        let o = this.as_object().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.every called on non-object")
+        })?;
+
+        let predicate = args.get_or_undefined(0).as_callable().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.every predicate must be callable")
+        })?;
+
+        let next_method = o.get(js_string!("next"), context)?;
+        let mut iter = IteratorRecord::new(o.clone(), next_method);
+
+        let mut counter = 0u64;
+
+        loop {
+            let next_result = iter.next(None, context)?;
+            if next_result.complete(context)? {
+                break;
+            }
+
+            let value = next_result.value(context)?;
+            let test = predicate.call(&JsValue::undefined(), &[value, counter.into()], context)?;
+
+            if !test.to_boolean() {
+                return Ok(JsValue::from(false));
+            }
+            counter += 1;
+        }
+
+        Ok(JsValue::from(true))
+    }
+
+    /// `Iterator.prototype.find ( predicate )`
+    fn find(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+        let o = this.as_object().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.find called on non-object")
+        })?;
+
+        let predicate = args.get_or_undefined(0).as_callable().ok_or_else(|| {
+            JsNativeError::typ().with_message("Iterator.prototype.find predicate must be callable")
+        })?;
+
+        let next_method = o.get(js_string!("next"), context)?;
+        let mut iter = IteratorRecord::new(o.clone(), next_method);
+
+        let mut counter = 0u64;
+
+        loop {
+            let next_result = iter.next(None, context)?;
+            if next_result.complete(context)? {
+                break;
+            }
+
+            let value = next_result.value(context)?;
+            let test = predicate.call(&JsValue::undefined(), &[value.clone(), counter.into()], context)?;
+
+            if test.to_boolean() {
+                return Ok(value);
+            }
+            counter += 1;
+        }
+
+        Ok(JsValue::undefined())
     }
 }
 
