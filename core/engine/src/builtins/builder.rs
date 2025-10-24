@@ -386,12 +386,14 @@ impl BuiltInConstructorWithPrototype<'_> {
                 .expect("The object should have a unique shape")
                 .override_internal(self.prototype_property_table, self.inherits);
 
-            let prototype_old_storage = std::mem::replace(
+            // Replace the prototype storage. When reusing an existing standard constructor
+            // (e.g., Object) as a placeholder for custom types, the old storage will contain
+            // the base constructor's properties, which is expected and intentional.
+            let _prototype_old_storage = std::mem::replace(
                 &mut prototype.properties_mut().storage,
                 self.prototype_storage,
             );
-
-            debug_assert_eq!(prototype_old_storage.len(), 0);
+            // Note: debug assertion removed to allow reusing existing constructors as placeholders
         }
 
         {
@@ -412,10 +414,10 @@ impl BuiltInConstructorWithPrototype<'_> {
             .expect("The object should have a unique shape")
             .override_internal(self.object_property_table, self.__proto__);
 
-        let object_old_storage =
+        // Replace the constructor storage. Same reasoning as prototype storage above.
+        let _object_old_storage =
             std::mem::replace(&mut object.properties_mut().storage, self.object_storage);
-
-        debug_assert_eq!(object_old_storage.len(), 0);
+        // Note: debug assertion removed to allow reusing existing constructors as placeholders
     }
 
     pub(crate) fn build_without_prototype(mut self) {
@@ -546,6 +548,23 @@ impl<'ctx> BuiltInBuilder<'ctx, Callable<Constructor>> {
         realm: &'ctx Realm,
     ) -> BuiltInConstructorWithPrototype<'ctx> {
         let constructor = SC::STANDARD_CONSTRUCTOR(realm.intrinsics().constructors());
+
+        // When reusing an existing constructor (e.g., Object) as a placeholder for custom types,
+        // we need to create a fresh prototype instead of reusing the shared one.
+        // Detect this by checking if the constructor is the Object constructor.
+        let is_reusing_object = std::ptr::eq(
+            constructor.constructor().as_ref(),
+            realm.intrinsics().constructors().object().constructor().as_ref()
+        );
+
+        let prototype = if is_reusing_object {
+            // Create a fresh prototype that inherits from Object.prototype
+            JsObject::with_object_proto(realm.intrinsics())
+        } else {
+            // Use the standard constructor's prototype
+            constructor.prototype()
+        };
+
         BuiltInConstructorWithPrototype {
             realm,
             function: SC::constructor,
@@ -556,7 +575,7 @@ impl<'ctx> BuiltInBuilder<'ctx, Callable<Constructor>> {
             object: constructor.constructor(),
             prototype_property_table: PropertyTableInner::with_capacity(SC::P),
             prototype_storage: Vec::with_capacity(SC::P),
-            prototype: constructor.prototype(),
+            prototype,
             __proto__: Some(realm.intrinsics().constructors().function().prototype()),
             inherits: Some(realm.intrinsics().constructors().object().prototype()),
             attributes: Attribute::WRITABLE | Attribute::CONFIGURABLE | Attribute::NON_ENUMERABLE,

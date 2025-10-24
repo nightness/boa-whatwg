@@ -338,6 +338,16 @@ pub struct StandardConstructors {
     file_system_directory_handle: StandardConstructor,
     lock_manager: StandardConstructor,
     idb_factory: StandardConstructor,
+    idb_request: StandardConstructor,
+    idb_open_db_request: StandardConstructor,
+    idb_database: StandardConstructor,
+    idb_transaction: StandardConstructor,
+    idb_object_store: StandardConstructor,
+    idb_index: StandardConstructor,
+    idb_cursor: StandardConstructor,
+    idb_cursor_with_value: StandardConstructor,
+    idb_key_range: StandardConstructor,
+    idb_version_change_event: StandardConstructor,
     navigator: StandardConstructor,
     performance: StandardConstructor,
     #[cfg(feature = "intl")]
@@ -511,6 +521,16 @@ impl Default for StandardConstructors {
             file_system_directory_handle: StandardConstructor::default(),
             lock_manager: StandardConstructor::default(),
             idb_factory: StandardConstructor::default(),
+            idb_request: StandardConstructor::default(),
+            idb_open_db_request: StandardConstructor::default(),
+            idb_database: StandardConstructor::default(),
+            idb_transaction: StandardConstructor::default(),
+            idb_object_store: StandardConstructor::default(),
+            idb_index: StandardConstructor::default(),
+            idb_cursor: StandardConstructor::default(),
+            idb_cursor_with_value: StandardConstructor::default(),
+            idb_key_range: StandardConstructor::default(),
+            idb_version_change_event: StandardConstructor::default(),
             navigator: StandardConstructor::default(),
             performance: StandardConstructor::default(),
             #[cfg(feature = "intl")]
@@ -1851,6 +1871,106 @@ impl StandardConstructors {
     #[must_use]
     pub const fn idb_factory(&self) -> &StandardConstructor {
         &self.idb_factory
+    }
+
+    /// Returns the `IDBRequest` constructor.
+    ///
+    /// More information:
+    ///  - [W3C IndexedDB 3.0 Specification](https://w3c.github.io/IndexedDB/)
+    #[inline]
+    #[must_use]
+    pub const fn idb_request(&self) -> &StandardConstructor {
+        &self.idb_request
+    }
+
+    /// Returns the `IDBOpenDBRequest` constructor.
+    ///
+    /// More information:
+    ///  - [W3C IndexedDB 3.0 Specification](https://w3c.github.io/IndexedDB/)
+    #[inline]
+    #[must_use]
+    pub const fn idb_open_db_request(&self) -> &StandardConstructor {
+        &self.idb_open_db_request
+    }
+
+    /// Returns the `IDBDatabase` constructor.
+    ///
+    /// More information:
+    ///  - [W3C IndexedDB 3.0 Specification](https://w3c.github.io/IndexedDB/)
+    #[inline]
+    #[must_use]
+    pub const fn idb_database(&self) -> &StandardConstructor {
+        &self.idb_database
+    }
+
+    /// Returns the `IDBTransaction` constructor.
+    ///
+    /// More information:
+    ///  - [W3C IndexedDB 3.0 Specification](https://w3c.github.io/IndexedDB/)
+    #[inline]
+    #[must_use]
+    pub const fn idb_transaction(&self) -> &StandardConstructor {
+        &self.idb_transaction
+    }
+
+    /// Returns the `IDBObjectStore` constructor.
+    ///
+    /// More information:
+    ///  - [W3C IndexedDB 3.0 Specification](https://w3c.github.io/IndexedDB/)
+    #[inline]
+    #[must_use]
+    pub const fn idb_object_store(&self) -> &StandardConstructor {
+        &self.idb_object_store
+    }
+
+    /// Returns the `IDBIndex` constructor.
+    ///
+    /// More information:
+    ///  - [W3C IndexedDB 3.0 Specification](https://w3c.github.io/IndexedDB/)
+    #[inline]
+    #[must_use]
+    pub const fn idb_index(&self) -> &StandardConstructor {
+        &self.idb_index
+    }
+
+    /// Returns the `IDBCursor` constructor.
+    ///
+    /// More information:
+    ///  - [W3C IndexedDB 3.0 Specification](https://w3c.github.io/IndexedDB/)
+    #[inline]
+    #[must_use]
+    pub const fn idb_cursor(&self) -> &StandardConstructor {
+        &self.idb_cursor
+    }
+
+    /// Returns the `IDBCursorWithValue` constructor.
+    ///
+    /// More information:
+    ///  - [W3C IndexedDB 3.0 Specification](https://w3c.github.io/IndexedDB/)
+    #[inline]
+    #[must_use]
+    pub const fn idb_cursor_with_value(&self) -> &StandardConstructor {
+        &self.idb_cursor_with_value
+    }
+
+    /// Returns the `IDBKeyRange` constructor.
+    ///
+    /// More information:
+    ///  - [W3C IndexedDB 3.0 Specification](https://w3c.github.io/IndexedDB/)
+    #[inline]
+    #[must_use]
+    pub const fn idb_key_range(&self) -> &StandardConstructor {
+        &self.idb_key_range
+    }
+
+    /// Returns the `IDBVersionChangeEvent` constructor.
+    ///
+    /// More information:
+    ///  - [W3C IndexedDB 3.0 Specification](https://w3c.github.io/IndexedDB/)
+    #[inline]
+    #[must_use]
+    pub const fn idb_version_change_event(&self) -> &StandardConstructor {
+        &self.idb_version_change_event
     }
 
     /// Returns the `Navigator` constructor.
