@@ -286,7 +286,9 @@ pub struct StandardConstructors {
     abort_controller: StandardConstructor,
     xmlhttprequest: StandardConstructor,
     mutation_observer: StandardConstructor,
+    mutation_record: StandardConstructor,
     intersection_observer: StandardConstructor,
+    intersection_observer_entry: StandardConstructor,
     resize_observer: StandardConstructor,
     document: StandardConstructor,
     window: StandardConstructor,
@@ -478,7 +480,9 @@ impl Default for StandardConstructors {
             abort_controller: StandardConstructor::default(),
             xmlhttprequest: StandardConstructor::default(),
             mutation_observer: StandardConstructor::default(),
+            mutation_record: StandardConstructor::default(),
             intersection_observer: StandardConstructor::default(),
+            intersection_observer_entry: StandardConstructor::default(),
             resize_observer: StandardConstructor::default(),
             document: StandardConstructor::default(),
             window: StandardConstructor::default(),
@@ -1477,6 +1481,18 @@ impl StandardConstructors {
         &self.mutation_observer
     }
 
+    /// Returns the `MutationRecord` constructor.
+    ///
+    /// More information:
+    ///  - [MutationRecord API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-mutationrecord
+    #[inline]
+    #[must_use]
+    pub const fn mutation_record(&self) -> &StandardConstructor {
+        &self.mutation_record
+    }
+
     /// Returns the `IntersectionObserver` constructor.
     ///
     /// More information:
@@ -1487,6 +1503,18 @@ impl StandardConstructors {
     #[must_use]
     pub const fn intersection_observer(&self) -> &StandardConstructor {
         &self.intersection_observer
+    }
+
+    /// Returns the `IntersectionObserverEntry` constructor.
+    ///
+    /// More information:
+    ///  - [IntersectionObserverEntry API reference][spec]
+    ///
+    /// [spec]: https://w3c.github.io/IntersectionObserver/#intersectionobserverentry
+    #[inline]
+    #[must_use]
+    pub const fn intersection_observer_entry(&self) -> &StandardConstructor {
+        &self.intersection_observer_entry
     }
 
     /// Returns the `ResizeObserver` constructor.
