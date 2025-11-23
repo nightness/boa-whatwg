@@ -319,6 +319,11 @@ pub struct StandardConstructors {
     event_target: StandardConstructor,
     custom_event: StandardConstructor,
     message_event: StandardConstructor,
+    ui_event: StandardConstructor,
+    keyboard_event: StandardConstructor,
+    mouse_event: StandardConstructor,
+    focus_event: StandardConstructor,
+    input_event: StandardConstructor,
     console: StandardConstructor,
     blob: StandardConstructor,
     file: StandardConstructor,
@@ -506,6 +511,11 @@ impl Default for StandardConstructors {
             event_target: StandardConstructor::default(),
             custom_event: StandardConstructor::default(),
             message_event: StandardConstructor::default(),
+            ui_event: StandardConstructor::default(),
+            keyboard_event: StandardConstructor::default(),
+            mouse_event: StandardConstructor::default(),
+            focus_event: StandardConstructor::default(),
+            input_event: StandardConstructor::default(),
             console: StandardConstructor::default(),
             blob: StandardConstructor::default(),
             file: StandardConstructor::default(),
@@ -1676,6 +1686,41 @@ impl StandardConstructors {
     #[must_use]
     pub const fn message_event(&self) -> &StandardConstructor {
         &self.message_event
+    }
+
+    /// Returns the `UIEvent` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn ui_event(&self) -> &StandardConstructor {
+        &self.ui_event
+    }
+
+    /// Returns the `KeyboardEvent` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn keyboard_event(&self) -> &StandardConstructor {
+        &self.keyboard_event
+    }
+
+    /// Returns the `MouseEvent` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn mouse_event(&self) -> &StandardConstructor {
+        &self.mouse_event
+    }
+
+    /// Returns the `FocusEvent` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn focus_event(&self) -> &StandardConstructor {
+        &self.focus_event
+    }
+
+    /// Returns the `InputEvent` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn input_event(&self) -> &StandardConstructor {
+        &self.input_event
     }
 
     /// Returns the `ProcessingInstruction` constructor.
