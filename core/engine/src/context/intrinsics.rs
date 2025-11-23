@@ -309,6 +309,10 @@ pub struct StandardConstructors {
     html_form_element: StandardConstructor,
     html_form_controls_collection: StandardConstructor,
     html_input_element: StandardConstructor,
+    html_select_element: StandardConstructor,
+    html_textarea_element: StandardConstructor,
+    html_option_element: StandardConstructor,
+    validity_state: StandardConstructor,
     selection: StandardConstructor,
     range: StandardConstructor,
     event: StandardConstructor,
@@ -492,6 +496,10 @@ impl Default for StandardConstructors {
             html_form_element: StandardConstructor::default(),
             html_form_controls_collection: StandardConstructor::default(),
             html_input_element: StandardConstructor::default(),
+            html_select_element: StandardConstructor::default(),
+            html_textarea_element: StandardConstructor::default(),
+            html_option_element: StandardConstructor::default(),
+            validity_state: StandardConstructor::default(),
             selection: StandardConstructor::default(),
             range: StandardConstructor::default(),
             event: StandardConstructor::default(),
@@ -1703,6 +1711,34 @@ impl StandardConstructors {
     #[must_use]
     pub const fn html_input_element(&self) -> &StandardConstructor {
         &self.html_input_element
+    }
+
+    /// Returns the `HTMLSelectElement` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn html_select_element(&self) -> &StandardConstructor {
+        &self.html_select_element
+    }
+
+    /// Returns the `HTMLTextAreaElement` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn html_textarea_element(&self) -> &StandardConstructor {
+        &self.html_textarea_element
+    }
+
+    /// Returns the `HTMLOptionElement` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn html_option_element(&self) -> &StandardConstructor {
+        &self.html_option_element
+    }
+
+    /// Returns the `ValidityState` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn validity_state(&self) -> &StandardConstructor {
+        &self.validity_state
     }
 
     pub const fn selection(&self) -> &StandardConstructor {
