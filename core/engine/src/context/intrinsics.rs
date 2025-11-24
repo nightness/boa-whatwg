@@ -313,6 +313,10 @@ pub struct StandardConstructors {
     audio_context: StandardConstructor,
     html_video_element: StandardConstructor,
     nodelist: StandardConstructor,
+    htmlcollection: StandardConstructor,
+    namednodemap: StandardConstructor,
+    treewalker: StandardConstructor,
+    nodeiterator: StandardConstructor,
     element: StandardConstructor,
     attr: StandardConstructor,
     comment: StandardConstructor,
@@ -518,6 +522,10 @@ impl Default for StandardConstructors {
             audio_context: StandardConstructor::default(),
             html_video_element: StandardConstructor::default(),
             nodelist: StandardConstructor::default(),
+            htmlcollection: StandardConstructor::default(),
+            namednodemap: StandardConstructor::default(),
+            treewalker: StandardConstructor::default(),
+            nodeiterator: StandardConstructor::default(),
             element: StandardConstructor::default(),
             attr: StandardConstructor::default(),
             comment: StandardConstructor::default(),
@@ -1801,6 +1809,54 @@ impl StandardConstructors {
     #[must_use]
     pub const fn domtokenlist(&self) -> &StandardConstructor {
         &self.domtokenlist
+    }
+
+    /// Returns the `HTMLCollection` constructor.
+    ///
+    /// More information:
+    ///  - [HTMLCollection API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-htmlcollection
+    #[inline]
+    #[must_use]
+    pub const fn htmlcollection(&self) -> &StandardConstructor {
+        &self.htmlcollection
+    }
+
+    /// Returns the `NamedNodeMap` constructor.
+    ///
+    /// More information:
+    ///  - [NamedNodeMap API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-namednodemap
+    #[inline]
+    #[must_use]
+    pub const fn namednodemap(&self) -> &StandardConstructor {
+        &self.namednodemap
+    }
+
+    /// Returns the `TreeWalker` constructor.
+    ///
+    /// More information:
+    ///  - [TreeWalker API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-treewalker
+    #[inline]
+    #[must_use]
+    pub const fn treewalker(&self) -> &StandardConstructor {
+        &self.treewalker
+    }
+
+    /// Returns the `NodeIterator` constructor.
+    ///
+    /// More information:
+    ///  - [NodeIterator API reference][spec]
+    ///
+    /// [spec]: https://dom.spec.whatwg.org/#interface-nodeiterator
+    #[inline]
+    #[must_use]
+    pub const fn nodeiterator(&self) -> &StandardConstructor {
+        &self.nodeiterator
     }
 
     /// Returns the `Element` constructor.
