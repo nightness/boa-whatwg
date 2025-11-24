@@ -303,6 +303,13 @@ pub struct StandardConstructors {
     html_slot_element: StandardConstructor,
     html_image_element: StandardConstructor,
     image_bitmap: StandardConstructor,
+    path_2d: StandardConstructor,
+    html_canvas_element: StandardConstructor,
+    canvas_rendering_context_2d: StandardConstructor,
+    offscreen_canvas: StandardConstructor,
+    html_audio_element: StandardConstructor,
+    audio_context: StandardConstructor,
+    html_video_element: StandardConstructor,
     nodelist: StandardConstructor,
     element: StandardConstructor,
     attr: StandardConstructor,
@@ -499,6 +506,13 @@ impl Default for StandardConstructors {
             html_slot_element: StandardConstructor::default(),
             html_image_element: StandardConstructor::default(),
             image_bitmap: StandardConstructor::default(),
+            path_2d: StandardConstructor::default(),
+            html_canvas_element: StandardConstructor::default(),
+            canvas_rendering_context_2d: StandardConstructor::default(),
+            offscreen_canvas: StandardConstructor::default(),
+            html_audio_element: StandardConstructor::default(),
+            audio_context: StandardConstructor::default(),
+            html_video_element: StandardConstructor::default(),
             nodelist: StandardConstructor::default(),
             element: StandardConstructor::default(),
             attr: StandardConstructor::default(),
@@ -1677,6 +1691,69 @@ impl StandardConstructors {
     #[must_use]
     pub const fn image_bitmap(&self) -> &StandardConstructor {
         &self.image_bitmap
+    }
+
+    /// Returns the `Path2D` constructor.
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/canvas.html#path2d
+    #[inline]
+    #[must_use]
+    pub const fn path_2d(&self) -> &StandardConstructor {
+        &self.path_2d
+    }
+
+    /// Returns the `HTMLCanvasElement` constructor.
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/canvas.html#htmlcanvaselement
+    #[inline]
+    #[must_use]
+    pub const fn html_canvas_element(&self) -> &StandardConstructor {
+        &self.html_canvas_element
+    }
+
+    /// Returns the `CanvasRenderingContext2D` constructor.
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/canvas.html#canvasrenderingcontext2d
+    #[inline]
+    #[must_use]
+    pub const fn canvas_rendering_context_2d(&self) -> &StandardConstructor {
+        &self.canvas_rendering_context_2d
+    }
+
+    /// Returns the `OffscreenCanvas` constructor.
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/canvas.html#the-offscreencanvas-interface
+    #[inline]
+    #[must_use]
+    pub const fn offscreen_canvas(&self) -> &StandardConstructor {
+        &self.offscreen_canvas
+    }
+
+    /// Returns the `HTMLAudioElement` constructor.
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/media.html#htmlaudioelement
+    #[inline]
+    #[must_use]
+    pub const fn html_audio_element(&self) -> &StandardConstructor {
+        &self.html_audio_element
+    }
+
+    /// Returns the `AudioContext` constructor.
+    ///
+    /// [spec]: https://webaudio.github.io/web-audio-api/#AudioContext
+    #[inline]
+    #[must_use]
+    pub const fn audio_context(&self) -> &StandardConstructor {
+        &self.audio_context
+    }
+
+    /// Returns the `HTMLVideoElement` constructor.
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/media.html#htmlvideoelement
+    #[inline]
+    #[must_use]
+    pub const fn html_video_element(&self) -> &StandardConstructor {
+        &self.html_video_element
     }
 
     /// Returns the `NodeList` constructor.
