@@ -326,6 +326,8 @@ impl Realm {
             intl::segmenter::SegmentIterator::init(self);
             intl::PluralRules::init(self);
             intl::NumberFormat::init(self);
+            intl::RelativeTimeFormat::init(self);
+            intl::DisplayNames::init(self);
         }
 
         #[cfg(feature = "temporal")]

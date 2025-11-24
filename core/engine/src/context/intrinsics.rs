@@ -257,6 +257,8 @@ pub struct StandardConstructors {
     shared_array_buffer: StandardConstructor,
     data_view: StandardConstructor,
     date_time_format: StandardConstructor,
+    relative_time_format: StandardConstructor,
+    display_names: StandardConstructor,
     promise: StandardConstructor,
     readable_stream: StandardConstructor,
     writable_stream: StandardConstructor,
@@ -460,6 +462,8 @@ impl Default for StandardConstructors {
             shared_array_buffer: StandardConstructor::default(),
             data_view: StandardConstructor::default(),
             date_time_format: StandardConstructor::default(),
+            relative_time_format: StandardConstructor::default(),
+            display_names: StandardConstructor::default(),
             promise: StandardConstructor::default(),
             readable_stream: StandardConstructor::default(),
             writable_stream: StandardConstructor::default(),
@@ -1101,6 +1105,30 @@ impl StandardConstructors {
     #[must_use]
     pub const fn date_time_format(&self) -> &StandardConstructor {
         &self.date_time_format
+    }
+
+    /// Returns the `Intl.RelativeTimeFormat` constructor.
+    ///
+    /// More information:
+    ///  - [ECMAScript reference][spec]
+    ///
+    /// [spec]: https://tc39.es/ecma402/#sec-intl-relativetimeformat-constructor
+    #[inline]
+    #[must_use]
+    pub const fn relative_time_format(&self) -> &StandardConstructor {
+        &self.relative_time_format
+    }
+
+    /// Returns the `Intl.DisplayNames` constructor.
+    ///
+    /// More information:
+    ///  - [ECMAScript reference][spec]
+    ///
+    /// [spec]: https://tc39.es/ecma402/#sec-intl-displaynames-constructor
+    #[inline]
+    #[must_use]
+    pub const fn display_names(&self) -> &StandardConstructor {
+        &self.display_names
     }
 
     /// Returns the `Promise` constructor.

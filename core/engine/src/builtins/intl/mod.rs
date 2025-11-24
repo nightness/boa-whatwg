@@ -31,15 +31,18 @@ use static_assertions::const_assert;
 
 pub(crate) mod collator;
 pub(crate) mod date_time_format;
+pub(crate) mod display_names;
 pub(crate) mod list_format;
 pub(crate) mod locale;
 pub(crate) mod number_format;
 pub(crate) mod plural_rules;
+pub(crate) mod relative_time_format;
 pub(crate) mod segmenter;
 
 pub(crate) use self::{
-    collator::Collator, date_time_format::DateTimeFormat, list_format::ListFormat, locale::Locale,
-    number_format::NumberFormat, plural_rules::PluralRules, segmenter::Segmenter,
+    collator::Collator, date_time_format::DateTimeFormat, display_names::DisplayNames,
+    list_format::ListFormat, locale::Locale, number_format::NumberFormat,
+    plural_rules::PluralRules, relative_time_format::RelativeTimeFormat, segmenter::Segmenter,
 };
 
 mod options;
@@ -131,6 +134,24 @@ impl IntrinsicObject for Intl {
                     .number_format()
                     .constructor(),
                 NumberFormat::ATTRIBUTE,
+            )
+            .static_property(
+                RelativeTimeFormat::NAME,
+                realm
+                    .intrinsics()
+                    .constructors()
+                    .relative_time_format()
+                    .constructor(),
+                RelativeTimeFormat::ATTRIBUTE,
+            )
+            .static_property(
+                DisplayNames::NAME,
+                realm
+                    .intrinsics()
+                    .constructors()
+                    .display_names()
+                    .constructor(),
+                DisplayNames::ATTRIBUTE,
             )
             .static_method(
                 Self::get_canonical_locales,
