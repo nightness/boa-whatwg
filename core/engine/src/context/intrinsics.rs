@@ -301,6 +301,8 @@ pub struct StandardConstructors {
     document_fragment: StandardConstructor,
     shadow_root: StandardConstructor,
     html_slot_element: StandardConstructor,
+    html_image_element: StandardConstructor,
+    image_bitmap: StandardConstructor,
     nodelist: StandardConstructor,
     element: StandardConstructor,
     attr: StandardConstructor,
@@ -495,6 +497,8 @@ impl Default for StandardConstructors {
             document_fragment: StandardConstructor::default(),
             shadow_root: StandardConstructor::default(),
             html_slot_element: StandardConstructor::default(),
+            html_image_element: StandardConstructor::default(),
+            image_bitmap: StandardConstructor::default(),
             nodelist: StandardConstructor::default(),
             element: StandardConstructor::default(),
             attr: StandardConstructor::default(),
@@ -1655,6 +1659,24 @@ impl StandardConstructors {
     #[must_use]
     pub const fn html_slot_element(&self) -> &StandardConstructor {
         &self.html_slot_element
+    }
+
+    /// Returns the `HTMLImageElement` constructor.
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/embedded-content.html#htmlimageelement
+    #[inline]
+    #[must_use]
+    pub const fn html_image_element(&self) -> &StandardConstructor {
+        &self.html_image_element
+    }
+
+    /// Returns the `ImageBitmap` constructor.
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/imagebitmap-and-animations.html#imagebitmap
+    #[inline]
+    #[must_use]
+    pub const fn image_bitmap(&self) -> &StandardConstructor {
+        &self.image_bitmap
     }
 
     /// Returns the `NodeList` constructor.
