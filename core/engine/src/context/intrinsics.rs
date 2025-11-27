@@ -267,11 +267,16 @@ pub struct StandardConstructors {
     byte_length_queuing_strategy: StandardConstructor,
     websocket: StandardConstructor,
     websocket_stream: StandardConstructor,
-    // WebAssembly API constructors
+    // WebAssembly API constructors (native only - wasmtime can't run inside WASM)
+    #[cfg(feature = "native")]
     webassembly_module: StandardConstructor,
+    #[cfg(feature = "native")]
     webassembly_instance: StandardConstructor,
+    #[cfg(feature = "native")]
     webassembly_memory: StandardConstructor,
+    #[cfg(feature = "native")]
     webassembly_table: StandardConstructor,
+    #[cfg(feature = "native")]
     webassembly_global: StandardConstructor,
     worker: StandardConstructor,
     shared_worker: StandardConstructor,
@@ -476,11 +481,16 @@ impl Default for StandardConstructors {
             byte_length_queuing_strategy: StandardConstructor::default(),
             websocket: StandardConstructor::default(),
             websocket_stream: StandardConstructor::default(),
-            // WebAssembly API constructors
+            // WebAssembly API constructors (native only)
+            #[cfg(feature = "native")]
             webassembly_module: StandardConstructor::default(),
+            #[cfg(feature = "native")]
             webassembly_instance: StandardConstructor::default(),
+            #[cfg(feature = "native")]
             webassembly_memory: StandardConstructor::default(),
+            #[cfg(feature = "native")]
             webassembly_table: StandardConstructor::default(),
+            #[cfg(feature = "native")]
             webassembly_global: StandardConstructor::default(),
             worker: StandardConstructor::default(),
             shared_worker: StandardConstructor::default(),
@@ -1295,60 +1305,65 @@ impl StandardConstructors {
         &self.websocket_stream
     }
 
-    /// Returns the `WebAssembly.Module` constructor.
+    /// Returns the `WebAssembly.Module` constructor (native only).
     ///
     /// More information:
     ///  - [WebAssembly.Module spec][spec]
     ///
     /// [spec]: https://webassembly.github.io/spec/js-api/#modules
+    #[cfg(feature = "native")]
     #[inline]
     #[must_use]
     pub const fn webassembly_module(&self) -> &StandardConstructor {
         &self.webassembly_module
     }
 
-    /// Returns the `WebAssembly.Instance` constructor.
+    /// Returns the `WebAssembly.Instance` constructor (native only).
     ///
     /// More information:
     ///  - [WebAssembly.Instance spec][spec]
     ///
     /// [spec]: https://webassembly.github.io/spec/js-api/#instances
+    #[cfg(feature = "native")]
     #[inline]
     #[must_use]
     pub const fn webassembly_instance(&self) -> &StandardConstructor {
         &self.webassembly_instance
     }
 
-    /// Returns the `WebAssembly.Memory` constructor.
+    /// Returns the `WebAssembly.Memory` constructor (native only).
     ///
     /// More information:
     ///  - [WebAssembly.Memory spec][spec]
     ///
     /// [spec]: https://webassembly.github.io/spec/js-api/#memories
+    #[cfg(feature = "native")]
     #[inline]
     #[must_use]
     pub const fn webassembly_memory(&self) -> &StandardConstructor {
         &self.webassembly_memory
     }
 
-    /// Returns the `WebAssembly.Table` constructor.
+    /// Returns the `WebAssembly.Table` constructor (native only).
     ///
     /// More information:
     ///  - [WebAssembly.Table spec][spec]
     ///
     /// [spec]: https://webassembly.github.io/spec/js-api/#tables
+    #[cfg(feature = "native")]
     #[inline]
     #[must_use]
     pub const fn webassembly_table(&self) -> &StandardConstructor {
         &self.webassembly_table
     }
 
-    /// Returns the `WebAssembly.Global` constructor.
+    /// Returns the `WebAssembly.Global` constructor (native only).
     ///
     /// More information:
     ///  - [WebAssembly.Global spec][spec]
     ///
     /// [spec]: https://webassembly.github.io/spec/js-api/#globals
+    #[cfg(feature = "native")]
     #[inline]
     #[must_use]
     pub const fn webassembly_global(&self) -> &StandardConstructor {

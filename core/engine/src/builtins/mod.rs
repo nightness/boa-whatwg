@@ -34,6 +34,10 @@ pub mod weak;
 pub mod weak_map;
 pub mod weak_set;
 
+// WebAssembly API - only available in native builds (wasmtime can't run inside WASM)
+#[cfg(feature = "native")]
+pub mod webassembly;
+
 pub mod builder;
 
 pub use builder::BuiltInBuilder;

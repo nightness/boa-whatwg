@@ -86,9 +86,9 @@ impl IntrinsicObject for WebAssembly {
             .build();
     }
 
-    fn get(_intrinsics: &Intrinsics) -> JsObject {
+    fn get(intrinsics: &Intrinsics) -> JsObject {
         // This should not be called as WebAssembly is not a constructor
-        JsObject::default()
+        JsObject::default(intrinsics)
     }
 }
 
