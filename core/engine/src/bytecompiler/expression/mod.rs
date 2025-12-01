@@ -263,12 +263,7 @@ impl ByteCompiler<'_> {
                         self.compile_expr(access.target(), &this);
                         match access.field() {
                             PropertyAccessField::Const(ident) => {
-                                self.emit_get_property_by_name(
-                                    &function,
-                                    &this,
-                                    &this,
-                                    ident.sym(),
-                                );
+                                self.emit_get_property_by_name(&function, None, &this, ident.sym());
                             }
                             PropertyAccessField::Expr(field) => {
                                 let key = self.register_allocator.alloc();
@@ -428,9 +423,6 @@ impl ByteCompiler<'_> {
             Expression::Parenthesized(parenthesized) => {
                 self.compile_expr(parenthesized.expression(), dst);
             }
-            // TODO: try to remove this variant somehow
-            Expression::FormalParameterList(_) => unreachable!(),
-            Expression::Debugger => (),
         }
     }
 }

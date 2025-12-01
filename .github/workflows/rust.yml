@@ -34,7 +34,7 @@ jobs:
           target=$(rustc -vV | awk '/^host/ { print $2 }' | tr [:lower:] [:upper:] | tr '-' '_')
           echo "CARGO_TARGET_${target}_RUSTFLAGS=$W_FLAGS" >> $GITHUB_ENV
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -79,7 +79,7 @@ jobs:
           - os: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -117,7 +117,7 @@ jobs:
           target=$(rustc -vV | awk '/^host/ { print $2 }' | tr [:lower:] [:upper:] | tr '-' '_')
           echo "CARGO_TARGET_${target}_RUSTFLAGS=$W_FLAGS" >> $GITHUB_ENV
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       # Get the rust_version from the Cargo.toml
       - name: Get rust_version
@@ -142,7 +142,7 @@ jobs:
           target=$(rustc -vV | awk '/^host/ { print $2 }' | tr [:lower:] [:upper:] | tr '-' '_')
           echo "CARGO_TARGET_${target}_RUSTFLAGS=$W_FLAGS" >> $GITHUB_ENV
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -152,6 +152,17 @@ jobs:
 
       - name: Format (rustfmt)
         run: cargo fmt --all --check
+
+  typos:
+    name: Typos
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Check for typos
+        uses: crate-ci/typos@v1.39.2
 
   clippy:
     name: Lint
@@ -163,7 +174,7 @@ jobs:
           target=$(rustc -vV | awk '/^host/ { print $2 }' | tr [:lower:] [:upper:] | tr '-' '_')
           echo "CARGO_TARGET_${target}_RUSTFLAGS=$W_FLAGS" >> $GITHUB_ENV
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -206,7 +217,7 @@ jobs:
           target=$(rustc -vV | awk '/^host/ { print $2 }' | tr [:lower:] [:upper:] | tr '-' '_')
           echo "CARGO_TARGET_${target}_RUSTFLAGS=$W_FLAGS" >> $GITHUB_ENV
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -235,7 +246,7 @@ jobs:
           target=$(rustc -vV | awk '/^host/ { print $2 }' | tr [:lower:] [:upper:] | tr '-' '_')
           echo "CARGO_TARGET_${target}_RUSTFLAGS=$W_FLAGS" >> $GITHUB_ENV
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -267,7 +278,7 @@ jobs:
           target=$(rustc -vV | awk '/^host/ { print $2 }' | tr [:lower:] [:upper:] | tr '-' '_')
           echo "CARGO_TARGET_${target}_RUSTFLAGS=$W_FLAGS" >> $GITHUB_ENV
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -297,3 +308,28 @@ jobs:
           cargo run -p boa_examples --bin 2>&1 \
             | grep -E '^ ' \
             | xargs -n1 sh -c 'cargo run -p boa_examples --profile ci --bin $0 || exit 255'
+
+  run-semver-check:
+    name: Check SemVer compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Set environment
+        run: |
+          target=$(rustc -vV | awk '/^host/ { print $2 }' | tr [:lower:] [:upper:] | tr '-' '_')
+          echo "CARGO_TARGET_${target}_RUSTFLAGS=$W_FLAGS" >> $GITHUB_ENV
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Check Semver
+        uses: obi1kenobi/cargo-semver-checks-action@v2
+
