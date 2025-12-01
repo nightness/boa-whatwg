@@ -130,6 +130,9 @@ impl WebAssemblyInstance {
 
         // Create and populate the exports object
         let exports_obj = Self::create_exports_object(&instance_id, &store_id, context)?;
+
+        // Upcast to JsObject to access the set method
+        let instance_obj = instance_obj.upcast();
         instance_obj.set(js_string!("exports"), exports_obj, false, context)?;
 
         Ok(instance_obj.into())
