@@ -1,30 +1,28 @@
 [package]
 name = "boa_macros"
 description = "Macros for the Boa JavaScript engine."
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-rust-version.workspace = true
+version = "1.0.0-dev"
+edition = "2024"
+authors = ["boa-dev"]
+license = "Unlicense OR MIT"
+repository = "https://github.com/boa-dev/boa"
+rust-version = "1.91.0"
 
 [lib]
 proc-macro = true
 
 [dependencies]
-cfg-if.workspace = true
-cow-utils.workspace = true
-lz4_flex = { workspace = true, optional = true }
-quote.workspace = true
-syn = { workspace = true, features = ["full", "visit-mut"] }
-proc-macro2.workspace = true
-synstructure.workspace = true
+cfg-if = "1.0.4"
+cow-utils = "0.1.3"
+lz4_flex = { version = "0.12.0", optional = true }
+quote = "1.0.42"
+syn = { version = "2.0.110", default-features = false, features = ["full", "visit-mut"] }
+proc-macro2 = "1.0"
+synstructure = "0.13"
 
 [dev-dependencies]
-test-case.workspace = true
+test-case = "3.3.1"
 
-[lints]
-workspace = true
 
 [package.metadata.docs.rs]
 all-features = true

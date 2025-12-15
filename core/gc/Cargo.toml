@@ -3,12 +3,12 @@ name = "boa_gc"
 description = "Garbage collector for the Boa JavaScript engine."
 keywords = ["javascript", "js", "garbage", "memory"]
 categories = ["command-line-utilities"]
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-rust-version.workspace = true
+version = "1.0.0-dev"
+edition = "2024"
+authors = ["boa-dev"]
+license = "Unlicense OR MIT"
+repository = "https://github.com/boa-dev/boa"
+rust-version = "1.91.0"
 
 [features]
 # Enable default implementations of trace and finalize for the thin-vec crate
@@ -21,16 +21,14 @@ boa_string = ["dep:boa_string"]
 either = ["dep:either"]
 
 [dependencies]
-boa_macros.workspace = true
-hashbrown.workspace = true
+boa_macros = { path = "../macros" }
+hashbrown = "0.16.0"
 
-boa_string = { workspace = true, optional = true }
-either = { workspace = true, optional = true }
-thin-vec = { workspace = true, optional = true }
-icu_locale_core = { workspace = true, optional = true }
+boa_string = { path = "../string", optional = true }
+either = { version = "1.15.0", optional = true }
+thin-vec = { version = "0.2.14", optional = true }
+icu_locale_core = { version = "2.1.1", optional = true }
 
-[lints]
-workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
