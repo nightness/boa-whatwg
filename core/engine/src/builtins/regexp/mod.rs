@@ -173,8 +173,8 @@ impl IntrinsicObject for RegExp {
         #[cfg(feature = "annex-b")]
         let regexp = regexp.method(Self::compile, js_string!("compile"), 2);
 
-        // Chrome 136: RegExp.escape static method
-        let regexp = regexp.static_method(Self::escape, js_string!("escape"), 1);
+        // Chrome 136: RegExp.escape static method - REMOVED DUPLICATE (already registered on line 101)
+        // let regexp = regexp.static_method(Self::escape, js_string!("escape"), 1);
 
         regexp.build();
     }
