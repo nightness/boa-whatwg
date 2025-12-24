@@ -609,3 +609,51 @@ This document catalogs all the features and Web APIs we've added to the Boa Java
 - ✅ **Security**: Proper privacy protections (empty plugins, disabled Java, etc.)
 
 This represents a transformative enhancement to Boa's capabilities, evolving it from a pure ECMAScript engine into a comprehensive web platform runtime with complete Platform API support, real networking capabilities, and full WHATWG/HTML5 standards compliance.
+
+## Security Enhancements (2025)
+
+### JavaScript Execution Timeout (`core/engine/src/vm/runtime_limits.rs`)
+
+**Execution Deadline Support**:
+- Added time-based execution timeout to prevent denial-of-service attacks
+- Configurable execution deadline via `RuntimeLimits` API
+- Automatic timeout checking during loop iterations for responsive termination
+
+**RuntimeLimits API Additions**:
+- `execution_deadline()` - Get current execution deadline (if set)
+- `set_execution_deadline(deadline: Instant)` - Set execution timeout deadline
+- `clear_execution_deadline()` - Remove execution deadline
+- `is_deadline_exceeded()` - Check if deadline has been exceeded
+
+**RuntimeLimitError Extension**:
+- Added `ExecutionTimeout` error variant for timeout-related errors
+- Proper error propagation and handling in JavaScript execution
+
+**Implementation Details**:
+- Deadline checked in `IncrementLoopIteration` opcode for efficient loop timeout detection
+- Deadline checked in `check_runtime_limits()` for function call timeout detection
+- Works alongside existing `loop_iteration_limit` for dual-layer protection
+- Time-based using `std::time::Instant` for accurate deadline tracking
+
+**Usage Example**:
+```rust
+use std::time::{Duration, Instant};
+
+// Set a 5-second execution deadline
+let deadline = Instant::now() + Duration::from_secs(5);
+context.runtime_limits_mut().set_execution_deadline(deadline);
+
+// Execute JavaScript - will error if it exceeds 5 seconds
+let result = context.eval(Source::from_bytes("while(true) {}"));
+
+// Clear the deadline
+context.runtime_limits_mut().clear_execution_deadline();
+
+// result will be Err(RuntimeLimitError::ExecutionTimeout)
+```
+
+**Security Impact**:
+- Prevents infinite loop attacks: `while(true) {}` now properly times out
+- Prevents CPU exhaustion from expensive computations
+- Configurable per-execution timeout for fine-grained control
+- Works with existing recursion and stack limits for comprehensive protection

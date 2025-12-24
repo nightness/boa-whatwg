@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 /// Represents the limits of different runtime operations.
 #[derive(Debug, Clone, Copy)]
 pub struct RuntimeLimits {
@@ -12,6 +14,9 @@ pub struct RuntimeLimits {
 
     /// Max function recursion limit
     recursion: usize,
+
+    /// Execution deadline - if set, execution will stop when this instant is reached.
+    execution_deadline: Option<Instant>,
 }
 
 impl Default for RuntimeLimits {
@@ -22,6 +27,7 @@ impl Default for RuntimeLimits {
             recursion: 512,
             backtrace_limit: 50,
             stack_size: 1024 * 10,
+            execution_deadline: None,
         }
     }
 }
@@ -93,5 +99,39 @@ impl RuntimeLimits {
     #[inline]
     pub fn set_recursion_limit(&mut self, value: usize) {
         self.recursion = value;
+    }
+
+    /// Get execution deadline.
+    ///
+    /// Returns `None` if no deadline is set.
+    #[inline]
+    #[must_use]
+    pub const fn execution_deadline(&self) -> Option<Instant> {
+        self.execution_deadline
+    }
+
+    /// Set execution deadline.
+    ///
+    /// If the deadline is reached during execution, a timeout error will be thrown.
+    #[inline]
+    pub fn set_execution_deadline(&mut self, deadline: Instant) {
+        self.execution_deadline = Some(deadline);
+    }
+
+    /// Clear execution deadline.
+    #[inline]
+    pub fn clear_execution_deadline(&mut self) {
+        self.execution_deadline = None;
+    }
+
+    /// Check if execution deadline has been exceeded.
+    ///
+    /// Returns `true` if the deadline has been exceeded, `false` otherwise.
+    #[inline]
+    #[must_use]
+    pub fn is_deadline_exceeded(&self) -> bool {
+        self.execution_deadline
+            .map(|deadline| Instant::now() >= deadline)
+            .unwrap_or(false)
     }
 }

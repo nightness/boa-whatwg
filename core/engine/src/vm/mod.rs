@@ -858,6 +858,10 @@ impl Context {
 
     /// Checks if we haven't exceeded the defined runtime limits.
     pub(crate) fn check_runtime_limits(&self) -> JsResult<()> {
+        // Must throw if execution deadline has been exceeded.
+        if self.vm.runtime_limits.is_deadline_exceeded() {
+            return Err(RuntimeLimitError::ExecutionTimeout.into());
+        }
         // Must throw if the number of recursive calls exceeds the defined limit.
         if self.vm.runtime_limits.recursion_limit() <= self.vm.frames.len() {
             return Err(RuntimeLimitError::Recursion.into());

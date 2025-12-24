@@ -11,6 +11,11 @@ pub(crate) struct IncrementLoopIteration;
 impl IncrementLoopIteration {
     #[inline(always)]
     pub(crate) fn operation((): (), context: &mut Context) -> JsResult<()> {
+        // Check execution deadline on each loop iteration for responsive timeout
+        if context.vm.runtime_limits.is_deadline_exceeded() {
+            return Err(RuntimeLimitError::ExecutionTimeout.into());
+        }
+
         let max = context.vm.runtime_limits.loop_iteration_limit();
         let frame = context.vm.frame_mut();
         let previous_iteration_count = frame.loop_iteration_count;

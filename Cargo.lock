@@ -2662,6 +2662,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4ca9983e8bf51223c2f89014fa4eaa9e9b336c47f3af0d000538f86f841fba1"
 dependencies = [
  "databake",
+ "icu_casemap_data",
  "icu_collections",
  "icu_locale_core",
  "icu_properties",
@@ -2671,6 +2672,12 @@ dependencies = [
  "writeable",
  "zerovec",
 ]
+
+[[package]]
+name = "icu_casemap_data"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98d4663d0f99b301033a19e0acf94e9d2fa4b107638580165e5a6ccc49ad1450"
 
 [[package]]
 name = "icu_codepointtrie_builder"
@@ -2691,7 +2698,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32eed11a5572f1088b63fa21dc2e70d4a865e5739fc2d10abc05be93bae97019"
 dependencies = [
  "databake",
+ "icu_collator_data",
  "icu_collections",
+ "icu_locale",
  "icu_locale_core",
  "icu_normalizer",
  "icu_properties",
@@ -2702,6 +2711,12 @@ dependencies = [
  "utf8_iter",
  "zerovec",
 ]
+
+[[package]]
+name = "icu_collator_data"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ab06f0e83a613efddba3e4913e00e43ed4001fae651cb7d40fc7e66b83b6fb9"
 
 [[package]]
 name = "icu_collections"
@@ -2753,12 +2768,20 @@ checksum = "a38c52231bc348f9b982c1868a2af3195199623007ba2c7650f432038f5b3e8e"
 dependencies = [
  "databake",
  "fixed_decimal",
+ "icu_decimal_data",
+ "icu_locale",
  "icu_locale_core",
  "icu_provider",
  "serde",
  "writeable",
  "zerovec",
 ]
+
+[[package]]
+name = "icu_decimal_data"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2905b4044eab2dd848fe84199f9195567b63ab3a93094711501363f63546fef7"
 
 [[package]]
 name = "icu_experimental"
@@ -2802,12 +2825,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3a0b7b126e2fc42777d3c348611553d540bd3683caa39b387c5dd1036bb21a8"
 dependencies = [
  "databake",
+ "icu_list_data",
+ "icu_locale",
  "icu_provider",
  "regex-automata",
  "serde",
  "writeable",
  "zerovec",
 ]
+
+[[package]]
+name = "icu_list_data"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51044c242fe2a882cc0a464314bbdb9f441556a1cb238fb527fc47355ec2827b"
 
 [[package]]
 name = "icu_locale"
@@ -2896,10 +2927,18 @@ dependencies = [
  "databake",
  "displaydoc",
  "fixed_decimal",
+ "icu_locale",
+ "icu_plurals_data",
  "icu_provider",
  "serde",
  "zerovec",
 ]
+
+[[package]]
+name = "icu_plurals_data"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f018a98dccf7f0eb02ba06ac0ff67d102d8ded80734724305e924de304e12ff0"
 
 [[package]]
 name = "icu_properties"
@@ -3036,12 +3075,20 @@ dependencies = [
  "core_maths",
  "databake",
  "icu_collections",
+ "icu_locale",
  "icu_provider",
+ "icu_segmenter_data",
  "potential_utf",
  "serde",
  "utf8_iter",
  "zerovec",
 ]
+
+[[package]]
+name = "icu_segmenter_data"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ebbb7321d9e21d25f5660366cb6c08201d0175898a3a6f7a41ee9685af21c80"
 
 [[package]]
 name = "icu_time"

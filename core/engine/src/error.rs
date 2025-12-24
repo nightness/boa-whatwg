@@ -317,6 +317,9 @@ pub enum RuntimeLimitError {
     /// Error for reaching the maximum stack size
     #[error("reached the maximum stack size on this execution")]
     StackSize,
+    /// Error for exceeding the execution timeout.
+    #[error("JavaScript execution timeout exceeded")]
+    ExecutionTimeout,
 }
 
 /// Engine error that cannot be caught from within ECMAScript code.
