@@ -291,6 +291,10 @@ pub struct StandardConstructors {
     response: StandardConstructor,
     headers: StandardConstructor,
     abort_controller: StandardConstructor,
+    text_encoder: StandardConstructor,
+    text_decoder: StandardConstructor,
+    url: StandardConstructor,
+    url_search_params: StandardConstructor,
     xmlhttprequest: StandardConstructor,
     mutation_observer: StandardConstructor,
     mutation_record: StandardConstructor,
@@ -323,6 +327,11 @@ pub struct StandardConstructors {
     treewalker: StandardConstructor,
     nodeiterator: StandardConstructor,
     element: StandardConstructor,
+    html_element: StandardConstructor,
+    html_script_element: StandardConstructor,
+    dom_parser: StandardConstructor,
+    form_data: StandardConstructor,
+    css_style_declaration: StandardConstructor,
     attr: StandardConstructor,
     comment: StandardConstructor,
     domtokenlist: StandardConstructor,
@@ -346,6 +355,8 @@ pub struct StandardConstructors {
     mouse_event: StandardConstructor,
     focus_event: StandardConstructor,
     input_event: StandardConstructor,
+    error_event: StandardConstructor,
+    abort_signal: StandardConstructor,
     console: StandardConstructor,
     blob: StandardConstructor,
     file: StandardConstructor,
@@ -505,6 +516,10 @@ impl Default for StandardConstructors {
             response: StandardConstructor::default(),
             headers: StandardConstructor::default(),
             abort_controller: StandardConstructor::default(),
+            text_encoder: StandardConstructor::default(),
+            text_decoder: StandardConstructor::default(),
+            url: StandardConstructor::default(),
+            url_search_params: StandardConstructor::default(),
             xmlhttprequest: StandardConstructor::default(),
             mutation_observer: StandardConstructor::default(),
             mutation_record: StandardConstructor::default(),
@@ -537,6 +552,11 @@ impl Default for StandardConstructors {
             treewalker: StandardConstructor::default(),
             nodeiterator: StandardConstructor::default(),
             element: StandardConstructor::default(),
+            html_element: StandardConstructor::default(),
+            html_script_element: StandardConstructor::default(),
+            dom_parser: StandardConstructor::default(),
+            form_data: StandardConstructor::default(),
+            css_style_declaration: StandardConstructor::default(),
             attr: StandardConstructor::default(),
             comment: StandardConstructor::default(),
             domtokenlist: StandardConstructor::default(),
@@ -560,6 +580,8 @@ impl Default for StandardConstructors {
             mouse_event: StandardConstructor::default(),
             focus_event: StandardConstructor::default(),
             input_event: StandardConstructor::default(),
+            error_event: StandardConstructor::default(),
+            abort_signal: StandardConstructor::default(),
             console: StandardConstructor::default(),
             blob: StandardConstructor::default(),
             file: StandardConstructor::default(),
@@ -1526,6 +1548,54 @@ impl StandardConstructors {
         &self.abort_controller
     }
 
+    /// Returns the `TextEncoder` constructor.
+    ///
+    /// More information:
+    ///  - [TextEncoder API reference][spec]
+    ///
+    /// [spec]: https://encoding.spec.whatwg.org/#interface-textencoder
+    #[inline]
+    #[must_use]
+    pub const fn text_encoder(&self) -> &StandardConstructor {
+        &self.text_encoder
+    }
+
+    /// Returns the `TextDecoder` constructor.
+    ///
+    /// More information:
+    ///  - [TextDecoder API reference][spec]
+    ///
+    /// [spec]: https://encoding.spec.whatwg.org/#interface-textdecoder
+    #[inline]
+    #[must_use]
+    pub const fn text_decoder(&self) -> &StandardConstructor {
+        &self.text_decoder
+    }
+
+    /// Returns the `URL` constructor.
+    ///
+    /// More information:
+    ///  - [URL API reference][spec]
+    ///
+    /// [spec]: https://url.spec.whatwg.org/#url-class
+    #[inline]
+    #[must_use]
+    pub const fn url(&self) -> &StandardConstructor {
+        &self.url
+    }
+
+    /// Returns the `URLSearchParams` constructor.
+    ///
+    /// More information:
+    ///  - [URLSearchParams API reference][spec]
+    ///
+    /// [spec]: https://url.spec.whatwg.org/#urlsearchparams
+    #[inline]
+    #[must_use]
+    pub const fn url_search_params(&self) -> &StandardConstructor {
+        &self.url_search_params
+    }
+
     /// Returns the `XMLHttpRequest` constructor.
     ///
     /// More information:
@@ -1893,6 +1963,41 @@ impl StandardConstructors {
         &self.attr
     }
 
+    /// Returns the `HTMLElement` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn html_element(&self) -> &StandardConstructor {
+        &self.html_element
+    }
+
+    /// Returns the `HTMLScriptElement` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn html_script_element(&self) -> &StandardConstructor {
+        &self.html_script_element
+    }
+
+    /// Returns the `DOMParser` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn dom_parser(&self) -> &StandardConstructor {
+        &self.dom_parser
+    }
+
+    /// Returns the `FormData` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn form_data(&self) -> &StandardConstructor {
+        &self.form_data
+    }
+
+    /// Returns the `CSSStyleDeclaration` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn css_style_declaration(&self) -> &StandardConstructor {
+        &self.css_style_declaration
+    }
+
     /// Returns the `Comment` constructor.
     #[inline]
     #[must_use]
@@ -1947,6 +2052,20 @@ impl StandardConstructors {
     #[must_use]
     pub const fn input_event(&self) -> &StandardConstructor {
         &self.input_event
+    }
+
+    /// Returns the `ErrorEvent` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn error_event(&self) -> &StandardConstructor {
+        &self.error_event
+    }
+
+    /// Returns the `AbortSignal` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn abort_signal(&self) -> &StandardConstructor {
+        &self.abort_signal
     }
 
     /// Returns the `ProcessingInstruction` constructor.
