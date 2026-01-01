@@ -356,6 +356,10 @@ pub struct StandardConstructors {
     focus_event: StandardConstructor,
     input_event: StandardConstructor,
     error_event: StandardConstructor,
+    progress_event: StandardConstructor,
+    hash_change_event: StandardConstructor,
+    pop_state_event: StandardConstructor,
+    close_event: StandardConstructor,
     abort_signal: StandardConstructor,
     console: StandardConstructor,
     blob: StandardConstructor,
@@ -581,6 +585,10 @@ impl Default for StandardConstructors {
             focus_event: StandardConstructor::default(),
             input_event: StandardConstructor::default(),
             error_event: StandardConstructor::default(),
+            progress_event: StandardConstructor::default(),
+            hash_change_event: StandardConstructor::default(),
+            pop_state_event: StandardConstructor::default(),
+            close_event: StandardConstructor::default(),
             abort_signal: StandardConstructor::default(),
             console: StandardConstructor::default(),
             blob: StandardConstructor::default(),
@@ -2059,6 +2067,34 @@ impl StandardConstructors {
     #[must_use]
     pub const fn error_event(&self) -> &StandardConstructor {
         &self.error_event
+    }
+
+    /// Returns the `ProgressEvent` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn progress_event(&self) -> &StandardConstructor {
+        &self.progress_event
+    }
+
+    /// Returns the `HashChangeEvent` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn hash_change_event(&self) -> &StandardConstructor {
+        &self.hash_change_event
+    }
+
+    /// Returns the `PopStateEvent` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn pop_state_event(&self) -> &StandardConstructor {
+        &self.pop_state_event
+    }
+
+    /// Returns the `CloseEvent` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn close_event(&self) -> &StandardConstructor {
+        &self.close_event
     }
 
     /// Returns the `AbortSignal` constructor.
