@@ -282,6 +282,16 @@ impl StaticJsStrings {
         (POP_STATE_EVENT, "PopStateEvent"),
         (CLOSE_EVENT, "CloseEvent"),
         (ABORT_SIGNAL, "AbortSignal"),
+        // WebAssembly API
+        (WEBASSEMBLY, "WebAssembly"),
+        (WEBASSEMBLY_MODULE, "WebAssembly.Module"),
+        (WEBASSEMBLY_INSTANCE, "WebAssembly.Instance"),
+        (WEBASSEMBLY_MEMORY, "WebAssembly.Memory"),
+        (WEBASSEMBLY_TABLE, "WebAssembly.Table"),
+        (WEBASSEMBLY_GLOBAL, "WebAssembly.Global"),
+        // Additional Intl APIs
+        (DISPLAY_NAMES, "DisplayNames"),
+        (RELATIVE_TIME_FORMAT, "RelativeTimeFormat"),
     }
 }
 
@@ -1101,4 +1111,14 @@ const RAW_STATICS: &[StaticString] = &[
     StaticString::new(JsStr::latin1("PopStateEvent".as_bytes())),
     StaticString::new(JsStr::latin1("CloseEvent".as_bytes())),
     StaticString::new(JsStr::latin1("AbortSignal".as_bytes())),
+    // WebAssembly API
+    StaticString::new(JsStr::latin1("WebAssembly".as_bytes())),
+    StaticString::new(JsStr::latin1("WebAssembly.Module".as_bytes())),
+    StaticString::new(JsStr::latin1("WebAssembly.Instance".as_bytes())),
+    StaticString::new(JsStr::latin1("WebAssembly.Memory".as_bytes())),
+    StaticString::new(JsStr::latin1("WebAssembly.Table".as_bytes())),
+    StaticString::new(JsStr::latin1("WebAssembly.Global".as_bytes())),
+    // Additional Intl APIs
+    StaticString::new(JsStr::latin1("DisplayNames".as_bytes())),
+    StaticString::new(JsStr::latin1("RelativeTimeFormat".as_bytes())),
 ];
