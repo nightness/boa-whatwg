@@ -741,3 +741,43 @@ context.runtime_limits_mut().clear_execution_deadline();
 - Follows WHATWG HTML Living Standard script execution rules
 - Matches browser behavior for dynamic script insertion
 - Proper error handling that doesn't break DOM operations
+
+---
+
+### RegExp.prototype.flags Recursion Guard (`core/engine/src/builtins/regexp/mod.rs`)
+
+**Purpose**: Prevent infinite stack overflow when accessing `flags` property on objects with circular getter patterns.
+
+**Problem Solved**:
+- Cloudflare and other obfuscated scripts create Proxy objects or objects with custom getters
+- When `flags` getter calls `object.get("hasIndices")`, etc., those getters may re-invoke `flags`
+- This creates infinite recursion that overflows the native Rust call stack
+- Previous behavior: Fatal stack overflow crash
+
+**Implementation**:
+- Thread-local HashSet (`FLAGS_RECURSION_GUARD`) tracks objects currently in `get_flags`
+- Before accessing flag properties, checks if we're already processing this object
+- If circular access detected, returns empty string "" to break the cycle
+- Guard is automatically removed when function exits (via Drop trait)
+
+**Technical Details**:
+- Uses object memory address as unique identifier in HashSet
+- Zero-cost when no recursion (just HashSet lookup)
+- Proper cleanup via RAII pattern ensures guard removal on all exit paths
+
+**Affected Code Path**:
+```rust
+pub(crate) fn get_flags(this: &JsValue, _: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    // Recursion guard check
+    let obj_addr = object.as_ref() as *const _ as usize;
+    if FLAGS_RECURSION_GUARD.with(|guard| guard.borrow().contains(&obj_addr)) {
+        return Ok(JsString::from("").into()); // Break cycle
+    }
+    // ... normal flags computation
+}
+```
+
+**Use Cases**:
+- Cloudflare Turnstile challenge scripts
+- Obfuscated JavaScript with Proxy objects
+- Any code that creates objects with circular property getter dependencies

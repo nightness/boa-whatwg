@@ -27,6 +27,14 @@ use boa_macros::{js_str, utf16};
 use boa_parser::lexer::regex::RegExpFlags;
 use regress::{Flags, Range, Regex};
 use std::str::FromStr;
+use std::cell::RefCell;
+use std::collections::HashSet;
+
+// Thread-local guard to prevent infinite recursion in get_flags
+// When flags getter accesses properties that re-invoke flags, we detect it
+thread_local! {
+    static FLAGS_RECURSION_GUARD: RefCell<HashSet<usize>> = RefCell::new(HashSet::new());
+}
 
 use super::{BuiltInBuilder, BuiltInConstructor, IntrinsicObject};
 
@@ -649,6 +657,34 @@ impl RegExp {
                 .with_message("RegExp.prototype.flags getter called on non-object")
                 .into());
         };
+
+        // RECURSION GUARD: Prevent infinite recursion when flag property getters re-invoke flags
+        // This can happen with Proxy objects or objects with custom getters
+        let obj_addr = object.as_ref() as *const _ as usize;
+        let already_in_flags = FLAGS_RECURSION_GUARD.with(|guard| {
+            guard.borrow().contains(&obj_addr)
+        });
+
+        if already_in_flags {
+            // We're recursively accessing flags - return empty string to break the cycle
+            return Ok(JsString::from("").into());
+        }
+
+        // Add to guard set
+        FLAGS_RECURSION_GUARD.with(|guard| {
+            guard.borrow_mut().insert(obj_addr);
+        });
+
+        // Ensure we remove from guard on all exit paths
+        struct GuardRemover(usize);
+        impl Drop for GuardRemover {
+            fn drop(&mut self) {
+                FLAGS_RECURSION_GUARD.with(|guard| {
+                    guard.borrow_mut().remove(&self.0);
+                });
+            }
+        }
+        let _guard = GuardRemover(obj_addr);
 
         // 3. Let codeUnits be a new empty List.
         let mut code_units = String::new();

@@ -33,6 +33,9 @@ impl CallEval {
             .calling_convention_get_function(argument_count.into());
 
         let Some(object) = func.as_object() else {
+            // Debug: Log what was being called that wasn't a function
+            eprintln!("🔴 CALL ERROR: Attempted to call non-object value: {:?}", func);
+            eprintln!("🔴 CALL ERROR: Value type: {}", func.type_of());
             return Err(JsNativeError::typ()
                 .with_message("not a callable function")
                 .into());
@@ -117,6 +120,9 @@ impl CallEvalSpread {
         let func = context.vm.stack.calling_convention_get_function(0);
 
         let Some(object) = func.as_object() else {
+            // Debug: Log what was being called that wasn't a function
+            eprintln!("🔴 CALL ERROR: Attempted to call non-object value: {:?}", func);
+            eprintln!("🔴 CALL ERROR: Value type: {}", func.type_of());
             return Err(JsNativeError::typ()
                 .with_message("not a callable function")
                 .into());
@@ -190,7 +196,7 @@ impl Call {
             .calling_convention_get_function(argument_count.into());
 
         let Some(object) = func.as_object() else {
-            return Err(Self::handle_not_callable());
+            return Err(Self::handle_not_callable(&func, context));
         };
 
         object.__call__(argument_count.into()).resolve(context)?;
@@ -200,7 +206,22 @@ impl Call {
 
     #[cold]
     #[inline(never)]
-    fn handle_not_callable() -> JsError {
+    fn handle_not_callable(func: &JsValue, context: &Context) -> JsError {
+        // Build complete call stack string first to avoid output interleaving
+        let mut stack_info = String::new();
+        stack_info.push_str(&format!("🔴 CALL ERROR: Attempted to call: {:?}\n", func));
+        stack_info.push_str(&format!("🔴 CALL ERROR: Type: {}\n", func.type_of()));
+
+        // Get call stack from frames using collect
+        let frames: Vec<_> = context.vm.frames.iter().map(|f| {
+            (f.code_block().name().clone(), f.pc)
+        }).collect();
+
+        stack_info.push_str(&format!("🔴 CALL ERROR: {} frames in call stack\n", frames.len()));
+        for (i, (name, pc)) in frames.iter().enumerate().rev() {
+            stack_info.push_str(&format!("🔴   [{}] {:?} at PC {}\n", i, name, pc));
+        }
+        eprint!("{}", stack_info);
         JsNativeError::typ()
             .with_message("not a callable function")
             .into()
@@ -242,6 +263,9 @@ impl CallSpread {
             .calling_convention_get_function(argument_count);
 
         let Some(object) = func.as_object() else {
+            // Debug: Log what was being called that wasn't a function
+            eprintln!("🔴 CALL ERROR: Attempted to call non-object value: {:?}", func);
+            eprintln!("🔴 CALL ERROR: Value type: {}", func.type_of());
             return Err(JsNativeError::typ()
                 .with_message("not a callable function")
                 .into());
