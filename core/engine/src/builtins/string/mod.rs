@@ -57,26 +57,6 @@ pub(crate) enum Placement {
     End,
 }
 
-/// Helper function to check if a `char` is trimmable.
-pub(crate) const fn is_trimmable_whitespace(c: char) -> bool {
-    // The rust implementation of `trim` does not regard the same characters whitespace as ecma standard does
-    //
-    // Rust uses \p{White_Space} by default, which also includes:
-    // `\u{0085}' (next line)
-    // And does not include:
-    // '\u{FEFF}' (zero width non-breaking space)
-    // Explicit whitespace: https://tc39.es/ecma262/#sec-white-space
-    matches!(
-        c,
-        '\u{0009}' | '\u{000B}' | '\u{000C}' | '\u{0020}' | '\u{00A0}' | '\u{FEFF}' |
-    // Unicode Space_Separator category
-    '\u{1680}' | '\u{2000}'
-            ..='\u{200A}' | '\u{202F}' | '\u{205F}' | '\u{3000}' |
-    // Line terminators: https://tc39.es/ecma262/#sec-line-terminators
-    '\u{000A}' | '\u{000D}' | '\u{2028}' | '\u{2029}'
-    )
-}
-
 /// JavaScript `String` implementation.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct String;
@@ -640,11 +620,10 @@ impl String {
 
         match position {
             // 4. Let size be the length of S.
-            IntegerOrInfinity::Integer(i) if i >= 0 => {
+            IntegerOrInfinity::Integer(i) if i >= 0 && i < string.len() as i64 => {
                 // 6. Return the Number value for the numeric value of the code unit at index position within the String S.
-                Ok(string
-                    .get(i as usize)
-                    .map_or_else(JsValue::nan, JsValue::from))
+                // SAFETY: already validated the index.
+                Ok(unsafe { string.code_unit_at(i as usize).unwrap_unchecked() }.into())
             }
             // 5. If position < 0 or position ≥ size, return NaN.
             _ => Ok(JsValue::nan()),
@@ -804,7 +783,8 @@ impl String {
             Ok(js_string!().into())
         } else {
             // 13. Return the substring of S from from to to.
-            Ok(js_string!(string.get_expect(from..to)).into())
+            // SAFETY: We already checked that `from` and `to` are within bounds.
+            Ok(unsafe { JsString::slice_unchecked(&string, from, to).into() })
         }
     }
 
@@ -1062,7 +1042,7 @@ impl String {
         };
 
         // 10. Let preserved be the substring of string from 0 to position.
-        let preserved = JsString::from(string.get_expect(..position));
+        let preserved = string.get_expect(..position);
 
         let replacement = match replace_value {
             // 11. If functionalReplace is true, then
@@ -1099,7 +1079,7 @@ impl String {
         Ok(js_string!(
             &preserved,
             &replacement,
-            &JsString::from(string.get_expect(position + search_length..))
+            &string.get_expect(position + search_length..)
         )
         .into())
     }
@@ -1694,7 +1674,7 @@ impl String {
         // 2. Return ? TrimString(S, end).
         let object = this.require_object_coercible()?;
         let string = object.to_string(context)?;
-        Ok(js_string!(string.trim_end()).into())
+        Ok(string.trim_end().into())
     }
 
     /// [`String.prototype.toUpperCase()`][upper] and [`String.prototype.toLowerCase()`][lower]
@@ -1907,7 +1887,8 @@ impl String {
         let to = max(final_start, final_end);
 
         // 10. Return the substring of S from from to to.
-        Ok(js_string!(string.get_expect(from..to)).into())
+        // SAFETY: We already checked that `from` and `to` are within bounds.
+        Ok(unsafe { JsString::slice_unchecked(&string, from, to).into() })
     }
 
     /// `String.prototype.split ( separator, limit )`
@@ -1975,9 +1956,8 @@ impl String {
         if separator_length == 0 {
             // a. Let head be the substring of S from 0 to lim.
             // b. Let codeUnits be a List consisting of the sequence of code units that are the elements of head.
-            let head = this_str
-                .get(..lim)
-                .unwrap_or(this_str.as_str())
+            let head_str = this_str.get(..lim).unwrap_or(this_str);
+            let head = head_str
                 .iter()
                 .map(|code| js_string!(std::slice::from_ref(&code)).into());
 
@@ -2003,7 +1983,7 @@ impl String {
         while let Some(index) = j {
             // a. Let T be the substring of S from i to j.
             // b. Append T as the last element of substrings.
-            substrings.push(this_str.get_expect(i..index).into());
+            substrings.push(this_str.slice(i, index));
 
             // c. If the number of elements of substrings is lim, return ! CreateArrayFromList(substrings).
             if substrings.len() == lim {
@@ -2022,7 +2002,7 @@ impl String {
 
         // 15. Let T be the substring of S from i.
         // 16. Append T to substrings.
-        substrings.push(JsString::from(this_str.get_expect(i..)));
+        substrings.push(this_str.slice(i, this_str.len()));
 
         // 17. Return ! CreateArrayFromList(substrings).
         Ok(

@@ -1,6 +1,6 @@
 //! A NaN-boxed inner value for JavaScript values.
 //!
-//! This [`JsValue`] is a float using `NaN` values to represent inner
+//! This [`JsValue`] is a float using `NaN` values to represent an inner
 //! JavaScript value.
 //!
 //! # Assumptions
@@ -28,7 +28,7 @@
 //! ALL 32 bits architectures are compatible, of course, as their pointers
 //! are 32 bits.
 //!
-//! WASM with MEMORY64 (which is very rare) follows the pointer structure
+//! Wasm with MEMORY64 (which is very rare) follows the pointer structure
 //! of its host architecture.
 //! For more info, see
 //! <https://spidermonkey.dev/blog/2025/01/15/is-memory64-actually-worth-using.html>
@@ -111,7 +111,7 @@ use crate::{
     symbol::RawJsSymbol,
 };
 use boa_gc::{Finalize, GcBox, Trace, custom_trace};
-use boa_string::{JsString, RawJsString};
+use boa_string::JsString;
 use core::fmt;
 use static_assertions::const_assert;
 use std::{
@@ -184,6 +184,9 @@ mod bits {
     /// The constant true value.
     pub(super) const VALUE_TRUE: u64 = MASK_BOOLEAN | 1;
 
+    // The constant `-0` value.
+    pub(super) const VALUE_NEGATIVE_ZERO: u64 = (-0f64).to_bits();
+
     /// Checks that a value is a valid boolean (either true or false).
     #[inline(always)]
     pub(super) const fn is_bool(value: u64) -> bool {
@@ -196,6 +199,12 @@ mod bits {
         (value & MASK_NAN != MASK_NAN)
             || (value & MASK_KIND) == (MASK_NAN | TAG_INF)
             || (value & MASK_KIND) == (MASK_NAN | TAG_NAN)
+    }
+
+    /// Checks that a value is a negative zero (`-0`).
+    #[inline(always)]
+    pub(super) const fn is_negative_zero(value: u64) -> bool {
+        value == VALUE_NEGATIVE_ZERO
     }
 
     /// Checks that a value is a valid integer32.
@@ -519,6 +528,13 @@ impl NanBoxedValue {
         bits::is_float(self.value())
     }
 
+    /// Returns true if a value is negative zero (`-0.0`).
+    #[must_use]
+    #[inline(always)]
+    pub(crate) fn is_negative_zero(&self) -> bool {
+        bits::is_negative_zero(self.value())
+    }
+
     /// Returns true if a value is a 32-bits integer.
     #[must_use]
     #[inline(always)]
@@ -698,7 +714,7 @@ impl NanBoxedValue {
         // SAFETY: the inner address must hold a valid, non-null JsString.
         unsafe {
             ManuallyDrop::new(JsString::from_raw(NonNull::new_unchecked(
-                self.ptr.with_addr(addr).cast::<RawJsString>(),
+                self.ptr.with_addr(addr).cast(),
             )))
         }
     }

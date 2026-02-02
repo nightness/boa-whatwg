@@ -339,10 +339,12 @@ impl JsValue {
             return Some(integer);
         }
 
-        if let Some(rational) = self.0.as_float64()
-            && rational == f64::from(rational as i32)
-        {
-            return Some(rational as i32);
+        if let Some(rational) = self.0.as_float64() {
+            let int_val = rational as i32;
+            // Use bitwise comparison to handle -0.0 correctly
+            if rational.to_bits() == f64::from(int_val).to_bits() {
+                return Some(int_val);
+            }
         }
         None
     }
@@ -352,6 +354,13 @@ impl JsValue {
     #[must_use]
     pub fn is_number(&self) -> bool {
         self.0.is_integer32() || self.0.is_float64()
+    }
+
+    /// Returns true if the value is a negative zero (`-0`).
+    #[inline]
+    #[must_use]
+    pub(crate) fn is_negative_zero(&self) -> bool {
+        self.0.is_negative_zero()
     }
 
     /// Returns the number if the value is a number, otherwise `None`.

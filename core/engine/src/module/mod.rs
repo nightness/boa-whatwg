@@ -29,6 +29,7 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashSet;
 
+use boa_ast::declaration::ImportAttribute as AstImportAttribute;
 use boa_engine::js_string;
 use boa_engine::property::PropertyKey;
 use boa_engine::value::TryFromJs;
@@ -36,11 +37,13 @@ use boa_gc::{Finalize, Gc, GcRefCell, Trace};
 use boa_interner::Interner;
 use boa_parser::source::ReadChar;
 use boa_parser::{Parser, Source};
+
 pub use loader::*;
 pub use namespace::ModuleNamespace;
 use source::SourceTextModule;
 pub use synthetic::{SyntheticModule, SyntheticModuleInitializer};
 
+use crate::bytecompiler::ToJsString;
 use crate::object::TypedJsFunction;
 use crate::spanned_source_text::SourceText;
 use crate::{
@@ -56,6 +59,111 @@ mod loader;
 mod namespace;
 mod source;
 mod synthetic;
+
+/// Import attribute.
+///
+/// [spec]: https://tc39.es/ecma262/#table-importattribute-fields
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Trace, Finalize)]
+pub struct ImportAttribute {
+    key: JsString,
+    value: JsString,
+}
+
+impl ImportAttribute {
+    /// Creates a new import attribute.
+    #[must_use]
+    pub fn new(key: JsString, value: JsString) -> Self {
+        Self { key, value }
+    }
+
+    /// Gets the attribute key.
+    #[must_use]
+    pub fn key(&self) -> &JsString {
+        &self.key
+    }
+
+    /// Gets the attribute value.
+    #[must_use]
+    pub fn value(&self) -> &JsString {
+        &self.value
+    }
+}
+
+/// A module request with optional import attributes.
+///
+/// Represents a module specifier and its associated import attributes.
+/// According to the [ECMAScript specification][spec], the module cache key
+/// should be (referrer, specifier, attributes).
+///
+/// [spec]: https://tc39.es/ecma262/#sec-modulerequest-record
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Trace, Finalize)]
+pub struct ModuleRequest {
+    specifier: JsString,
+    attributes: Box<[ImportAttribute]>,
+}
+
+impl ModuleRequest {
+    /// Creates a new module request from a specifier and attributes.
+    #[must_use]
+    pub fn new(specifier: JsString, mut attributes: Box<[ImportAttribute]>) -> Self {
+        // Sort attributes by key to ensure canonical cache keys.
+        attributes.sort_unstable_by(|k1, k2| k1.key.cmp(&k2.key));
+        Self {
+            specifier,
+            attributes,
+        }
+    }
+
+    /// Creates a new module request from only a specifier with no attributes.
+    #[must_use]
+    pub fn from_specifier(specifier: JsString) -> Self {
+        Self {
+            specifier,
+            attributes: Box::default(),
+        }
+    }
+
+    /// Creates a new module request from an AST specifier and attributes.
+    #[must_use]
+    pub(crate) fn from_ast(
+        specifier: JsString,
+        attributes: &[AstImportAttribute],
+        interner: &Interner,
+    ) -> Self {
+        let attributes = attributes
+            .iter()
+            .map(|attr| {
+                ImportAttribute::new(
+                    attr.key().to_js_string(interner),
+                    attr.value().to_js_string(interner),
+                )
+            })
+            .collect::<Vec<_>>()
+            .into_boxed_slice();
+        Self::new(specifier, attributes)
+    }
+
+    /// Gets the module specifier.
+    #[must_use]
+    pub fn specifier(&self) -> &JsString {
+        &self.specifier
+    }
+
+    /// Gets the import attributes as key-value pairs.
+    #[must_use]
+    pub fn attributes(&self) -> &[ImportAttribute] {
+        &self.attributes
+    }
+
+    /// Gets the value of a specific attribute by key.
+    #[must_use]
+    pub fn get_attribute(&self, key: &str) -> Option<&JsString> {
+        self.attributes
+            .iter()
+            .find(|attr| attr.key == key)
+            .map(|attr| &attr.value)
+    }
+}
 
 /// ECMAScript's [**Abstract module record**][spec].
 ///
@@ -686,5 +794,185 @@ impl<T: IntoIterator<Item = (JsString, NativeFunction)> + Clone> IntoJsModule fo
     }
 }
 
-#[cfg(test)]
-mod tests;
+#[test]
+#[allow(clippy::missing_panics_doc)]
+fn into_js_module() {
+    use boa_engine::interop::{ContextData, JsRest};
+    use boa_engine::{
+        Context, IntoJsFunctionCopied, JsValue, Module, Source, UnsafeIntoJsFunction, js_string,
+    };
+    use boa_gc::{Gc, GcRefCell};
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    type ResultType = Gc<GcRefCell<JsValue>>;
+
+    let loader = Rc::new(MapModuleLoader::default());
+    let mut context = Context::builder()
+        .module_loader(loader.clone())
+        .build()
+        .unwrap();
+
+    let foo_count = Rc::new(RefCell::new(0));
+    let bar_count = Rc::new(RefCell::new(0));
+    let dad_count = Rc::new(RefCell::new(0));
+
+    context.insert_data(Gc::new(GcRefCell::new(JsValue::undefined())));
+
+    let module = unsafe {
+        vec![
+            (
+                js_string!("foo"),
+                {
+                    let counter = foo_count.clone();
+                    move || {
+                        *counter.borrow_mut() += 1;
+
+                        *counter.borrow()
+                    }
+                }
+                .into_js_function_unsafe(&mut context),
+            ),
+            (
+                js_string!("bar"),
+                UnsafeIntoJsFunction::into_js_function_unsafe(
+                    {
+                        let counter = bar_count.clone();
+                        move |i: i32| {
+                            *counter.borrow_mut() += i;
+                        }
+                    },
+                    &mut context,
+                ),
+            ),
+            (
+                js_string!("dad"),
+                UnsafeIntoJsFunction::into_js_function_unsafe(
+                    {
+                        let counter = dad_count.clone();
+                        move |args: JsRest<'_>, context: &mut Context| {
+                            *counter.borrow_mut() += args
+                                .into_iter()
+                                .map(|i| i.try_js_into::<i32>(context).unwrap())
+                                .sum::<i32>();
+                        }
+                    },
+                    &mut context,
+                ),
+            ),
+            (
+                js_string!("send"),
+                (move |value: JsValue, ContextData(result): ContextData<ResultType>| {
+                    *result.borrow_mut() = value;
+                })
+                .into_js_function_copied(&mut context),
+            ),
+        ]
+    }
+    .into_js_module(&mut context);
+
+    loader.insert("test", module);
+
+    let source = Source::from_bytes(
+        r"
+            import * as test from 'test';
+            let result = test.foo();
+            test.foo();
+            for (let i = 1; i <= 5; i++) {
+                test.bar(i);
+            }
+            for (let i = 1; i < 5; i++) {
+                test.dad(1, 2, 3);
+            }
+
+            test.send(result);
+        ",
+    );
+    let root_module = Module::parse(source, None, &mut context).unwrap();
+
+    let promise_result = root_module.load_link_evaluate(&mut context);
+    context.run_jobs().unwrap();
+
+    // Checking if the final promise didn't return an error.
+    assert!(
+        promise_result.state().as_fulfilled().is_some(),
+        "module didn't execute successfully! Promise: {:?}",
+        promise_result.state()
+    );
+
+    let result = context.get_data::<ResultType>().unwrap().borrow().clone();
+
+    assert_eq!(*foo_count.borrow(), 2);
+    assert_eq!(*bar_count.borrow(), 15);
+    assert_eq!(*dad_count.borrow(), 24);
+    assert_eq!(result.try_js_into(&mut context), Ok(1u32));
+}
+
+#[test]
+fn can_throw_exception() {
+    use boa_engine::{
+        Context, IntoJsFunctionCopied, JsError, JsResult, JsValue, Module, Source, js_string,
+    };
+    use std::rc::Rc;
+
+    let loader = Rc::new(MapModuleLoader::default());
+    let mut context = Context::builder()
+        .module_loader(loader.clone())
+        .build()
+        .unwrap();
+
+    let module = vec![(
+        js_string!("doTheThrow"),
+        IntoJsFunctionCopied::into_js_function_copied(
+            |message: JsValue| -> JsResult<()> { Err(JsError::from_opaque(message)) },
+            &mut context,
+        ),
+    )]
+    .into_js_module(&mut context);
+
+    loader.insert("test", module);
+
+    let source = Source::from_bytes(
+        r"
+            import * as test from 'test';
+            try {
+                test.doTheThrow('javascript');
+            } catch(e) {
+                throw 'from ' + e;
+            }
+        ",
+    );
+    let root_module = Module::parse(source, None, &mut context).unwrap();
+
+    let promise_result = root_module.load_link_evaluate(&mut context);
+    context.run_jobs().unwrap();
+
+    // Checking if the final promise didn't return an error.
+    assert_eq!(
+        promise_result.state().as_rejected(),
+        Some(&js_string!("from javascript").into())
+    );
+}
+
+#[test]
+fn test_module_request_attribute_sorting() {
+    let request1 = ModuleRequest::new(
+        js_string!("specifier"),
+        Box::new([
+            ImportAttribute::new(js_string!("key2"), js_string!("val2")),
+            ImportAttribute::new(js_string!("key1"), js_string!("val1")),
+        ]),
+    );
+
+    let request2 = ModuleRequest::new(
+        js_string!("specifier"),
+        Box::new([
+            ImportAttribute::new(js_string!("key1"), js_string!("val1")),
+            ImportAttribute::new(js_string!("key2"), js_string!("val2")),
+        ]),
+    );
+
+    assert_eq!(request1, request2);
+    assert_eq!(request1.attributes()[0].key(), &js_string!("key1"));
+    assert_eq!(request1.attributes()[1].key(), &js_string!("key2"));
+}
