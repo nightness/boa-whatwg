@@ -162,7 +162,7 @@ wasmparser = { version = "0.121", optional = true }
 
 # WebSocket and Fetch deps (native only for tokio/rquest)
 tokio = { version = "1.0", features = ["full"], optional = true }
-tokio-tungstenite = { version = "0.20", default-features = false, features = ["rustls-tls-webpki-roots"], optional = true }
+tokio-tungstenite = { version = "0.20", default-features = false, features = ["connect", "rustls-tls-webpki-roots"], optional = true }
 futures-util = "0.3"
 url = "2.4"
 rquest = { version = "5", features = ["json", "stream", "cookies"], optional = true }
