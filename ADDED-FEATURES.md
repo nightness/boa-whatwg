@@ -657,3 +657,87 @@ context.runtime_limits_mut().clear_execution_deadline();
 - Prevents CPU exhaustion from expensive computations
 - Configurable per-execution timeout for fine-grained control
 - Works with existing recursion and stack limits for comprehensive protection
+
+## HTMLIFrameElement Implementation (2025)
+
+### HTMLIFrameElement (`thalora-browser-apis/src/dom/html_iframe_element.rs`)
+
+**Complete WHATWG HTMLIFrameElement Implementation**:
+- Full implementation of the HTMLIFrameElement interface as defined in HTML Living Standard (https://html.spec.whatwg.org/multipage/iframe-embed-object.html#the-iframe-element)
+- Native Boa builtin with isolated document/window contexts for proper iframe encapsulation
+
+**Properties (all with getter/setter)**:
+- `src` - URL to load in the iframe
+- `srcdoc` - Inline HTML content for the iframe
+- `name` - Name for targeting
+- `sandbox` - Sandbox restrictions (allow-scripts, allow-forms, etc.)
+- `allow` - Feature policy (permissions-policy)
+- `width` - Width attribute
+- `height` - Height attribute
+- `loading` - Loading strategy ("eager" or "lazy")
+
+**Content Access Properties (read-only)**:
+- `contentDocument` - Returns the iframe's isolated Document
+- `contentWindow` - Returns the iframe's isolated Window
+
+**Isolated Browsing Context**:
+- Each iframe has its own Document instance with a fresh DOM tree
+- Each iframe has its own Window instance with its own global scope
+- contentDocument.createElement creates elements in the iframe's isolated context
+- Script execution in iframe context affects only that iframe's window
+
+**Integration with document.createElement**:
+- `document.createElement('iframe')` automatically creates HTMLIFrameElement
+- Isolated Document and Window are initialized when iframe is created
+- Proper linkage between contentWindow.document and iframe's contentDocument
+
+**Use Cases**:
+- Cloudflare challenge execution (iframes are commonly used for JS challenges)
+- Sandboxed script execution
+- Cross-origin content isolation
+- Web component isolation patterns
+
+## Dynamic Script Execution (2025)
+
+### appendChild/insertBefore Script Execution
+
+**Automatic Script Execution on DOM Insertion**:
+- When a `<script>` element is appended to the DOM via `appendChild` or `insertBefore`, it is automatically executed
+- Supports both inline scripts (via `text`, `textContent`, or `innerHTML`) and external scripts (via `src` attribute)
+- Follows browser behavior for dynamic script loading
+
+**Script Type Detection**:
+- Checks for `HTMLScriptElementData` first (proper script elements)
+- Falls back to checking `tagName === "SCRIPT"` for generic elements
+- Both patterns work for element detection
+
+**Executable Script Types**:
+- `text/javascript` (default)
+- `application/javascript`
+- `application/x-javascript`
+- `text/ecmascript`
+- `application/ecmascript`
+- `module` (ES modules)
+- Cloudflare Rocket Loader patterns (any type containing "javascript")
+
+**External Script Loading** (native feature only):
+- Uses blocking HTTP client to fetch script content from `src` URL
+- Executes fetched content in the current JavaScript context
+- Errors are logged but don't break DOM operations
+
+**Script Content Sources**:
+1. `script.text` property (HTMLScriptElement-specific)
+2. `script.textContent` property
+3. `script.innerHTML` property
+4. ElementData text content
+
+**Use Cases**:
+- Cloudflare challenge scripts that dynamically inject and execute code
+- SPA frameworks that load scripts dynamically
+- Widget loaders and third-party integrations
+- Any JavaScript that creates and appends script elements at runtime
+
+**Standards Compliance**:
+- Follows WHATWG HTML Living Standard script execution rules
+- Matches browser behavior for dynamic script insertion
+- Proper error handling that doesn't break DOM operations

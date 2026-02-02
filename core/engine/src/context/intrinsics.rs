@@ -329,6 +329,7 @@ pub struct StandardConstructors {
     element: StandardConstructor,
     html_element: StandardConstructor,
     html_script_element: StandardConstructor,
+    html_iframe_element: StandardConstructor,
     dom_parser: StandardConstructor,
     form_data: StandardConstructor,
     css_style_declaration: StandardConstructor,
@@ -558,6 +559,7 @@ impl Default for StandardConstructors {
             element: StandardConstructor::default(),
             html_element: StandardConstructor::default(),
             html_script_element: StandardConstructor::default(),
+            html_iframe_element: StandardConstructor::default(),
             dom_parser: StandardConstructor::default(),
             form_data: StandardConstructor::default(),
             css_style_declaration: StandardConstructor::default(),
@@ -1983,6 +1985,18 @@ impl StandardConstructors {
     #[must_use]
     pub const fn html_script_element(&self) -> &StandardConstructor {
         &self.html_script_element
+    }
+
+    /// Returns the `HTMLIFrameElement` constructor.
+    ///
+    /// More information:
+    ///  - [HTMLIFrameElement spec][spec]
+    ///
+    /// [spec]: https://html.spec.whatwg.org/multipage/iframe-embed-object.html#the-iframe-element
+    #[inline]
+    #[must_use]
+    pub const fn html_iframe_element(&self) -> &StandardConstructor {
+        &self.html_iframe_element
     }
 
     /// Returns the `DOMParser` constructor.
