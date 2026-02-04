@@ -93,6 +93,12 @@ pub struct Vm {
 
     pub(crate) shadow_stack: ShadowStack,
 
+    /// Tracks the last property name accessed, for debugging call errors.
+    pub(crate) last_property_accessed: Option<JsString>,
+
+    /// Tracks the base object of the last property access, for debugging call errors.
+    pub(crate) last_property_access_base: Option<JsValue>,
+
     #[cfg(feature = "trace")]
     pub(crate) trace: bool,
 }
@@ -423,9 +429,31 @@ impl Vm {
             runtime_limits: RuntimeLimits::default(),
             native_active_function: None,
             shadow_stack: ShadowStack::default(),
+            last_property_accessed: None,
+            last_property_access_base: None,
             #[cfg(feature = "trace")]
             trace: false,
         }
+    }
+
+    /// Records the last property name accessed (for call error debugging).
+    pub(crate) fn set_last_property_accessed(&mut self, name: JsString) {
+        self.last_property_accessed = Some(name);
+    }
+
+    /// Gets the last property name accessed.
+    pub(crate) fn get_last_property_accessed(&self) -> Option<&JsString> {
+        self.last_property_accessed.as_ref()
+    }
+
+    /// Records the base object of the last property access (for call error debugging).
+    pub(crate) fn set_last_property_access_base(&mut self, base: JsValue) {
+        self.last_property_access_base = Some(base);
+    }
+
+    /// Gets the base object of the last property access.
+    pub(crate) fn get_last_property_access_base(&self) -> Option<&JsValue> {
+        self.last_property_access_base.as_ref()
     }
 
     #[track_caller]
