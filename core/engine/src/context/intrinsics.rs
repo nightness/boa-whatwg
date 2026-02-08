@@ -335,6 +335,7 @@ pub struct StandardConstructors {
     css_style_declaration: StandardConstructor,
     attr: StandardConstructor,
     comment: StandardConstructor,
+    domstringmap: StandardConstructor,
     domtokenlist: StandardConstructor,
     processing_instruction: StandardConstructor,
     cdata_section: StandardConstructor,
@@ -565,6 +566,7 @@ impl Default for StandardConstructors {
             css_style_declaration: StandardConstructor::default(),
             attr: StandardConstructor::default(),
             comment: StandardConstructor::default(),
+            domstringmap: StandardConstructor::default(),
             domtokenlist: StandardConstructor::default(),
             processing_instruction: StandardConstructor::default(),
             cdata_section: StandardConstructor::default(),
@@ -1897,6 +1899,13 @@ impl StandardConstructors {
     #[must_use]
     pub const fn nodelist(&self) -> &StandardConstructor {
         &self.nodelist
+    }
+
+    /// Returns the `DOMStringMap` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn domstringmap(&self) -> &StandardConstructor {
+        &self.domstringmap
     }
 
     /// Returns the `DOMTokenList` constructor.
