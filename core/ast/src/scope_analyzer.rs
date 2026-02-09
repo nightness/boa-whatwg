@@ -1211,6 +1211,17 @@ impl BindingCollectorVisitor<'_> {
         self.visit_function_body_mut(body)?;
         std::mem::swap(&mut self.scope, &mut body_scope);
 
+        // Fix for nested arrow functions: when `this` is used inside a nested arrow
+        // (e.g., `compute() { var outer = () => { var inner = () => this.v; }; }`),
+        // `escape_this_in_enclosing_function_scope()` only walks one function boundary,
+        // marking the intermediate arrow's scope. But arrow functions don't own `this` —
+        // they inherit it from the nearest enclosing non-arrow function. So we must
+        // propagate the `this_escaped` flag upward through each arrow function scope
+        // until it reaches the enclosing non-arrow function's scope.
+        if arrow && function_scope.escaped_this() {
+            function_scope.escape_this_in_enclosing_function_scope();
+        }
+
         *scopes = function_scopes;
 
         self.in_arrow = old_in_arrow;
