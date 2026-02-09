@@ -31,6 +31,10 @@ fn get_by_name<const LENGTH: bool>(
 
     // Track property name and base object for call error debugging - store BEFORE base_class conversion
     let property_name = context.vm.frame().code_block().ic[usize::from(index)].name.clone();
+    // DEBUG: Log when 'references' property is accessed
+    if property_name.to_std_string_escaped() == "references" {
+        eprintln!("DEBUG GetPropertyByName 'references' on {:?}", object.type_of());
+    }
     context.vm.set_last_property_accessed(property_name);
     // Store the original object value for debugging (before any conversion)
     context.vm.set_last_property_access_base(object.clone());
@@ -101,7 +105,18 @@ fn get_by_value<const PUSH_KEY: bool>(
     // Track base object for call error debugging (before base_class conversion)
     context.vm.set_last_property_access_base(base.clone());
 
-    let object = base.base_class(context)?;
+    let object = match base.base_class(context) {
+        Ok(obj) => obj,
+        Err(e) => {
+            // DEBUG: Log the key being accessed on null/undefined
+            if let Ok(key_str) = key_value.to_string(context) {
+                eprintln!("DEBUG GetPropertyByValue FAILED: accessing [{}] on {:?}", key_str.to_std_string_escaped(), base.type_of());
+            } else {
+                eprintln!("DEBUG GetPropertyByValue FAILED: accessing unknown key on {:?}", base.type_of());
+            }
+            return Err(e);
+        }
+    };
     let key_value = key_value.to_property_key(context)?;
 
     // Track property key for call error debugging (if it's a string)
