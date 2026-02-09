@@ -5,13 +5,12 @@ use dynify::Dynify;
 
 use super::VaryingOperand;
 use crate::{
-    Context, JsError, JsObject, JsResult, JsValue, NativeFunction, js_string,
+    Context, JsError, JsObject, JsResult, JsValue, NativeFunction,
     builtins::{Promise, promise::PromiseCapability},
     error::JsNativeError,
     job::NativeAsyncJob,
     module::{ImportAttribute, ModuleKind, ModuleRequest, Referrer},
     object::FunctionObjectBuilder,
-    property::PropertyKey,
     vm::opcode::Operation,
 };
 
@@ -34,9 +33,6 @@ impl CallEval {
             .calling_convention_get_function(argument_count.into());
 
         let Some(object) = func.as_object() else {
-            // Debug: Log what was being called that wasn't a function
-            eprintln!("🔴 CALL ERROR: Attempted to call non-object value: {:?}", func);
-            eprintln!("🔴 CALL ERROR: Value type: {}", func.type_of());
             return Err(JsNativeError::typ()
                 .with_message("not a callable function")
                 .into());
@@ -121,9 +117,6 @@ impl CallEvalSpread {
         let func = context.vm.stack.calling_convention_get_function(0);
 
         let Some(object) = func.as_object() else {
-            // Debug: Log what was being called that wasn't a function
-            eprintln!("🔴 CALL ERROR: Attempted to call non-object value: {:?}", func);
-            eprintln!("🔴 CALL ERROR: Value type: {}", func.type_of());
             return Err(JsNativeError::typ()
                 .with_message("not a callable function")
                 .into());
@@ -207,85 +200,8 @@ impl Call {
 
     #[cold]
     #[inline(never)]
-    fn handle_not_callable(func: &JsValue, context: &Context) -> JsError {
-        // Build complete call stack string first to avoid output interleaving
-        let mut stack_info = String::new();
-        stack_info.push_str(&format!("🔴 CALL ERROR: Attempted to call: {:?}\n", func));
-        stack_info.push_str(&format!("🔴 CALL ERROR: Type: {}\n", func.type_of()));
-
-        // Include the property name that was accessed
-        if let Some(property_name) = context.vm.get_last_property_accessed() {
-            stack_info.push_str(&format!(
-                "🔴 CALL ERROR: Property accessed: '{}'\n",
-                property_name.to_std_string_escaped()
-            ));
-        } else {
-            stack_info.push_str("🔴 CALL ERROR: Property accessed: <direct call>\n");
-        }
-
-        // Include the base object type that was accessed
-        if let Some(base) = context.vm.get_last_property_access_base() {
-            stack_info.push_str(&format!(
-                "🔴 CALL ERROR: Base object type: {}\n",
-                base.type_of()
-            ));
-            if base.is_undefined() {
-                stack_info.push_str("🔴 CALL ERROR: ⚠️  BASE OBJECT IS UNDEFINED!\n");
-            } else if base.is_null() {
-                stack_info.push_str("🔴 CALL ERROR: ⚠️  BASE OBJECT IS NULL!\n");
-            } else if let Some(obj) = base.as_object() {
-                // Try to identify what kind of object it is
-                if obj.is_callable() {
-                    stack_info.push_str("🔴 CALL ERROR: Base is a callable function\n");
-                } else if obj.is_array() {
-                    stack_info.push_str("🔴 CALL ERROR: Base is an Array\n");
-                }
-                // Try to get the constructor name for more context
-                if let Some(proto) = obj.prototype() {
-                    if let Some(constructor) = proto.borrow().properties().get(&PropertyKey::from(js_string!("constructor"))) {
-                        if let Some(ctor_obj) = constructor.value().and_then(|v| v.as_object()) {
-                            if let Some(name) = ctor_obj.get_property(&PropertyKey::from(js_string!("name"))) {
-                                if let Some(name_val) = name.value() {
-                                    if let Some(name_str) = name_val.as_string() {
-                                        stack_info.push_str(&format!(
-                                            "🔴 CALL ERROR: Base constructor: {}\n",
-                                            name_str.to_std_string_escaped()
-                                        ));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                // Show the object's address for identification
-                let obj_addr = obj.as_ref() as *const _ as usize;
-                stack_info.push_str(&format!(
-                    "🔴 CALL ERROR: Base object address: 0x{:x}\n",
-                    obj_addr
-                ));
-
-                // List the object's own property count
-                let borrowed = obj.borrow();
-                let index_prop_count = borrowed.properties().index_property_keys().count();
-                stack_info.push_str(&format!(
-                    "🔴 CALL ERROR: Base object has {} indexed properties\n",
-                    index_prop_count
-                ));
-            }
-        } else {
-            stack_info.push_str("🔴 CALL ERROR: Base object: <not tracked>\n");
-        }
-
-        // Get call stack from frames using collect
-        let frames: Vec<_> = context.vm.frames.iter().map(|f| {
-            (f.code_block().name().clone(), f.pc)
-        }).collect();
-
-        stack_info.push_str(&format!("🔴 CALL ERROR: {} frames in call stack\n", frames.len()));
-        for (i, (name, pc)) in frames.iter().enumerate().rev() {
-            stack_info.push_str(&format!("🔴   [{}] {:?} at PC {}\n", i, name, pc));
-        }
-        eprint!("{}", stack_info);
+    fn handle_not_callable(func: &JsValue, _context: &Context) -> JsError {
+        let _ = func;
         JsNativeError::typ()
             .with_message("not a callable function")
             .into()
@@ -327,9 +243,6 @@ impl CallSpread {
             .calling_convention_get_function(argument_count);
 
         let Some(object) = func.as_object() else {
-            // Debug: Log what was being called that wasn't a function
-            eprintln!("🔴 CALL ERROR: Attempted to call non-object value: {:?}", func);
-            eprintln!("🔴 CALL ERROR: Value type: {}", func.type_of());
             return Err(JsNativeError::typ()
                 .with_message("not a callable function")
                 .into());

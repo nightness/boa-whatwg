@@ -933,7 +933,6 @@ impl BuiltInFunctionObject {
         let function_object = crate::vm::create_function_object(code, prototype, context);
         context.vm.frame.environments.extend(environments);
 
-        eprintln!("*** create_dynamic_function: completed without early error, function created ***");
         Ok(function_object)
     }
 

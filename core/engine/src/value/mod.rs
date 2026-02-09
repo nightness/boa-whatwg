@@ -548,7 +548,6 @@ impl JsValue {
     pub fn to_object(&self, context: &mut Context) -> JsResult<JsObject> {
         match self.variant() {
             JsVariant::Undefined | JsVariant::Null => {
-                eprintln!("DEBUG to_object(null/undefined) BACKTRACE:\n{}", std::backtrace::Backtrace::force_capture());
                 Err(JsNativeError::typ()
                 .with_message("cannot convert 'null' or 'undefined' to object")
                 .into())
@@ -594,7 +593,6 @@ impl JsValue {
         let constructors = context.intrinsics().constructors();
         match self.variant() {
             JsVariant::Undefined | JsVariant::Null => {
-                eprintln!("DEBUG base_class(null/undefined) BACKTRACE:\n{}", std::backtrace::Backtrace::force_capture());
                 Err(JsNativeError::typ()
                 .with_message("cannot convert 'null' or 'undefined' to object")
                 .into())

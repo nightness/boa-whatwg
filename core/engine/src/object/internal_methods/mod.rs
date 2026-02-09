@@ -1201,9 +1201,6 @@ fn non_existent_call(
     _argument_count: usize,
     context: &mut InternalMethodCallContext<'_>,
 ) -> JsResult<CallValue> {
-    // Debug: Log what object was being called
-    eprintln!("🔴 NON_EXISTENT_CALL: Object called without [[Call]] internal method");
-    eprintln!("🔴 NON_EXISTENT_CALL: Object: {:?}", obj);
     Err(JsNativeError::typ()
         .with_message("not a callable function")
         .with_realm(context.realm().clone())
