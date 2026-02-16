@@ -72,6 +72,8 @@ intl = [
     "dep:tinystr",
     "dep:timezone_provider",
     "timezone_provider/tzif",
+    "dep:temporal_rs",
+    "dep:iana-time-zone",
 ]
 
 fuzz = ["boa_ast/arbitrary", "boa_interner/arbitrary"]
