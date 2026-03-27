@@ -11,16 +11,16 @@ repository = "https://github.com/boa-dev/boa"
 rust-version = "1.91.0"
 
 [dependencies]
-boa_interner = { path = "../interner" }
-boa_macros = { path = "../macros" }
-boa_ast = { path = "../ast" }
-rustc-hash = { version = "2.1.1", features = ["std"] }
-fast-float2 = "0.2.3"
-num-traits = "0.2.19"
-bitflags = "2.10.0"
-num-bigint = "0.4.6"
-regress = { version = "0.10.5", features = ["utf16"] }
-icu_properties = "2.1.1"
+boa_interner.workspace = true
+boa_macros.workspace = true
+boa_ast.workspace = true
+rustc-hash = { workspace = true, features = ["std"] }
+fast-float2.workspace = true
+num-traits.workspace = true
+bitflags.workspace = true
+num-bigint.workspace = true
+regress.workspace = true
+icu_properties.workspace = true
 
 [dev-dependencies]
 indoc.workspace = true

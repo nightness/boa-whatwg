@@ -130,7 +130,7 @@ impl WebAssemblyModule {
         })?;
 
         // Create array of export descriptors
-        let exports_array = JsArray::new(context);
+        let exports_array = JsArray::new(context)?;
         let mut index = 0;
 
         for export in module.exports() {
@@ -182,7 +182,7 @@ impl WebAssemblyModule {
         })?;
 
         // Create array of import descriptors
-        let imports_array = JsArray::new(context);
+        let imports_array = JsArray::new(context)?;
         let mut index = 0;
 
         for import in module.imports() {
@@ -232,7 +232,7 @@ impl WebAssemblyModule {
 
         // For now, return empty array as custom sections parsing is complex
         // TODO: Implement actual custom sections parsing using wasmparser
-        let sections_array = JsArray::new(context);
+        let sections_array = JsArray::new(context)?;
         Ok(sections_array.into())
     }
 }
