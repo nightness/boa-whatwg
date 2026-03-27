@@ -13,7 +13,7 @@ use boa_gc::{Finalize, Trace};
 use thin_vec::ThinVec;
 
 use crate::{
-    Context, JsArgs, JsResult, JsString,
+    Context, JsArgs, JsExpect, JsResult, JsString,
     builtins::{BuiltInObject, Number, iterable::if_abrupt_close_iterator},
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
     error::JsNativeError,
@@ -228,23 +228,20 @@ impl BuiltInConstructor for Array {
         // 4. If numberOfArgs = 0, then
         if number_of_args == 0 {
             // 4.a. Return ! ArrayCreate(0, proto).
-            Ok(Self::array_create(0, Some(prototype), context)
-                .expect("this ArrayCreate call must not fail")
-                .into())
+            Ok(Self::array_create(0, Some(prototype), context)?.into())
         // 5. Else if numberOfArgs = 1, then
         } else if number_of_args == 1 {
             // a. Let len be values[0].
             let len = &args[0];
             // b. Let array be ! ArrayCreate(0, proto).
-            let array = Self::array_create(0, Some(prototype), context)
-                .expect("this ArrayCreate call must not fail");
+            let array = Self::array_create(0, Some(prototype), context)?;
             // c. If Type(len) is not Number, then
             #[allow(clippy::if_not_else)]
             let int_len = if !len.is_number() {
                 // i. Perform ! CreateDataPropertyOrThrow(array, "0", len).
                 array
                     .create_data_property_or_throw(0, len.clone(), context)
-                    .expect("this CreateDataPropertyOrThrow call must not fail");
+                    .js_expect("this CreateDataPropertyOrThrow call must not fail")?;
                 // ii. Let intLen be 1𝔽.
                 1
             // d. Else,
@@ -252,7 +249,7 @@ impl BuiltInConstructor for Array {
                 // i. Let intLen be ! ToUint32(len).
                 let int_len = len
                     .to_u32(context)
-                    .expect("this ToUint32 call must not fail");
+                    .js_expect("this ToUint32 call must not fail")?;
                 // ii. If SameValueZero(intLen, len) is false, throw a RangeError exception.
                 if !JsValue::same_value_zero(&int_len.into(), len) {
                     return Err(JsNativeError::range()
@@ -264,7 +261,7 @@ impl BuiltInConstructor for Array {
             // e. Perform ! Set(array, "length", intLen, true).
             array
                 .set(StaticJsStrings::LENGTH, int_len, true, context)
-                .expect("this Set call must not fail");
+                .js_expect("this Set call must not fail")?;
             // f. Return array.
             Ok(array.into())
         // 6. Else,
@@ -562,7 +559,7 @@ impl Array {
             // 7. Let arrayLike be ! ToObject(items).
             let array_like = items
                 .to_object(context)
-                .expect("should not fail according to spec");
+                .js_expect("should not fail according to spec")?;
 
             // 8. Let len be ? LengthOfArrayLike(arrayLike).
             let len = array_like.length_of_array_like(context)?;
@@ -798,7 +795,7 @@ impl Array {
             if spreadable {
                 // item is guaranteed to be an object since is_concat_spreadable checks it,
                 // so we can call `.unwrap()`
-                let item = item.as_object().expect("guaranteed to be an object");
+                let item = item.as_object().js_expect("guaranteed to be an object")?;
                 // i. Let k be 0.
                 // ii. Let len be ? LengthOfArrayLike(E).
                 let len = item.length_of_array_like(context)?;
@@ -1005,7 +1002,7 @@ impl Array {
         };
 
         // 5. Let R be the empty String.
-        let mut r = Vec::new();
+        let mut r = Vec::with_capacity(len as usize + len.saturating_sub(1) as usize);
         // 6. Let k be 0.
         // 7. Repeat, while k < len,
         for k in 0..len {
@@ -1166,7 +1163,7 @@ impl Array {
 
             // d. Perform ! CreateDataPropertyOrThrow(A, Pk, fromValue).
             a.create_data_property_or_throw(i, from_value, context)
-                .expect("cannot fail per the spec");
+                .js_expect("cannot fail per the spec")?;
 
             // e. Set k to k + 1.
         }
@@ -1766,18 +1763,19 @@ impl Array {
         let source_len = o.length_of_array_like(context)?;
 
         // 3. Let depthNum be 1
-        let mut depth_num = 1;
-
         // 4. If depth is not undefined, then set depthNum to IntegerOrInfinity(depth)
-        if let Some(depth) = args.first() {
+        let depth = args.get_or_undefined(0);
+        let depth_num = if depth.is_undefined() {
+            1
+        } else {
             // a. Set depthNum to ? ToIntegerOrInfinity(depth).
             // b. If depthNum < 0, set depthNum to 0.
             match depth.to_integer_or_infinity(context)? {
-                IntegerOrInfinity::Integer(value) if value >= 0 => depth_num = value as u64,
-                IntegerOrInfinity::PositiveInfinity => depth_num = u64::MAX,
-                _ => depth_num = 0,
+                IntegerOrInfinity::Integer(value) if value >= 0 => value as u64,
+                IntegerOrInfinity::PositiveInfinity => u64::MAX,
+                _ => 0,
             }
-        }
+        };
 
         // 5. Let A be ArraySpeciesCreate(O, 0)
         let a = Self::array_species_create(&o, 0, context)?;
@@ -1907,7 +1905,7 @@ impl Array {
                 // v. If shouldFlatten is true
                 if should_flatten {
                     // For `should_flatten` to be true, element must be an object.
-                    let element = element.as_object().expect("must be an object");
+                    let element = element.as_object().js_expect("must be an object")?;
 
                     // 1. If depth is +Infinity let newDepth be +Infinity
                     let new_depth = if depth == u64::MAX {
@@ -2175,8 +2173,25 @@ impl Array {
         let separator = {
             #[cfg(feature = "intl")]
             {
-                // TODO: this should eventually return a locale-sensitive separator.
-                js_string!(", ")
+                use crate::builtins::intl::locale::default_locale;
+                use icu_list::{
+                    ListFormatter, ListFormatterPreferences, options::ListFormatterOptions,
+                };
+
+                let locale = default_locale(context.intl_provider().locale_canonicalizer()?);
+                let preferences = ListFormatterPreferences::from(&locale);
+                let formatter = ListFormatter::try_new_unit_with_buffer_provider(
+                    context.intl_provider().erased_provider(),
+                    preferences,
+                    ListFormatterOptions::default(),
+                )
+                .map_err(|e| JsNativeError::typ().with_message(e.to_string()))?;
+
+                // Ask ICU for the list pattern literal by formatting two empty elements.
+                // For many locales this yields ", ", but it may differ.
+                js_string!(
+                    formatter.format_to_string(std::iter::once("").chain(std::iter::once("")))
+                )
             }
 
             #[cfg(not(feature = "intl"))]
@@ -2186,7 +2201,7 @@ impl Array {
         };
 
         // 4. Let R be the empty String.
-        let mut r = Vec::new();
+        let mut r = Vec::with_capacity(len as usize + len.saturating_sub(1) as usize);
 
         // 5. Let k be 0.
         // 6. Repeat, while k < len,
@@ -2267,14 +2282,24 @@ impl Array {
         args: &[JsValue],
         context: &mut Context,
     ) -> JsResult<JsValue> {
+        let start = args.first();
+        let delete_count = args.get(1);
+        let items = args.get(2..).unwrap_or_default();
+
+        Self::splice_internal(this, start, delete_count, items, context)
+    }
+
+    pub(crate) fn splice_internal(
+        this: &JsValue,
+        start: Option<&JsValue>,
+        delete_count: Option<&JsValue>,
+        items: &[JsValue],
+        context: &mut Context,
+    ) -> JsResult<JsValue> {
         // 1. Let O be ? ToObject(this value).
         let o = this.to_object(context)?;
         // 2. Let len be ? LengthOfArrayLike(O).
         let len = o.length_of_array_like(context)?;
-
-        let start = args.first();
-        let delete_count = args.get(1);
-        let items = args.get(2..).unwrap_or_default();
 
         // 3. Let relativeStart be ? ToIntegerOrInfinity(start).
         // 4. If relativeStart = -∞, let actualStart be 0.
@@ -2446,7 +2471,7 @@ impl Array {
 
             //     c. Perform ! CreateDataPropertyOrThrow(A, Pi, iValue).
             arr.create_data_property_or_throw(i, value, context)
-                .expect("cannot fail for a newly created array");
+                .js_expect("cannot fail for a newly created array")?;
 
             //     d. Set i to i + 1.
             i += 1;
@@ -2457,7 +2482,7 @@ impl Array {
             //     a. Let Pi be ! ToString(𝔽(i)).
             //     b. Perform ! CreateDataPropertyOrThrow(A, Pi, E).
             arr.create_data_property_or_throw(i, item, context)
-                .expect("cannot fail for a newly created array");
+                .js_expect("cannot fail for a newly created array")?;
 
             //     c. Set i to i + 1.
             i += 1;
@@ -2475,7 +2500,7 @@ impl Array {
 
             //     d. Perform ! CreateDataPropertyOrThrow(A, Pi, fromValue).
             arr.create_data_property_or_throw(i, from_value, context)
-                .expect("cannot fail for a newly created array");
+                .js_expect("cannot fail for a newly created array")?;
 
             //     e. Set i to i + 1.
             i += 1;
@@ -2774,7 +2799,7 @@ impl Array {
         for (i, item) in sorted.into_iter().enumerate() {
             //     a. Perform ! CreateDataPropertyOrThrow(A, ! ToString(𝔽(j)), sortedList[j]).
             arr.create_data_property_or_throw(i, item, context)
-                .expect("cannot fail for a newly created array");
+                .js_expect("cannot fail for a newly created array")?;
 
             //     b. Set j to j + 1.
         }
@@ -3189,7 +3214,7 @@ impl Array {
             // d. Perform ! CreateDataPropertyOrThrow(A, Pk, fromValue).
             new_array
                 .create_data_property_or_throw(k, from_value, context)
-                .expect("cannot fail for a newly created array");
+                .js_expect("cannot fail for a newly created array")?;
 
             // e. Set k to k + 1.
         }
@@ -3479,7 +3504,7 @@ fn array_exotic_define_own_property(
             let old_len = old_len_desc
                 .expect_value()
                 .to_u32(context)
-                .expect("this ToUint32 call must not fail");
+                .js_expect("this ToUint32 call must not fail")?;
 
             // g. If index ≥ oldLen and oldLenDesc.[[Writable]] is false, return false.
             if index >= old_len && !old_len_desc.expect_writable() {
@@ -3612,7 +3637,7 @@ fn array_set_length(
         new_len_desc.clone().build(),
         context,
     )
-    .expect("this OrdinaryDefineOwnProperty call must not fail")
+    .js_expect("this OrdinaryDefineOwnProperty call must not fail")?
     {
         return Ok(false);
     }
@@ -3649,7 +3674,7 @@ fn array_set_length(
                 new_len_desc.build(),
                 context,
             )
-            .expect("this OrdinaryDefineOwnProperty call must not fail");
+            .js_expect("this OrdinaryDefineOwnProperty call must not fail")?;
 
             // iv. Return false.
             return Ok(false);
@@ -3666,7 +3691,7 @@ fn array_set_length(
             PropertyDescriptor::builder().writable(false).build(),
             context,
         )
-        .expect("this OrdinaryDefineOwnProperty call must not fail");
+        .js_expect("this OrdinaryDefineOwnProperty call must not fail")?;
 
         // b. Assert: succeeded is true.
         debug_assert!(succeeded);

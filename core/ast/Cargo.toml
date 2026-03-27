@@ -16,15 +16,16 @@ serde = ["dep:serde", "boa_interner/serde", "bitflags/serde", "num-bigint/serde"
 arbitrary = ["dep:arbitrary", "boa_interner/arbitrary", "num-bigint/arbitrary"]
 
 [dependencies]
-boa_interner = { path = "../interner" }
-boa_macros = { path = "../macros" }
-boa_string = { path = "../string" }
-rustc-hash = { version = "2.1.1", features = ["std"] }
-bitflags = "2.10.0"
-num-bigint = "0.4.6"
-serde = { version = "1.0.219", features = ["derive"], optional = true }
-arbitrary = { version = "1", features = ["derive"], optional = true }
-indexmap = { version = "2.12.0", default-features = false }
+boa_interner.workspace = true
+boa_macros.workspace = true
+boa_string.workspace = true
+rustc-hash = { workspace = true, features = ["std"] }
+bitflags.workspace = true
+num-bigint.workspace = true
+serde = { workspace = true, features = ["derive"], optional = true }
+arbitrary = { workspace = true, features = ["derive"], optional = true }
+indexmap.workspace = true
+strum.workspace = true
 
 
 [package.metadata.docs.rs]

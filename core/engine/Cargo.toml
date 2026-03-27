@@ -71,9 +71,7 @@ intl = [
     "dep:fixed_decimal",
     "dep:tinystr",
     "dep:timezone_provider",
-    "timezone_provider/tzif",
-    "dep:temporal_rs",
-    "dep:iana-time-zone",
+    "timezone_provider/experimental_tzif",
 ]
 
 fuzz = ["boa_ast/arbitrary", "boa_interner/arbitrary"]
@@ -88,7 +86,10 @@ trace = ["js"]
 annex-b = ["boa_ast/annex-b", "boa_parser/annex-b"]
 
 # Enable Boa's Temporal proposal implementation
-temporal = ["dep:icu_calendar", "dep:temporal_rs", "dep:iana-time-zone", "dep:timezone_provider", "timezone_provider/tzif"]
+temporal = ["dep:icu_calendar", "dep:temporal_rs", "dep:timezone_provider", "timezone_provider/experimental_tzif"]
+
+#Enable access to host system timezone
+system-time-zone = ["dep:iana-time-zone"]
 
 # Enable experimental features, like Stage 3 proposals.
 experimental = []
@@ -108,7 +109,7 @@ native-backtrace = []
 [dependencies]
 tag_ptr.workspace = true
 boa_interner.workspace = true
-boa_gc = { workspace = true, features = ["thin-vec", "boa_string"] }
+boa_gc = { workspace = true, features = ["thin-vec", "boa_string", "arrayvec"] }
 boa_macros.workspace = true
 boa_ast.workspace = true
 boa_parser.workspace = true
@@ -137,7 +138,7 @@ thiserror.workspace = true
 dashmap.workspace = true
 num_enum.workspace = true
 thin-vec.workspace = true
-itertools = { workspace = true, default-features = false }
+itertools = { workspace = true, default-features = false, features = ["use_alloc"] }
 icu_normalizer = { workspace = true, features = [
     "compiled_data",
     "utf16_iter",
@@ -151,8 +152,11 @@ time.workspace = true
 hashbrown.workspace = true
 either = { workspace = true, optional = true }
 static_assertions.workspace = true
-futures-channel.workspace = true
 aligned-vec.workspace = true
+dynify = { workspace = true, features = ["macros"] }
+futures-concurrency.workspace = true
+oneshot = { workspace = true, features = ["async"] }
+async-channel.workspace = true
 
 # intl deps
 boa_icu_provider = { workspace = true, features = ["std"], optional = true }
@@ -196,13 +200,11 @@ fixed_decimal = { workspace = true, features = [
     "ryu",
 ], optional = true }
 tinystr = { workspace = true, optional = true }
-dynify.workspace = true
-futures-concurrency.workspace = true
 
 # temporal deps
 temporal_rs = { workspace = true, optional = true }
 timezone_provider = { workspace = true, optional = true }
-iana-time-zone = { version = "0.1.64", optional = true }
+iana-time-zone = { workspace = true, optional = true }
 
 # Thalora Web Browser - Native dependencies
 # WebAssembly runtime - Complete implementation with wasmtime (native only)
@@ -241,6 +243,7 @@ float-cmp.workspace = true
 indoc.workspace = true
 textwrap.workspace = true
 test-case.workspace = true
+husky-rs.workspace = true
 
 [target.x86_64-unknown-linux-gnu.dev-dependencies]
 jemallocator.workspace = true

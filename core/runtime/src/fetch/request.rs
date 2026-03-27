@@ -4,58 +4,33 @@
 //!
 //! [mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Request
 use super::HttpRequest;
+use super::headers::JsHeaders;
 use boa_engine::value::{Convert, TryFromJs};
 use boa_engine::{
     Finalize, JsData, JsObject, JsResult, JsString, JsValue, Trace, boa_class, js_error,
 };
 use either::Either;
-use std::collections::BTreeMap;
 use std::mem;
-
-fn add_headers_to_builder<'a>(
-    headers: impl Iterator<Item = (&'a JsString, &'a Convert<JsString>)>,
-    mut builder: http::request::Builder,
-) -> JsResult<http::request::Builder> {
-    for (hkey, Convert(hvalue)) in headers {
-        // Make sure key and value can be represented by regular strings.
-        // Keys also cannot have any extended characters (>128).
-        // Values cannot have unpaired surrogates.
-        let key = hkey.to_std_string().map_err(|_| {
-            js_error!(TypeError: "Request constructor: {} is an invalid header name", hkey.to_std_string_escaped())
-        })?;
-        if !key.is_ascii() {
-            return Err(
-                js_error!(TypeError: "Request constructor: {} is an invalid header name", hkey.to_std_string_escaped()),
-            );
-        }
-        let value = hvalue.to_std_string().map_err(|_| {
-            js_error!(
-                TypeError: "Request constructor: {:?} is an invalid header value",
-                hvalue.to_std_string_escaped()
-            )
-        })?;
-
-        builder = builder.header(key, value);
-    }
-
-    Ok(builder)
-}
-
-type VecOrMap<K, V> = Either<Vec<(K, V)>, BTreeMap<K, V>>;
 
 /// A [RequestInit][mdn] object. This is a JavaScript object (not a
 /// class) that can be used as options for creating a [`JsRequest`].
 ///
-/// [mdn]:https://developer.mozilla.org/en-US/docs/Web/API/RequestInit
+/// [mdn]: https://developer.mozilla.org/en-US/docs/Web/API/RequestInit
 // TODO: This class does not contain all fields that are defined in the spec.
 #[derive(Debug, Clone, TryFromJs, Trace, Finalize)]
 pub struct RequestInit {
     body: Option<JsValue>,
-    headers: Option<VecOrMap<JsString, Convert<JsString>>>,
+    headers: Option<JsHeaders>,
     method: Option<Convert<JsString>>,
+    signal: Option<JsObject>,
 }
 
 impl RequestInit {
+    /// Takes the abort signal from the options, if present.
+    pub fn take_signal(&mut self) -> Option<JsObject> {
+        self.signal.take()
+    }
+
     /// Create an [`http::request::Builder`] object and return both the
     /// body specified by JavaScript and the builder.
     ///
@@ -66,8 +41,9 @@ impl RequestInit {
         request: Option<HttpRequest<Vec<u8>>>,
     ) -> JsResult<HttpRequest<Vec<u8>>> {
         let mut builder = HttpRequest::builder();
+        let mut request_body = Vec::new();
         if let Some(r) = request {
-            let (parts, _body) = r.into_parts();
+            let (parts, body) = r.into_parts();
             builder = builder
                 .method(parts.method)
                 .uri(parts.uri)
@@ -76,16 +52,12 @@ impl RequestInit {
             for (key, value) in &parts.headers {
                 builder = builder.header(key, value);
             }
+            request_body = body;
         }
 
-        if let Some(ref headers) = self.headers.take() {
-            match headers {
-                Either::Left(headers) => {
-                    builder = add_headers_to_builder(headers.iter().map(|(k, v)| (k, v)), builder)?;
-                }
-                Either::Right(headers) => {
-                    builder = add_headers_to_builder(headers.iter(), builder)?;
-                }
+        if let Some(headers) = self.headers.take() {
+            for (k, v) in headers.as_header_map().borrow().iter() {
+                builder = builder.header(k, v);
             }
         }
 
@@ -95,14 +67,13 @@ impl RequestInit {
             )?.as_str());
         }
 
-        let mut request_body = None;
         if let Some(body) = &self.body {
             // TODO: add more support types.
             if let Some(body) = body.as_string() {
                 let body = body.to_std_string().map_err(
                     |_| js_error!(TypeError: "Request constructor: body is not a valid string"),
                 )?;
-                request_body = Some(body.into_bytes());
+                request_body = body.into_bytes();
             } else {
                 return Err(
                     js_error!(TypeError: "Request constructor: body is not a supported type"),
@@ -111,7 +82,7 @@ impl RequestInit {
         }
 
         builder
-            .body(request_body.unwrap_or_default())
+            .body(request_body)
             .map_err(|_| js_error!(Error: "Cannot construct request"))
     }
 }
@@ -206,5 +177,12 @@ impl JsRequest {
             Either::Left(i) => Either::Left(i),
         };
         JsRequest::create_from_js(input, options)
+    }
+
+    #[boa(rename = "clone")]
+    fn clone_request(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+        }
     }
 }

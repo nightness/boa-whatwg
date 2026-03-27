@@ -398,6 +398,8 @@ pub struct StandardConstructors {
     idb_version_change_event: StandardConstructor,
     navigator: StandardConstructor,
     performance: StandardConstructor,
+    iterator: StandardConstructor,
+    finalization_registry: StandardConstructor,
     #[cfg(feature = "intl")]
     collator: StandardConstructor,
     #[cfg(feature = "intl")]
@@ -629,6 +631,8 @@ impl Default for StandardConstructors {
             idb_version_change_event: StandardConstructor::default(),
             navigator: StandardConstructor::default(),
             performance: StandardConstructor::default(),
+            iterator: StandardConstructor::default(),
+            finalization_registry: StandardConstructor::default(),
             #[cfg(feature = "intl")]
             collator: StandardConstructor::default(),
             #[cfg(feature = "intl")]
@@ -2490,6 +2494,30 @@ impl StandardConstructors {
     #[must_use]
     pub const fn performance(&self) -> &StandardConstructor {
         &self.performance
+    }
+
+    /// Returns the `Iterator` constructor.
+    ///
+    /// More information:
+    ///  - [ECMAScript reference][spec]
+    ///
+    /// [spec]: https://tc39.es/proposal-iterator-helpers/#sec-iterator-constructor
+    #[inline]
+    #[must_use]
+    pub const fn iterator(&self) -> &StandardConstructor {
+        &self.iterator
+    }
+
+    /// Returns the `FinalizationRegistry` constructor.
+    ///
+    /// More information:
+    ///  - [ECMAScript reference][spec]
+    ///
+    /// [spec]: https://tc39.es/ecma262/#sec-finalization-registry-constructor
+    #[inline]
+    #[must_use]
+    pub const fn finalization_registry(&self) -> &StandardConstructor {
+        &self.finalization_registry
     }
 
     /// Returns the `Intl.Collator` constructor.

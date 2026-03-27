@@ -23,7 +23,8 @@ regress = { version = "0.10.5", features = ["utf16"] }
 icu_properties = "2.1.1"
 
 [dev-dependencies]
-indoc = "2.0.7"
+indoc.workspace = true
+strum.workspace = true
 
 [features]
 annex-b = []

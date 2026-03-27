@@ -216,8 +216,7 @@ impl Realm {
             .environment()
             .kind()
             .as_global()
-            .expect("Realm should only store global environments")
-            .poisonable_environment();
+            .expect("Realm should only store global environments");
         let mut bindings = env.bindings().borrow_mut();
 
         if bindings.len() < binding_number as usize {

@@ -3,18 +3,35 @@
 use crate::{
     Context, JsError, JsNativeError, JsObject, JsResult, JsValue,
     builtins::{
-        intl::{date_time_format::FormatType, options::get_number_option},
+        intl::{
+            ServicePreferences, date_time_format::FormatType, locale::validate_extension,
+            options::get_number_option,
+        },
         options::{OptionType, get_option},
     },
+    context::icu::IntlProvider,
     js_error, js_string,
 };
-
+use icu_calendar::cal::{
+    Buddhist, ChineseTraditional, Coptic, Ethiopian, Gregorian, Hebrew, Hijri, Indian, Japanese,
+    KoreanTraditional, Persian, Roc, hijri,
+};
 use icu_datetime::{
+    DateTimeFormatterPreferences,
     fieldsets::builder::{DateFields, ZoneStyle},
     options::{Length, SubsecondDigits as IcuSubsecondDigits, TimePrecision},
-    preferences::{CalendarAlgorithm, HourCycle as IcuHourCycle},
+    preferences::{CalendarAlgorithm, HijriCalendarAlgorithm, HourCycle as IcuHourCycle},
+    scaffold::CldrCalendar,
 };
+
+use icu_decimal::provider::DecimalSymbolsV1;
 use icu_locale::extensions::unicode::Value;
+use icu_provider::{
+    DataMarker, DataMarkerAttributes, DryDataProvider,
+    prelude::icu_locale_core::{
+        LanguageIdentifier, extensions::unicode, preferences::LocalePreferences,
+    },
+};
 
 pub(crate) enum HourCycle {
     H11,
@@ -159,7 +176,7 @@ impl FormatOptions {
         context: &mut Context,
     ) -> JsResult<Self> {
         // Below is adapted and inlined from Step 24 of `CreateDateTimeFormat`
-        let week_day = get_option::<WeekDay>(options, js_string!("weekDay"), context)?;
+        let week_day = get_option::<WeekDay>(options, js_string!("weekday"), context)?;
         let era = get_option::<Era>(options, js_string!("era"), context)?;
         let year = get_option::<Year>(options, js_string!("year"), context)?;
         let month = get_option::<Month>(options, js_string!("month"), context)?;
@@ -566,4 +583,86 @@ impl TimeZoneName {
             TimeZoneName::Short => ZoneStyle::SpecificShort,
         }
     }
+}
+
+// The below handles the [[RelevantExtensionKeys]] of DateTimeFormatters
+// internal slots.
+//
+// See https://tc39.es/ecma402/#sec-intl.datetimeformat-internal-slots
+impl ServicePreferences for DateTimeFormatterPreferences {
+    fn validate(&mut self, id: &LanguageIdentifier, provider: &IntlProvider) {
+        // Handle LDML unicode key "nu", Numbering system
+        self.numbering_system = self.numbering_system.take().filter(|nu| {
+            let attr = DataMarkerAttributes::from_str_or_panic(nu.as_str());
+            validate_extension::<DecimalSymbolsV1>(id, attr, provider)
+        });
+
+        // Handle LDML unicode key "ca", Calendar algorithm
+        self.calendar_algorithm = self.calendar_algorithm.take().filter(|ca| match ca {
+            CalendarAlgorithm::Buddhist => has_calendar_data_for_locale::<Buddhist>(id, provider),
+            CalendarAlgorithm::Chinese => {
+                has_calendar_data_for_locale::<ChineseTraditional>(id, provider)
+            }
+            CalendarAlgorithm::Coptic => has_calendar_data_for_locale::<Coptic>(id, provider),
+            CalendarAlgorithm::Dangi => {
+                has_calendar_data_for_locale::<KoreanTraditional>(id, provider)
+            }
+            CalendarAlgorithm::Ethiopic => has_calendar_data_for_locale::<Ethiopian>(id, provider),
+            CalendarAlgorithm::Gregory => has_calendar_data_for_locale::<Gregorian>(id, provider),
+            CalendarAlgorithm::Hebrew => has_calendar_data_for_locale::<Hebrew>(id, provider),
+            CalendarAlgorithm::Indian => has_calendar_data_for_locale::<Indian>(id, provider),
+            CalendarAlgorithm::Japanese => has_calendar_data_for_locale::<Japanese>(id, provider),
+            CalendarAlgorithm::Persian => has_calendar_data_for_locale::<Persian>(id, provider),
+            CalendarAlgorithm::Roc => has_calendar_data_for_locale::<Roc>(id, provider),
+            CalendarAlgorithm::Hijri(Some(
+                HijriCalendarAlgorithm::Civil | HijriCalendarAlgorithm::Tbla,
+            )) => has_calendar_data_for_locale::<Hijri<hijri::TabularAlgorithm>>(id, provider),
+            CalendarAlgorithm::Hijri(Some(HijriCalendarAlgorithm::Umalqura)) => {
+                has_calendar_data_for_locale::<Hijri<hijri::UmmAlQura>>(id, provider)
+            }
+            CalendarAlgorithm::Hijri(Some(HijriCalendarAlgorithm::Rgsa) | None) => true,
+            _ => false,
+        });
+
+        // NOTE (nekevss): issue: this will not support `H24` as ICU4X does
+        // not currently support it.
+        //
+        // track: https://github.com/unicode-org/icu4x/issues/6597
+        // Handle LDML unicode key "hc", Hour cycle
+        // No need to validate hour_cycle since it only affects formatting
+        // behaviour.
+    }
+
+    impl_service_preferences!(numbering_system, calendar_algorithm, hour_cycle);
+}
+
+fn has_calendar_data_for_locale<C: CldrCalendar>(
+    id: &LanguageIdentifier,
+    provider: &IntlProvider,
+) -> bool
+where
+    IntlProvider: DryDataProvider<C::YearNamesV1>,
+{
+    use icu_datetime::provider::neo::marker_attrs;
+    use icu_provider::prelude::{
+        DataIdentifierBorrowed, DataRequest, DataRequestMetadata,
+        icu_locale_core::preferences::LocalePreferences,
+    };
+
+    let info = <C::YearNamesV1 as DataMarker>::INFO;
+    let locale = info.make_locale(LocalePreferences::from(id));
+    let req = DataRequest {
+        id: DataIdentifierBorrowed::for_marker_attributes_and_locale(marker_attrs::ABBR, &locale),
+        metadata: {
+            let mut md = DataRequestMetadata::default();
+            md.silent = true;
+            md
+        },
+    };
+
+    let Ok(md) = DryDataProvider::dry_load(provider, req) else {
+        return false;
+    };
+
+    md.locale.is_none_or(|loc| !loc.is_unknown())
 }

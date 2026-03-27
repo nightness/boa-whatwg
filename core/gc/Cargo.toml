@@ -19,15 +19,18 @@ icu = ["dep:icu_locale_core"]
 boa_string = ["dep:boa_string"]
 # Enable default implementations of trace and finalize for the `either` crate
 either = ["dep:either"]
+# Enable default implementations of trace and finalize for the arrayvec crate
+arrayvec = ["dep:arrayvec"]
 
 [dependencies]
 boa_macros = { path = "../macros" }
 hashbrown = "0.16.0"
 
-boa_string = { path = "../string", optional = true }
-either = { version = "1.15.0", optional = true }
-thin-vec = { version = "0.2.14", optional = true }
-icu_locale_core = { version = "2.1.1", optional = true }
+boa_string = { workspace = true, optional = true }
+either = { workspace = true, optional = true }
+thin-vec = { workspace = true, optional = true }
+icu_locale_core = { workspace = true, optional = true }
+arrayvec = { workspace = true, optional = true }
 
 
 [package.metadata.docs.rs]

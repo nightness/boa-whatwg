@@ -105,26 +105,33 @@
     clippy::let_unit_value
 )]
 
+pub mod base64;
 pub mod console;
 
 #[doc(inline)]
 pub use console::{Console, ConsoleState, DefaultLogger, Logger, NullLogger};
 
+#[cfg(feature = "fetch")]
+pub mod abort;
 pub mod clone;
+pub mod extensions;
 #[cfg(feature = "fetch")]
 pub mod fetch;
 pub mod interval;
 pub mod message;
 pub mod microtask;
+#[cfg(feature = "process")]
+pub mod process;
 pub mod store;
 pub mod text;
 #[cfg(feature = "url")]
 pub mod url;
 
-pub mod extensions;
-
+#[cfg(feature = "process")]
+use crate::extensions::ProcessExtension;
 use crate::extensions::{
-    EncodingExtension, MicrotaskExtension, StructuredCloneExtension, TimeoutExtension,
+    Base64Extension, EncodingExtension, MicrotaskExtension, StructuredCloneExtension,
+    TimeoutExtension,
 };
 pub use extensions::RuntimeExtension;
 
@@ -139,12 +146,17 @@ pub fn register(
     ctx: &mut boa_engine::Context,
 ) -> boa_engine::JsResult<()> {
     (
+        Base64Extension,
         TimeoutExtension,
         EncodingExtension,
         MicrotaskExtension,
         StructuredCloneExtension,
         #[cfg(feature = "url")]
         extensions::UrlExtension,
+        #[cfg(feature = "process")]
+        ProcessExtension,
+        #[cfg(feature = "fetch")]
+        extensions::AbortControllerExtension,
         extensions,
     )
         .register(realm, ctx)?;
@@ -304,7 +316,6 @@ pub(crate) mod test {
                     if let Err(e) = forward_file(context, &path) {
                         panic!("Uncaught {e} in file {path:?}");
                     }
-                    forward_file(context, &path).expect("failed to run file");
                 }
                 Inner::RunJobs => {
                     if let Err(e) = context.run_jobs() {
@@ -387,7 +398,7 @@ pub(crate) mod test {
                         ),
                     };
 
-                    assert_eq!(&native.kind, &kind, "{}", fmt_test(&source, i));
+                    assert_eq!(native.kind(), &kind, "{}", fmt_test(&source, i));
                     assert_eq!(native.message(), message, "{}", fmt_test(&source, i));
                     i += 1;
                 }

@@ -40,11 +40,14 @@ use crate::{
 use boa_gc::{Finalize, Trace};
 use futures_concurrency::future::FutureGroup;
 use futures_lite::{StreamExt, future};
+use portable_atomic::AtomicBool;
 use std::any::Any;
 use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::mem;
 use std::rc::Rc;
+use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::{cell::RefCell, collections::VecDeque, fmt::Debug, future::Future, pin::Pin};
 
 /// An ECMAScript [Job Abstract Closure].
@@ -124,24 +127,54 @@ impl NativeJob {
     }
 }
 
-/// Flag that can only be set once.
-#[derive(Debug, Clone)]
-pub(crate) struct OnceFlag(Rc<Cell<bool>>);
+type Callback = Box<dyn FnOnce()>;
 
-impl OnceFlag {
-    /// Creates a new `OnceFlag`.
+/// Token to cancel a [`TimeoutJob`]
+#[derive(Clone)]
+pub(crate) struct CancellationToken(Rc<Cell<Option<Callback>>>);
+
+impl Debug for CancellationToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let flag = self.0.take();
+        let is_set = flag.is_none();
+        self.0.set(flag);
+        f.debug_struct("OnceFlag")
+            .field("is_set", &is_set)
+            .finish_non_exhaustive()
+    }
+}
+
+impl CancellationToken {
+    /// Creates a new cancellation token.
     pub(crate) fn new() -> Self {
-        Self(Rc::new(Cell::new(false)))
+        Self(Rc::new(Cell::new(Some(Box::new(|| {})))))
     }
 
-    /// Sets this `OnceFlag` to `true`.
-    pub(crate) fn set(&self) {
-        self.0.set(true);
+    /// Sets a callback to run when the cancellation token gets used.
+    ///
+    /// On debug builds, this will panic if the cancellation token was already
+    /// used.
+    pub(crate) fn set_callback(&self, f: impl FnOnce() + 'static) {
+        debug_assert!(
+            self.0.take().is_some(),
+            "setting a callback on an already used cancellation token"
+        );
+        self.0.set(Some(Box::new(f)));
     }
 
-    /// Returns `true` if this `OnceFlag` has been set, or `false` otherwise.
-    pub(crate) fn is_set(&self) -> bool {
-        self.0.get()
+    /// Cancels the [`TimeoutJob`] associated with this cancellation token.
+    pub(crate) fn cancel(&self) {
+        if let Some(fun) = self.0.take() {
+            fun();
+        }
+    }
+
+    /// Returns `true` if this cancellation token was used.
+    pub(crate) fn cancelled(&self) -> bool {
+        let flag = self.0.take();
+        let is_set = flag.is_none();
+        self.0.set(flag);
+        is_set
     }
 }
 
@@ -158,7 +191,7 @@ pub struct TimeoutJob {
     /// The job to run after the time has passed.
     job: NativeJob,
     /// Signals if the timeout job was cancelled.
-    cancelled: OnceFlag,
+    cancelled: CancellationToken,
     /// Signals that this job is recurring. A recurring job shouldn't be
     /// awaited for when considering whether a run of the event loop is
     /// done.
@@ -172,7 +205,7 @@ impl TimeoutJob {
         Self {
             timeout: JsDuration::from_millis(timeout_in_millis),
             job,
-            cancelled: OnceFlag::new(),
+            cancelled: CancellationToken::new(),
             recurring: false,
         }
     }
@@ -183,7 +216,7 @@ impl TimeoutJob {
         Self {
             timeout: JsDuration::from_millis(timeout_in_millis),
             job,
-            cancelled: OnceFlag::new(),
+            cancelled: CancellationToken::new(),
             recurring: true,
         }
     }
@@ -226,12 +259,20 @@ impl TimeoutJob {
     /// Returns `true` if the timeout was cancelled, and its execution can be skipped.
     #[inline]
     #[must_use]
-    pub fn is_cancelled(&self) -> bool {
-        self.cancelled.is_set()
+    pub fn cancelled(&self) -> bool {
+        self.cancelled.cancelled()
     }
 
-    /// Returns the `OnceFlag` to cancel this timeout job.
-    pub(crate) fn cancelled_flag(&self) -> OnceFlag {
+    /// Sets a cancellation callback for the timeout job.
+    ///
+    /// This callback will get called if the timeout job gets cancelled.
+    #[inline]
+    pub fn set_cancellation_callback(&self, f: impl FnOnce() + 'static) {
+        self.cancelled.set_callback(f);
+    }
+
+    /// Returns the [`CancellationToken`] for this timeout job.
+    pub(crate) fn cancellation_token(&self) -> CancellationToken {
         self.cancelled.clone()
     }
 
@@ -532,6 +573,34 @@ pub enum Job {
     ///
     /// See [`GenericJob`] for more information.
     GenericJob(GenericJob),
+    /// A job that will eventually cleanup a `FinalizationRegistry`.
+    ///
+    /// This job differs slightly from the [spec]; originally it's defined
+    /// as being enqueued exactly when a `FinalizationRegistry` needs to call
+    /// `FinalizationRegistry::cleanup`, but here it's defined as an async
+    /// job that suspends execution until it receives a signal from the engine
+    /// that the `FinalizationRegistry` needs to be cleaned up.
+    ///
+    /// # Execution
+    ///
+    /// As described on the [spec's section about execution][execution],
+    ///
+    /// > Because calling `HostEnqueueFinalizationRegistryCleanupJob` is optional,
+    /// > registered objects in a `FinalizationRegistry` do not necessarily hold
+    /// > that `FinalizationRegistry` live. Implementations may omit `FinalizationRegistry`
+    /// > callbacks for any reason, e.g., if the `FinalizationRegistry` itself becomes
+    /// > dead, or if the application is shutting down.
+    ///
+    /// For this reason, it is recommended to exclude `FinalizationRegistry` cleanup
+    /// jobs from any condition that exits from [`JobExecutor::run_jobs`].
+    ///
+    /// By the same token, it is recommended to execute `FinalizationRegistry` cleanup
+    /// jobs separately from all other enqueued [`NativeAsyncJob`]s, prioritizing the
+    /// execution of all other jobs if possible.
+    ///
+    /// [spec]: https://tc39.es/ecma262/#sec-weakref-host-hooks
+    /// [execution]: https://tc39.es/ecma262/#sec-weakref-execution
+    FinalizationRegistryCleanupJob(NativeAsyncJob),
 }
 
 impl From<NativeAsyncJob> for Job {
@@ -580,10 +649,6 @@ pub trait JobExecutor: Any {
     /// By default forwards to [`JobExecutor::run_jobs`]. Implementors using async should override this
     /// with a proper algorithm to run jobs asynchronously.
     #[expect(async_fn_in_trait, reason = "all our APIs are single-threaded")]
-    #[allow(
-        clippy::unused_async,
-        reason = "this must be overridden by proper async runtimes"
-    )]
     async fn run_jobs_async(self: Rc<Self>, context: &RefCell<&mut Context>) -> JsResult<()>
     where
         Self: Sized,
@@ -626,13 +691,14 @@ impl JobExecutor for IdleJobExecutor {
 /// for a custom event loop.
 ///
 /// To disable running promise jobs on the engine, see [`IdleJobExecutor`].
-#[allow(clippy::struct_field_names)]
 #[derive(Default)]
 pub struct SimpleJobExecutor {
     promise_jobs: RefCell<VecDeque<PromiseJob>>,
     async_jobs: RefCell<VecDeque<NativeAsyncJob>>,
-    timeout_jobs: RefCell<BTreeMap<JsInstant, TimeoutJob>>,
+    finalization_registry_jobs: RefCell<VecDeque<NativeAsyncJob>>,
+    timeout_jobs: RefCell<BTreeMap<JsInstant, Vec<TimeoutJob>>>,
     generic_jobs: RefCell<VecDeque<GenericJob>>,
+    stop: Arc<AtomicBool>,
 }
 
 impl SimpleJobExecutor {
@@ -656,6 +722,21 @@ impl SimpleJobExecutor {
     pub fn new() -> Self {
         Self::default()
     }
+
+    /// Gets the cancellation token for this executor.
+    ///
+    /// Setting the signal to `true` will exit the inner event loop and
+    /// stop executing any pending jobs.
+    pub fn get_cancellation_token(&self) -> Arc<AtomicBool> {
+        Arc::clone(&self.stop)
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.promise_jobs.borrow().is_empty()
+            && self.async_jobs.borrow().is_empty()
+            && self.generic_jobs.borrow().is_empty()
+            && self.timeout_jobs.borrow().is_empty()
+    }
 }
 
 impl JobExecutor for SimpleJobExecutor {
@@ -665,9 +746,16 @@ impl JobExecutor for SimpleJobExecutor {
             Job::AsyncJob(a) => self.async_jobs.borrow_mut().push_back(a),
             Job::TimeoutJob(t) => {
                 let now = context.clock().now();
-                self.timeout_jobs.borrow_mut().insert(now + t.timeout(), t);
+                self.timeout_jobs
+                    .borrow_mut()
+                    .entry(now + t.timeout())
+                    .or_default()
+                    .push(t);
             }
             Job::GenericJob(g) => self.generic_jobs.borrow_mut().push_back(g),
+            Job::FinalizationRegistryCleanupJob(fr) => {
+                self.finalization_registry_jobs.borrow_mut().push_back(fr);
+            }
         }
     }
 
@@ -680,45 +768,61 @@ impl JobExecutor for SimpleJobExecutor {
         Self: Sized,
     {
         let mut group = FutureGroup::new();
+        let mut fr_group = FutureGroup::new();
         loop {
+            if self.stop.load(Ordering::Relaxed) {
+                self.stop.store(false, Ordering::Relaxed);
+                self.clear();
+                return Ok(());
+            }
+
             for job in mem::take(&mut *self.async_jobs.borrow_mut()) {
                 group.insert(job.call(context));
             }
 
-            // There are no timeout jobs to run IF there are no jobs to execute right now.
-            let no_timeout_jobs_to_run = {
-                let now = context.borrow().clock().now();
-                !self.timeout_jobs.borrow().iter().any(|(t, _)| &now >= t)
-            };
+            for job in mem::take(&mut *self.finalization_registry_jobs.borrow_mut()) {
+                fr_group.insert(job.call(context));
+            }
 
-            if self.promise_jobs.borrow().is_empty()
-                && self.async_jobs.borrow().is_empty()
-                && self.generic_jobs.borrow().is_empty()
-                && no_timeout_jobs_to_run
-                && group.is_empty()
+            // Dispatch all past-due timeout jobs before the termination check.
             {
-                break;
+                let now = context.borrow().clock().now();
+                let jobs_to_run = {
+                    let mut timeout_jobs = self.timeout_jobs.borrow_mut();
+                    let mut jobs_to_keep = timeout_jobs.split_off(&now);
+                    jobs_to_keep.retain(|_, jobs| {
+                        jobs.retain(|job| !job.cancelled());
+                        !jobs.is_empty()
+                    });
+                    mem::replace(&mut *timeout_jobs, jobs_to_keep)
+                };
+
+                for jobs in jobs_to_run.into_values() {
+                    for job in jobs {
+                        if !job.cancelled()
+                            && let Err(err) = job.call(&mut context.borrow_mut())
+                        {
+                            self.clear();
+                            return Err(err);
+                        }
+                    }
+                }
+            }
+
+            if self.is_empty() && group.is_empty() {
+                match future::poll_once(fr_group.next()).await.flatten() {
+                    Some(Err(err)) => {
+                        self.clear();
+                        return Err(err);
+                    }
+                    _ if !self.is_empty() => {}
+                    _ => break,
+                }
             }
 
             if let Some(Err(err)) = future::poll_once(group.next()).await.flatten() {
                 self.clear();
                 return Err(err);
-            }
-
-            {
-                let now = context.borrow().clock().now();
-                let mut timeouts_borrow = self.timeout_jobs.borrow_mut();
-                let mut jobs_to_keep = timeouts_borrow.split_off(&now);
-                jobs_to_keep.retain(|_, job| !job.is_cancelled());
-                let jobs_to_run = mem::replace(&mut *timeouts_borrow, jobs_to_keep);
-                drop(timeouts_borrow);
-
-                for job in jobs_to_run.into_values() {
-                    if let Err(err) = job.call(&mut context.borrow_mut()) {
-                        self.clear();
-                        return Err(err);
-                    }
-                }
             }
 
             let jobs = mem::take(&mut *self.promise_jobs.borrow_mut());

@@ -11,6 +11,8 @@ use std::rc::Rc;
 #[cfg(test)]
 mod e2e;
 #[cfg(test)]
+mod headers;
+#[cfg(test)]
 mod request;
 #[cfg(test)]
 mod response;
@@ -39,6 +41,7 @@ impl crate::fetch::Fetcher for TestFetcher {
     async fn fetch(
         self: Rc<Self>,
         request: JsRequest,
+        _signal: Option<boa_engine::JsObject>,
         _context: &RefCell<&mut Context>,
     ) -> JsResult<JsResponse> {
         let request = request.into_inner();

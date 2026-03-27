@@ -12,9 +12,12 @@ pub mod dataview;
 pub mod date;
 pub mod error;
 pub mod eval;
+pub mod finalization_registry;
 pub mod function;
 pub mod generator;
 pub mod generator_function;
+#[cfg(feature = "annex-b")]
+pub mod is_html_dda;
 pub mod iterable;
 pub mod json;
 pub mod map;
@@ -68,6 +71,7 @@ pub(crate) use self::{
         AggregateError, EvalError, RangeError, ReferenceError, SyntaxError, TypeError, UriError,
     },
     eval::Eval,
+    finalization_registry::FinalizationRegistry,
     function::BuiltInFunctionObject,
     json::Json,
     map::Map,
@@ -98,9 +102,11 @@ use crate::{
         error::r#type::ThrowTypeError,
         generator::Generator,
         generator_function::GeneratorFunction,
+        iterable::iterator_constructor::IteratorConstructor,
+        iterable::iterator_helper::IteratorHelper,
+        iterable::wrap_for_valid_iterator::WrapForValidIterator,
         iterable::{AsyncFromSyncIterator, AsyncIterator, Iterator},
         map::MapIterator,
-        object::for_in_iterator::ForInIterator,
         regexp::RegExpStringIterator,
         set::SetIterator,
         string::StringIterator,
@@ -246,7 +252,9 @@ impl Realm {
         Iterator::init(self);
         AsyncIterator::init(self);
         AsyncFromSyncIterator::init(self);
-        ForInIterator::init(self);
+        IteratorConstructor::init(self);
+        WrapForValidIterator::init(self);
+        IteratorHelper::init(self);
         Math::init(self);
         Json::init(self);
         Array::init(self);
@@ -311,6 +319,7 @@ impl Realm {
         WeakMap::init(self);
         WeakSet::init(self);
         Atomics::init(self);
+        FinalizationRegistry::init(self);
 
         #[cfg(feature = "annex-b")]
         {
@@ -439,7 +448,9 @@ pub(crate) fn set_default_global_bindings(context: &mut Context) -> JsResult<()>
     global_binding::<WeakRef>(context)?;
     global_binding::<WeakMap>(context)?;
     global_binding::<WeakSet>(context)?;
+    global_binding::<IteratorConstructor>(context)?;
     global_binding::<Atomics>(context)?;
+    global_binding::<FinalizationRegistry>(context)?;
 
     #[cfg(feature = "annex-b")]
     {

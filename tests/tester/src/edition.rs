@@ -13,6 +13,14 @@ use crate::read::{MetaData, TestFlag};
 static FEATURE_EDITION: phf::Map<&'static str, SpecEdition> = phf::phf_map! {
     // Proposed language features
 
+    // Import bytes proposal
+    // https://github.com/tc39/proposal-import-bytes
+    "import-bytes"  => SpecEdition::ESNext,
+
+    // Await dictionary proposal
+    // https://github.com/tc39/proposal-await-dictionary
+    "await-dictionary"  => SpecEdition::ESNext,
+
     // Intl.Locale Info
     // https://github.com/tc39/proposal-intl-locale-info
     "Intl.Locale-info"  => SpecEdition::ESNext,
@@ -113,10 +121,6 @@ static FEATURE_EDITION: phf::Map<&'static str, SpecEdition> = phf::phf_map! {
     // https://github.com/tc39/proposal-json-modules
     "json-modules"  => SpecEdition::ESNext,
 
-    // ArrayBuffer transfer
-    // https://github.com/tc39/proposal-arraybuffer-transfer
-    "arraybuffer-transfer" => SpecEdition::ESNext,
-
     // Intl.DurationFormat
     // https://github.com/tc39/proposal-intl-duration-format
     "Intl.DurationFormat" => SpecEdition::ESNext,
@@ -150,6 +154,8 @@ static FEATURE_EDITION: phf::Map<&'static str, SpecEdition> = phf::phf_map! {
     "Atomics.waitAsync"  => SpecEdition::ES15,
     "align-detached-buffer-semantics-with-web-reality" => SpecEdition::ES12,
     "arbitrary-module-namespace-names" => SpecEdition::ES13,
+    // https://github.com/tc39/proposal-arraybuffer-transfer
+    "arraybuffer-transfer" => SpecEdition::ES15,
     "array-grouping" => SpecEdition::ES15,
     "ArrayBuffer" => SpecEdition::ES6,
     "array-find-from-last" => SpecEdition::ES14,
@@ -269,7 +275,8 @@ static FEATURE_EDITION: phf::Map<&'static str, SpecEdition> = phf::phf_map! {
     "String.prototype.toWellFormed" => SpecEdition::ES15,
     "String.prototype.trimEnd" => SpecEdition::ES10,
     "String.prototype.trimStart" => SpecEdition::ES10,
-    "set-methods" => SpecEdition::ES15,
+    // https://github.com/tc39/proposal-set-methods
+    "set-methods" => SpecEdition::ES16,
     "super" => SpecEdition::ES6,
     "Symbol" => SpecEdition::ES6,
     "symbols-as-weakmap-keys" => SpecEdition::ES14,
@@ -371,6 +378,10 @@ pub(crate) enum SpecEdition {
     ///
     /// <https://262.ecma-international.org/15.0>
     ES15,
+    /// ECMAScript 16th Edition
+    ///
+    /// <https://262.ecma-international.org/16.0>
+    ES16,
     /// The edition being worked on right now.
     ///
     /// A draft is currently available [here](https://tc39.es/ecma262).
@@ -435,6 +446,7 @@ impl SpecEdition {
             Self::ES13,
             Self::ES14,
             Self::ES15,
+            Self::ES16,
             Self::ESNext,
         ]
         .into_iter()

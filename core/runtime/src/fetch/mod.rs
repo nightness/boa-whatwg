@@ -11,10 +11,13 @@ use crate::fetch::headers::JsHeaders;
 use crate::fetch::request::{JsRequest, RequestInit};
 use crate::fetch::response::JsResponse;
 use boa_engine::class::Class;
+use boa_engine::object::FunctionObjectBuilder;
+use boa_engine::object::builtins::JsArray;
+use boa_engine::property::PropertyDescriptor;
 use boa_engine::realm::Realm;
 use boa_engine::{
-    Context, Finalize, JsData, JsError, JsObject, JsResult, JsString, JsValue, NativeObject, Trace,
-    boa_module, js_error,
+    Context, Finalize, JsData, JsError, JsObject, JsResult, JsString, JsSymbol, JsValue,
+    NativeObject, Trace, boa_module, js_error, js_string, native_function::NativeFunction,
 };
 use either::Either;
 use http::{HeaderName, HeaderValue, Request as HttpRequest, Request};
@@ -54,6 +57,7 @@ pub trait Fetcher: NativeObject {
     async fn fetch(
         self: Rc<Self>,
         request: JsRequest,
+        signal: Option<JsObject>,
         context: &RefCell<&mut Context>,
     ) -> JsResult<JsResponse>;
 }
@@ -88,6 +92,16 @@ fn get_fetcher<T: Fetcher>(context: &mut Context) -> JsResult<Rc<T>> {
     Ok(fetcher.0.clone())
 }
 
+fn check_abort(signal: Option<&JsObject>, context: &mut Context) -> JsResult<()> {
+    if let Some(signal_obj) = signal
+        && let Some(signal_ref) = signal_obj.downcast_ref::<crate::abort::JsAbortSignal>()
+        && signal_ref.is_aborted()
+    {
+        return Err(JsError::from_opaque(signal_ref.abort_reason(context)));
+    }
+    Ok(())
+}
+
 /// The `fetch` function internals.
 async fn fetch_inner<T: Fetcher>(
     resource: Either<JsString, JsObject>,
@@ -95,6 +109,16 @@ async fn fetch_inner<T: Fetcher>(
     context: &RefCell<&mut Context>,
 ) -> JsResult<JsValue> {
     let fetcher = get_fetcher::<T>(&mut context.borrow_mut())?;
+
+    let (options, signal) = match options {
+        Some(mut opts) => {
+            let sig = opts.take_signal();
+            (Some(opts), sig)
+        }
+        None => (None, None),
+    };
+
+    check_abort(signal.as_ref(), &mut context.borrow_mut())?;
 
     // The resource parsing is complicated, so we parse it in Rust here (instead of relying on
     // `TryFromJs` and friends).
@@ -137,7 +161,12 @@ async fn fetch_inner<T: Fetcher>(
         request.headers_mut().append("Accept-Language", lang);
     }
 
-    let response = fetcher.fetch(JsRequest::from(request), context).await?;
+    let response = fetcher
+        .fetch(JsRequest::from(request), signal.clone(), context)
+        .await?;
+
+    check_abort(signal.as_ref(), &mut context.borrow_mut())?;
+
     let result = Class::from_data(response, &mut context.borrow_mut())?;
     Ok(result.into())
 }
@@ -176,6 +205,20 @@ pub mod js_module {
 #[doc(inline)]
 pub use js_module::fetch;
 
+fn headers_iterator(this: &JsValue, _: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let this_object = this.as_object();
+    let headers = this_object
+        .as_ref()
+        .and_then(JsObject::downcast_ref::<JsHeaders>)
+        .ok_or_else(|| {
+            js_error!(TypeError: "`Headers.prototype[Symbol.iterator]` requires a `Headers` object")
+        })?;
+
+    let entries = headers.entries(context);
+    let entries_array = JsArray::from_object(entries.to_object(context)?)?;
+    entries_array.values(context)
+}
+
 /// Register the `fetch` function in the realm, as well as ALL supporting classes.
 /// Pass `None` as the realm to register globally.
 ///
@@ -191,7 +234,35 @@ pub fn register<F: Fetcher>(
     } else {
         context.insert_data(FetcherRc(Rc::new(fetcher)));
     }
-    js_module::boa_register::<F>(realm, context)?;
+    js_module::boa_register::<F>(realm.clone(), context)?;
+
+    // TODO(#4688): Replace this manual `[Symbol.iterator]` wiring once `#[boa(class)]`
+    // supports symbol-named methods.
+    let headers_proto = match realm {
+        Some(realm) => realm.get_class::<JsHeaders>(),
+        None => context.get_global_class::<JsHeaders>(),
+    }
+    .ok_or_else(|| js_error!(Error: "Headers class should be registered"))?
+    .prototype();
+
+    let iterator = FunctionObjectBuilder::new(
+        context.realm(),
+        NativeFunction::from_fn_ptr(headers_iterator),
+    )
+    .name(js_string!("[Symbol.iterator]"))
+    .length(0)
+    .constructor(false)
+    .build();
+
+    headers_proto.define_property_or_throw(
+        JsSymbol::iterator(),
+        PropertyDescriptor::builder()
+            .value(iterator)
+            .writable(true)
+            .enumerable(false)
+            .configurable(true),
+        context,
+    )?;
 
     Ok(())
 }
