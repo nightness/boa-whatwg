@@ -296,20 +296,6 @@ impl JsResponse {
         Self::error()
     }
 
-    #[boa(constructor)]
-    fn constructor(_body: Option<JsValue>, options: JsResponseOptions) -> Self {
-        let mut response = http::Response::new(Vec::new());
-
-        // Set status if provided
-        if let Some(status) = options.status {
-            if let Ok(status_code) = StatusCode::from_u16(status) {
-                *response.status_mut() = status_code;
-            }
-        }
-
-        Self::basic(js_string!(""), response)
-    }
-
     /// `Response.redirect(url, status)` per Fetch spec §7.4.
     #[boa(static)]
     fn redirect(url: JsValue, status: Option<u16>, context: &mut Context) -> JsResult<Self> {
@@ -413,12 +399,6 @@ impl JsResponse {
     fn ok(&self) -> bool {
         let status = self.status();
         (200..=299).contains(&status)
-    }
-
-    #[boa(getter)]
-    fn ok(&self) -> bool {
-        // Response is ok if status is in the range 200-299
-        self.status.map_or(false, |s| s.is_success())
     }
 
     #[boa(getter)]
