@@ -258,17 +258,18 @@ fn regular_expression_construction_independent_of_global_reg_exp() {
 #[test]
 fn regexp_escape() {
     run_test_actions([
-        // Basic functionality
-        TestAction::assert_eq("RegExp.escape('hello')", js_str!("hello")),
-        TestAction::assert_eq("RegExp.escape('hello.world')", js_str!("hello\\.world")),
+        // Basic functionality — leading ASCII letter gets \xHH escaped per spec
+        TestAction::assert_eq("RegExp.escape('hello')", js_str!("\\x68ello")),
+        TestAction::assert_eq("RegExp.escape('hello.world')", js_str!("\\x68ello\\.world")),
 
-        // Test all special characters
+        // Test all special characters (leading '.' is SyntaxCharacter, not letter/digit)
         TestAction::assert_eq("RegExp.escape('.*+?^${}()|[]')", js_str!("\\.\\*\\+\\?\\^\\$\\{\\}\\(\\)\\|\\[\\]")),
-        TestAction::assert_eq("RegExp.escape('\\\\')", js_str!("\\\\\\\\")),
+        // Single backslash → escaped to \\
+        TestAction::assert_eq("RegExp.escape('\\\\')", js_str!("\\\\")),
 
-        // Edge cases
+        // Edge cases — leading ASCII letter gets \xHH escaped
         TestAction::assert_eq("RegExp.escape('')", js_str!("")),
-        TestAction::assert_eq("RegExp.escape('normal_text123')", js_str!("normal_text123")),
+        TestAction::assert_eq("RegExp.escape('normal_text123')", js_str!("\\x6eormal_text123")),
 
         // Test that escaped strings work in RegExp
         TestAction::run("var input = 'hello.world'; var escaped = RegExp.escape(input);"),

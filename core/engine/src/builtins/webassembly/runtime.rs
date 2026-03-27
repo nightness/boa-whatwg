@@ -52,7 +52,7 @@ impl WebAssemblyRuntime {
         // Configure wasmtime engine with optimal settings for web compatibility
         let mut config = Config::new();
         config.wasm_component_model(true);
-        config.async_support(true);
+        config.async_support(false);
         config.wasm_bulk_memory(true);
         config.wasm_reference_types(true);
         config.wasm_simd(true);

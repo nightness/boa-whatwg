@@ -9,8 +9,16 @@ use crate::{
     Context, JsValue, js_string, JsResult,
     builtins::webassembly::*,
     builtins::BuiltInConstructor,
+    object::builtins::JsUint8Array,
 };
 use boa_gc::Gc;
+
+/// Convert raw WASM bytes to a JsValue (Uint8Array) suitable for WebAssembly APIs
+fn wasm_bytes_to_js(bytes: &[u8], context: &mut Context) -> JsValue {
+    JsUint8Array::from_iter(bytes.iter().copied(), context)
+        .expect("failed to create Uint8Array from WASM bytes")
+        .into()
+}
 
 /// Create a minimal valid WebAssembly module for testing
 fn create_test_wasm_module() -> Vec<u8> {
@@ -52,8 +60,7 @@ fn test_webassembly_validate_valid_module() {
     // Test WebAssembly.validate with valid module
     let result = WebAssembly::validate(
         &JsValue::undefined(),
-        &[JsValue::new(wasm_bytes.len())], // Simplified - real test would use proper BufferSource
-        &mut context,
+        &[wasm_bytes_to_js(&wasm_bytes, &mut context)],        &mut context,
     );
 
     assert!(result.is_ok());
@@ -67,8 +74,7 @@ fn test_webassembly_validate_invalid_module() {
     // Test WebAssembly.validate with invalid module
     let result = WebAssembly::validate(
         &JsValue::undefined(),
-        &[JsValue::new(wasm_bytes.len())], // Simplified
-        &mut context,
+        &[wasm_bytes_to_js(&wasm_bytes, &mut context)],        &mut context,
     );
 
     assert!(result.is_ok()); // Should return false, not error
@@ -82,8 +88,7 @@ fn test_webassembly_module_constructor() {
     // Test WebAssembly.Module constructor
     let result = WebAssemblyModule::constructor(
         &JsValue::from(js_string!("Module")),
-        &[JsValue::new(wasm_bytes.len())], // Simplified
-        &mut context,
+        &[wasm_bytes_to_js(&wasm_bytes, &mut context)],        &mut context,
     );
 
     assert!(result.is_ok());
@@ -111,7 +116,7 @@ fn test_webassembly_instance_constructor() {
     // Create a module first
     let module = WebAssemblyModule::constructor(
         &JsValue::from(js_string!("Module")),
-        &[JsValue::new(wasm_bytes.len())],
+        &[wasm_bytes_to_js(&wasm_bytes, &mut context)],
         &mut context,
     ).unwrap();
 
@@ -310,7 +315,7 @@ fn test_webassembly_module_exports_static_method() {
     // Create a module
     let module = WebAssemblyModule::constructor(
         &JsValue::from(js_string!("Module")),
-        &[JsValue::new(wasm_bytes.len())],
+        &[wasm_bytes_to_js(&wasm_bytes, &mut context)],
         &mut context,
     ).unwrap();
 
@@ -332,7 +337,7 @@ fn test_webassembly_module_imports_static_method() {
     // Create a module
     let module = WebAssemblyModule::constructor(
         &JsValue::from(js_string!("Module")),
-        &[JsValue::new(wasm_bytes.len())],
+        &[wasm_bytes_to_js(&wasm_bytes, &mut context)],
         &mut context,
     ).unwrap();
 
@@ -354,7 +359,7 @@ fn test_webassembly_module_custom_sections() {
     // Create a module
     let module = WebAssemblyModule::constructor(
         &JsValue::from(js_string!("Module")),
-        &[JsValue::new(wasm_bytes.len())],
+        &[wasm_bytes_to_js(&wasm_bytes, &mut context)],
         &mut context,
     ).unwrap();
 
@@ -376,7 +381,7 @@ fn test_webassembly_compile_promise() {
     // Test WebAssembly.compile
     let result = WebAssembly::compile(
         &JsValue::undefined(),
-        &[JsValue::new(wasm_bytes.len())],
+        &[wasm_bytes_to_js(&wasm_bytes, &mut context)],
         &mut context,
     );
 
@@ -391,7 +396,7 @@ fn test_webassembly_instantiate_promise() {
     // Test WebAssembly.instantiate with bytes
     let result = WebAssembly::instantiate(
         &JsValue::undefined(),
-        &[JsValue::new(wasm_bytes.len()), JsValue::undefined()],
+        &[wasm_bytes_to_js(&wasm_bytes, &mut context), JsValue::undefined()],
         &mut context,
     );
 
