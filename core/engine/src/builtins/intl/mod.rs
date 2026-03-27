@@ -31,8 +31,9 @@ use icu_provider::{DataMarker, DataMarkerAttributes};
 use static_assertions::const_assert;
 
 pub(crate) use self::{
-    collator::Collator, date_time_format::DateTimeFormat, list_format::ListFormat, locale::Locale,
-    number_format::NumberFormat, plural_rules::PluralRules, segmenter::Segmenter,
+    collator::Collator, date_time_format::DateTimeFormat, display_names::DisplayNames,
+    list_format::ListFormat, locale::Locale, number_format::NumberFormat,
+    plural_rules::PluralRules, relative_time_format::RelativeTimeFormat, segmenter::Segmenter,
 };
 
 /// Macro to easily implement `ServicePreferences`.
