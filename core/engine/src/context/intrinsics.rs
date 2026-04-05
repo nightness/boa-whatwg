@@ -329,6 +329,8 @@ pub struct StandardConstructors {
     element: StandardConstructor,
     html_element: StandardConstructor,
     html_script_element: StandardConstructor,
+    html_dialog_element: StandardConstructor,
+    html_details_element: StandardConstructor,
     html_iframe_element: StandardConstructor,
     dom_parser: StandardConstructor,
     form_data: StandardConstructor,
@@ -562,6 +564,8 @@ impl Default for StandardConstructors {
             element: StandardConstructor::default(),
             html_element: StandardConstructor::default(),
             html_script_element: StandardConstructor::default(),
+            html_dialog_element: StandardConstructor::default(),
+            html_details_element: StandardConstructor::default(),
             html_iframe_element: StandardConstructor::default(),
             dom_parser: StandardConstructor::default(),
             form_data: StandardConstructor::default(),
@@ -1998,6 +2002,20 @@ impl StandardConstructors {
     #[must_use]
     pub const fn html_script_element(&self) -> &StandardConstructor {
         &self.html_script_element
+    }
+
+    /// Returns the `HTMLDialogElement` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn html_dialog_element(&self) -> &StandardConstructor {
+        &self.html_dialog_element
+    }
+
+    /// Returns the `HTMLDetailsElement` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn html_details_element(&self) -> &StandardConstructor {
+        &self.html_details_element
     }
 
     /// Returns the `HTMLIFrameElement` constructor.
