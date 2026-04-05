@@ -9,7 +9,7 @@
 
 ## Overview
 
-Successfully integrated 34 upstream commits from boa-dev/boa into the nightness/boa-whatwg fork while preserving all custom Web API extensions. The integration required adapting to breaking API changes in the BuiltInConstructor trait system.
+Successfully integrated 34 upstream commits from boa-dev/boa into the Brainwires/thalora-boa-engine fork while preserving all custom Web API extensions. The integration required adapting to breaking API changes in the BuiltInConstructor trait system.
 
 ---
 
@@ -245,8 +245,8 @@ e7f93892 Merge upstream/main into integrate-upstream branch
 ## Contact & References
 
 - **Upstream Repo:** https://github.com/boa-dev/boa
-- **Fork Repo:** https://github.com/nightness/boa-whatwg
-- **Comparison:** https://github.com/nightness/boa-whatwg/compare/main...boa-dev%3Aboa%3Amain
+- **Fork Repo:** https://github.com/Brainwires/thalora-boa-engine
+- **Comparison:** https://github.com/Brainwires/thalora-boa-engine/compare/main...boa-dev%3Aboa%3Amain
 
 **Integration performed by:** Claude Code Agent
 **Verification:** All Boa core tests passing (874/874)
