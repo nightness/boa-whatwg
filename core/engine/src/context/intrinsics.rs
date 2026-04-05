@@ -364,6 +364,8 @@ pub struct StandardConstructors {
     hash_change_event: StandardConstructor,
     pop_state_event: StandardConstructor,
     close_event: StandardConstructor,
+    pointer_event: StandardConstructor,
+    touch_event: StandardConstructor,
     abort_signal: StandardConstructor,
     console: StandardConstructor,
     blob: StandardConstructor,
@@ -599,6 +601,8 @@ impl Default for StandardConstructors {
             hash_change_event: StandardConstructor::default(),
             pop_state_event: StandardConstructor::default(),
             close_event: StandardConstructor::default(),
+            pointer_event: StandardConstructor::default(),
+            touch_event: StandardConstructor::default(),
             abort_signal: StandardConstructor::default(),
             console: StandardConstructor::default(),
             blob: StandardConstructor::default(),
@@ -2140,6 +2144,20 @@ impl StandardConstructors {
     #[must_use]
     pub const fn close_event(&self) -> &StandardConstructor {
         &self.close_event
+    }
+
+    /// Returns the `PointerEvent` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn pointer_event(&self) -> &StandardConstructor {
+        &self.pointer_event
+    }
+
+    /// Returns the `TouchEvent` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn touch_event(&self) -> &StandardConstructor {
+        &self.touch_event
     }
 
     /// Returns the `AbortSignal` constructor.

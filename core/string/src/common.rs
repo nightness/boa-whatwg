@@ -290,6 +290,8 @@ impl StaticJsStrings {
         (HASH_CHANGE_EVENT, "HashChangeEvent"),
         (POP_STATE_EVENT, "PopStateEvent"),
         (CLOSE_EVENT, "CloseEvent"),
+        (POINTER_EVENT, "PointerEvent"),
+        (TOUCH_EVENT, "TouchEvent"),
         (ABORT_SIGNAL, "AbortSignal"),
         // WebAssembly API
         (WEBASSEMBLY, "WebAssembly"),
@@ -1128,6 +1130,8 @@ const RAW_STATICS: &[StaticString] = &[
     StaticString::new(JsStr::latin1("HashChangeEvent".as_bytes())),
     StaticString::new(JsStr::latin1("PopStateEvent".as_bytes())),
     StaticString::new(JsStr::latin1("CloseEvent".as_bytes())),
+    StaticString::new(JsStr::latin1("PointerEvent".as_bytes())),
+    StaticString::new(JsStr::latin1("TouchEvent".as_bytes())),
     StaticString::new(JsStr::latin1("AbortSignal".as_bytes())),
     // WebAssembly API
     StaticString::new(JsStr::latin1("WebAssembly".as_bytes())),
