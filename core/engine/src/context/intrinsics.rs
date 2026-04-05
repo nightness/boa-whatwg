@@ -364,6 +364,7 @@ pub struct StandardConstructors {
     hash_change_event: StandardConstructor,
     pop_state_event: StandardConstructor,
     close_event: StandardConstructor,
+    fetch_event: StandardConstructor,
     pointer_event: StandardConstructor,
     touch_event: StandardConstructor,
     abort_signal: StandardConstructor,
@@ -601,6 +602,7 @@ impl Default for StandardConstructors {
             hash_change_event: StandardConstructor::default(),
             pop_state_event: StandardConstructor::default(),
             close_event: StandardConstructor::default(),
+            fetch_event: StandardConstructor::default(),
             pointer_event: StandardConstructor::default(),
             touch_event: StandardConstructor::default(),
             abort_signal: StandardConstructor::default(),
@@ -2144,6 +2146,13 @@ impl StandardConstructors {
     #[must_use]
     pub const fn close_event(&self) -> &StandardConstructor {
         &self.close_event
+    }
+
+    /// Returns the `FetchEvent` constructor.
+    #[inline]
+    #[must_use]
+    pub const fn fetch_event(&self) -> &StandardConstructor {
+        &self.fetch_event
     }
 
     /// Returns the `PointerEvent` constructor.
