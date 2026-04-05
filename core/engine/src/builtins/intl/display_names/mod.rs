@@ -15,9 +15,7 @@ use icu_locale::Locale;
 
 use crate::{
     Context, JsArgs, JsData, JsNativeError, JsObject, JsResult, JsString, JsSymbol, JsValue,
-    builtins::{
-        BuiltInBuilder, BuiltInConstructor, BuiltInObject, IntrinsicObject,
-    },
+    builtins::{BuiltInBuilder, BuiltInConstructor, BuiltInObject, IntrinsicObject},
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
     js_string,
     object::{ObjectInitializer, internal_methods::get_prototype_from_constructor},
@@ -145,7 +143,8 @@ impl BuiltInConstructor for DisplayNames {
             Locale::try_from_str("en-US").unwrap_or_else(|_| Locale::try_from_str("en").unwrap())
         } else {
             requested_locales.into_iter().next().unwrap_or_else(|| {
-                Locale::try_from_str("en-US").unwrap_or_else(|_| Locale::try_from_str("en").unwrap())
+                Locale::try_from_str("en-US")
+                    .unwrap_or_else(|_| Locale::try_from_str("en").unwrap())
             })
         };
 
@@ -167,7 +166,7 @@ impl BuiltInConstructor for DisplayNames {
             t => {
                 return Err(JsNativeError::range()
                     .with_message(format!("invalid type option: {}", t))
-                    .into())
+                    .into());
             }
         };
 
@@ -176,7 +175,11 @@ impl BuiltInConstructor for DisplayNames {
         let style = if style_val.is_undefined() {
             DisplayNamesStyle::Long
         } else {
-            match style_val.to_string(context)?.to_std_string_escaped().as_str() {
+            match style_val
+                .to_string(context)?
+                .to_std_string_escaped()
+                .as_str()
+            {
                 "long" => DisplayNamesStyle::Long,
                 "short" => DisplayNamesStyle::Short,
                 "narrow" => DisplayNamesStyle::Narrow,
@@ -189,7 +192,11 @@ impl BuiltInConstructor for DisplayNames {
         let fallback = if fallback_val.is_undefined() {
             DisplayNamesFallback::Code
         } else {
-            match fallback_val.to_string(context)?.to_std_string_escaped().as_str() {
+            match fallback_val
+                .to_string(context)?
+                .to_std_string_escaped()
+                .as_str()
+            {
                 "code" => DisplayNamesFallback::Code,
                 "none" => DisplayNamesFallback::None,
                 _ => DisplayNamesFallback::Code,
@@ -251,12 +258,10 @@ impl DisplayNames {
 
         match result {
             Some(name) => Ok(js_string!(name).into()),
-            None => {
-                match dn.fallback {
-                    DisplayNamesFallback::Code => Ok(js_string!(code_str).into()),
-                    DisplayNamesFallback::None => Ok(JsValue::undefined()),
-                }
-            }
+            None => match dn.fallback {
+                DisplayNamesFallback::Code => Ok(js_string!(code_str).into()),
+                DisplayNamesFallback::None => Ok(JsValue::undefined()),
+            },
         }
     }
 
@@ -286,8 +291,9 @@ impl DisplayNames {
             .as_ref()
             .and_then(|o| o.downcast_ref::<Self>())
             .ok_or_else(|| {
-                JsNativeError::typ()
-                    .with_message("`resolvedOptions` can only be called on an `Intl.DisplayNames` object")
+                JsNativeError::typ().with_message(
+                    "`resolvedOptions` can only be called on an `Intl.DisplayNames` object",
+                )
             })?;
 
         let mut options = ObjectInitializer::new(context);
@@ -341,7 +347,12 @@ impl DisplayNames {
 }
 
 /// Helper function to get display name for a code
-fn get_display_name(code: &str, display_type: DisplayNamesType, _style: DisplayNamesStyle, _locale: &Locale) -> Option<String> {
+fn get_display_name(
+    code: &str,
+    display_type: DisplayNamesType,
+    _style: DisplayNamesStyle,
+    _locale: &Locale,
+) -> Option<String> {
     match display_type {
         DisplayNamesType::Language => get_language_display_name(code),
         DisplayNamesType::Region => get_region_display_name(code),

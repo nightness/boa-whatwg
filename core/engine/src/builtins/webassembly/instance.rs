@@ -4,17 +4,19 @@
 //! the W3C WebAssembly JavaScript API specification
 //! https://webassembly.github.io/spec/js-api/#instances
 
+use super::runtime::WebAssemblyRuntime;
 use crate::{
-    builtins::{BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder},
+    Context, JsArgs, JsData, JsNativeError, JsResult, JsString,
+    builtins::{BuiltInBuilder, BuiltInConstructor, BuiltInObject, IntrinsicObject},
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
-    object::{internal_methods::get_prototype_from_constructor, JsObject},
+    js_string,
+    object::{JsObject, internal_methods::get_prototype_from_constructor},
+    property::Attribute,
+    realm::Realm,
     string::StaticJsStrings,
     value::JsValue,
-    Context, JsArgs, JsData, JsNativeError, JsResult, js_string,
-    JsString, realm::Realm, property::Attribute
 };
 use boa_gc::{Finalize, Trace};
-use super::runtime::WebAssemblyRuntime;
 
 /// JavaScript `WebAssembly.Instance` builtin implementation.
 #[derive(Debug, Copy, Clone)]
@@ -22,8 +24,7 @@ pub struct WebAssemblyInstance;
 
 impl IntrinsicObject for WebAssemblyInstance {
     fn init(realm: &Realm) {
-        BuiltInBuilder::from_standard_constructor::<Self>(realm)
-            .build();
+        BuiltInBuilder::from_standard_constructor::<Self>(realm).build();
     }
 
     fn get(intrinsics: &Intrinsics) -> JsObject {
@@ -87,10 +88,10 @@ impl WebAssemblyInstance {
         context: &mut Context,
     ) -> JsResult<JsValue> {
         // Get the module data
-        let module_data = module_obj.downcast_ref::<super::module::WebAssemblyModuleData>()
+        let module_data = module_obj
+            .downcast_ref::<super::module::WebAssemblyModuleData>()
             .ok_or_else(|| {
-                JsNativeError::typ()
-                    .with_message("Invalid WebAssembly.Module object")
+                JsNativeError::typ().with_message("Invalid WebAssembly.Module object")
             })?;
 
         // Get the WebAssembly runtime
@@ -109,7 +110,8 @@ impl WebAssemblyInstance {
         let store_id = runtime.create_store();
 
         // Instantiate the module
-        let instance_id = runtime.instantiate_module(module_data.module_id(), store_id.clone(), imports)
+        let instance_id = runtime
+            .instantiate_module(module_data.module_id(), store_id.clone(), imports)
             .map_err(|err| {
                 JsNativeError::typ()
                     .with_message(format!("WebAssembly instantiation failed: {}", err))
@@ -117,7 +119,12 @@ impl WebAssemblyInstance {
 
         // Create the JavaScript Instance object
         let proto = get_prototype_from_constructor(
-            &context.intrinsics().constructors().webassembly_instance().constructor().into(),
+            &context
+                .intrinsics()
+                .constructors()
+                .webassembly_instance()
+                .constructor()
+                .into(),
             StandardConstructors::webassembly_instance,
             context,
         )?;
@@ -143,7 +150,9 @@ impl WebAssemblyInstance {
         import_object: &JsValue,
         module: &wasmtime::Module,
         context: &mut Context,
-    ) -> JsResult<std::collections::HashMap<String, std::collections::HashMap<String, wasmtime::Extern>>> {
+    ) -> JsResult<
+        std::collections::HashMap<String, std::collections::HashMap<String, wasmtime::Extern>>,
+    > {
         let mut imports = std::collections::HashMap::new();
 
         // If import_object is undefined or null, use empty imports
@@ -151,10 +160,9 @@ impl WebAssemblyInstance {
             return Ok(imports);
         }
 
-        let import_obj = import_object.as_object().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("Import object must be an object")
-        })?;
+        let import_obj = import_object
+            .as_object()
+            .ok_or_else(|| JsNativeError::typ().with_message("Import object must be an object"))?;
 
         // For now, we'll support modules without imports
         // TODO: Implement full import processing when other WebAssembly APIs are ready
@@ -209,7 +217,10 @@ pub struct WebAssemblyInstanceData {
 
 impl WebAssemblyInstanceData {
     pub fn new(instance_id: String, store_id: String) -> Self {
-        Self { instance_id, store_id }
+        Self {
+            instance_id,
+            store_id,
+        }
     }
 
     pub fn instance_id(&self) -> &str {

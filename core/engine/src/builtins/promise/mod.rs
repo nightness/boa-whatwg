@@ -1843,11 +1843,7 @@ impl Promise {
     ///
     /// [spec]: https://tc39.es/ecma262/#sec-promise.resolve
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/resolve
-    pub fn resolve(
-        this: &JsValue,
-        args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
+    pub fn resolve(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let x = args.get_or_undefined(0);
 
         // 1. Let C be the this value.
@@ -1870,11 +1866,7 @@ impl Promise {
     ///  - [ECMAScript reference][spec]
     ///
     /// [spec]: https://tc39.es/ecma262/#sec-promise-resolve
-    pub fn promise_resolve(
-        c: &JsObject,
-        x: JsValue,
-        context: &mut Context,
-    ) -> JsResult<JsObject> {
+    pub fn promise_resolve(c: &JsObject, x: JsValue, context: &mut Context) -> JsResult<JsObject> {
         // 1. If IsPromise(x) is true, then
         if let Some(x) = x.as_promise_object() {
             let x = x.upcast();

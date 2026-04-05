@@ -6,9 +6,7 @@
 #![cfg(test)]
 
 use crate::{
-    Context, JsValue, js_string, JsResult,
-    builtins::webassembly::*,
-    builtins::BuiltInConstructor,
+    Context, JsResult, JsValue, builtins::BuiltInConstructor, builtins::webassembly::*, js_string,
     object::builtins::JsUint8Array,
 };
 use boa_gc::Gc;
@@ -26,10 +24,9 @@ fn create_test_wasm_module() -> Vec<u8> {
         0x00, 0x61, 0x73, 0x6d, // Magic: '\0asm'
         0x01, 0x00, 0x00, 0x00, // Version: 1
         0x01, 0x04, 0x01, 0x60, // Type section: [] -> []
-        0x00, 0x00,
-        0x03, 0x02, 0x01, 0x00, // Function section
+        0x00, 0x00, 0x03, 0x02, 0x01, 0x00, // Function section
         0x0a, 0x04, 0x01, 0x02, // Code section
-        0x00, 0x0b              // Function body: nop, end
+        0x00, 0x0b, // Function body: nop, end
     ]
 }
 
@@ -39,11 +36,11 @@ fn create_test_wasm_module_with_exports() -> Vec<u8> {
         0x00, 0x61, 0x73, 0x6d, // Magic: '\0asm'
         0x01, 0x00, 0x00, 0x00, // Version: 1
         0x01, 0x04, 0x01, 0x60, // Type section: [] -> []
-        0x00, 0x00,
-        0x03, 0x02, 0x01, 0x00, // Function section
-        0x07, 0x07, 0x01, 0x03, 0x66, 0x6f, 0x6f, 0x00, 0x00, // Export section: "foo" -> function 0
+        0x00, 0x00, 0x03, 0x02, 0x01, 0x00, // Function section
+        0x07, 0x07, 0x01, 0x03, 0x66, 0x6f, 0x6f, 0x00,
+        0x00, // Export section: "foo" -> function 0
         0x0a, 0x04, 0x01, 0x02, // Code section
-        0x00, 0x0b              // Function body: nop, end
+        0x00, 0x0b, // Function body: nop, end
     ]
 }
 
@@ -60,7 +57,8 @@ fn test_webassembly_validate_valid_module() {
     // Test WebAssembly.validate with valid module
     let result = WebAssembly::validate(
         &JsValue::undefined(),
-        &[wasm_bytes_to_js(&wasm_bytes, &mut context)],        &mut context,
+        &[wasm_bytes_to_js(&wasm_bytes, &mut context)],
+        &mut context,
     );
 
     assert!(result.is_ok());
@@ -74,7 +72,8 @@ fn test_webassembly_validate_invalid_module() {
     // Test WebAssembly.validate with invalid module
     let result = WebAssembly::validate(
         &JsValue::undefined(),
-        &[wasm_bytes_to_js(&wasm_bytes, &mut context)],        &mut context,
+        &[wasm_bytes_to_js(&wasm_bytes, &mut context)],
+        &mut context,
     );
 
     assert!(result.is_ok()); // Should return false, not error
@@ -88,7 +87,8 @@ fn test_webassembly_module_constructor() {
     // Test WebAssembly.Module constructor
     let result = WebAssemblyModule::constructor(
         &JsValue::from(js_string!("Module")),
-        &[wasm_bytes_to_js(&wasm_bytes, &mut context)],        &mut context,
+        &[wasm_bytes_to_js(&wasm_bytes, &mut context)],
+        &mut context,
     );
 
     assert!(result.is_ok());
@@ -99,11 +99,7 @@ fn test_webassembly_module_constructor_requires_new() {
     let mut context = Context::default();
 
     // Test WebAssembly.Module constructor without new
-    let result = WebAssemblyModule::constructor(
-        &JsValue::undefined(),
-        &[],
-        &mut context,
-    );
+    let result = WebAssemblyModule::constructor(&JsValue::undefined(), &[], &mut context);
 
     assert!(result.is_err());
 }
@@ -118,7 +114,8 @@ fn test_webassembly_instance_constructor() {
         &JsValue::from(js_string!("Module")),
         &[wasm_bytes_to_js(&wasm_bytes, &mut context)],
         &mut context,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Test WebAssembly.Instance constructor
     let result = WebAssemblyInstance::constructor(
@@ -136,11 +133,7 @@ fn test_webassembly_instance_constructor_requires_new() {
     let mut context = Context::default();
 
     // Test WebAssembly.Instance constructor without new
-    let result = WebAssemblyInstance::constructor(
-        &JsValue::undefined(),
-        &[],
-        &mut context,
-    );
+    let result = WebAssemblyInstance::constructor(&JsValue::undefined(), &[], &mut context);
 
     assert!(result.is_err());
 }
@@ -151,7 +144,9 @@ fn test_webassembly_memory_constructor() {
 
     // Create memory descriptor
     let descriptor_obj = crate::object::JsObject::with_object_proto(context.intrinsics());
-    descriptor_obj.set(js_string!("initial"), JsValue::new(1), true, &mut context).unwrap();
+    descriptor_obj
+        .set(js_string!("initial"), JsValue::new(1), true, &mut context)
+        .unwrap();
 
     // Test WebAssembly.Memory constructor
     let result = WebAssemblyMemory::constructor(
@@ -168,11 +163,7 @@ fn test_webassembly_memory_constructor_requires_new() {
     let mut context = Context::default();
 
     // Test WebAssembly.Memory constructor without new
-    let result = WebAssemblyMemory::constructor(
-        &JsValue::undefined(),
-        &[],
-        &mut context,
-    );
+    let result = WebAssemblyMemory::constructor(&JsValue::undefined(), &[], &mut context);
 
     assert!(result.is_err());
 }
@@ -197,8 +188,17 @@ fn test_webassembly_table_constructor() {
 
     // Create table descriptor
     let descriptor_obj = crate::object::JsObject::with_object_proto(context.intrinsics());
-    descriptor_obj.set(js_string!("element"), js_string!("funcref"), true, &mut context).unwrap();
-    descriptor_obj.set(js_string!("initial"), JsValue::new(1), true, &mut context).unwrap();
+    descriptor_obj
+        .set(
+            js_string!("element"),
+            js_string!("funcref"),
+            true,
+            &mut context,
+        )
+        .unwrap();
+    descriptor_obj
+        .set(js_string!("initial"), JsValue::new(1), true, &mut context)
+        .unwrap();
 
     // Test WebAssembly.Table constructor
     let result = WebAssemblyTable::constructor(
@@ -215,11 +215,7 @@ fn test_webassembly_table_constructor_requires_new() {
     let mut context = Context::default();
 
     // Test WebAssembly.Table constructor without new
-    let result = WebAssemblyTable::constructor(
-        &JsValue::undefined(),
-        &[],
-        &mut context,
-    );
+    let result = WebAssemblyTable::constructor(&JsValue::undefined(), &[], &mut context);
 
     assert!(result.is_err());
 }
@@ -230,8 +226,17 @@ fn test_webassembly_table_invalid_element_type() {
 
     // Create table descriptor with invalid element type
     let descriptor_obj = crate::object::JsObject::with_object_proto(context.intrinsics());
-    descriptor_obj.set(js_string!("element"), js_string!("invalid"), true, &mut context).unwrap();
-    descriptor_obj.set(js_string!("initial"), JsValue::new(1), true, &mut context).unwrap();
+    descriptor_obj
+        .set(
+            js_string!("element"),
+            js_string!("invalid"),
+            true,
+            &mut context,
+        )
+        .unwrap();
+    descriptor_obj
+        .set(js_string!("initial"), JsValue::new(1), true, &mut context)
+        .unwrap();
 
     // Test WebAssembly.Table constructor
     let result = WebAssemblyTable::constructor(
@@ -249,8 +254,17 @@ fn test_webassembly_global_constructor() {
 
     // Create global descriptor
     let descriptor_obj = crate::object::JsObject::with_object_proto(context.intrinsics());
-    descriptor_obj.set(js_string!("value"), js_string!("i32"), true, &mut context).unwrap();
-    descriptor_obj.set(js_string!("mutable"), JsValue::new(false), true, &mut context).unwrap();
+    descriptor_obj
+        .set(js_string!("value"), js_string!("i32"), true, &mut context)
+        .unwrap();
+    descriptor_obj
+        .set(
+            js_string!("mutable"),
+            JsValue::new(false),
+            true,
+            &mut context,
+        )
+        .unwrap();
 
     // Test WebAssembly.Global constructor
     let result = WebAssemblyGlobal::constructor(
@@ -267,11 +281,7 @@ fn test_webassembly_global_constructor_requires_new() {
     let mut context = Context::default();
 
     // Test WebAssembly.Global constructor without new
-    let result = WebAssemblyGlobal::constructor(
-        &JsValue::undefined(),
-        &[],
-        &mut context,
-    );
+    let result = WebAssemblyGlobal::constructor(&JsValue::undefined(), &[], &mut context);
 
     assert!(result.is_err());
 }
@@ -282,7 +292,14 @@ fn test_webassembly_global_invalid_value_type() {
 
     // Create global descriptor with invalid value type
     let descriptor_obj = crate::object::JsObject::with_object_proto(context.intrinsics());
-    descriptor_obj.set(js_string!("value"), js_string!("invalid"), true, &mut context).unwrap();
+    descriptor_obj
+        .set(
+            js_string!("value"),
+            js_string!("invalid"),
+            true,
+            &mut context,
+        )
+        .unwrap();
 
     // Test WebAssembly.Global constructor
     let result = WebAssemblyGlobal::constructor(
@@ -317,14 +334,11 @@ fn test_webassembly_module_exports_static_method() {
         &JsValue::from(js_string!("Module")),
         &[wasm_bytes_to_js(&wasm_bytes, &mut context)],
         &mut context,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Test WebAssembly.Module.exports
-    let result = WebAssemblyModule::exports(
-        &JsValue::undefined(),
-        &[module],
-        &mut context,
-    );
+    let result = WebAssemblyModule::exports(&JsValue::undefined(), &[module], &mut context);
 
     assert!(result.is_err() || result.is_ok());
 }
@@ -339,14 +353,11 @@ fn test_webassembly_module_imports_static_method() {
         &JsValue::from(js_string!("Module")),
         &[wasm_bytes_to_js(&wasm_bytes, &mut context)],
         &mut context,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Test WebAssembly.Module.imports
-    let result = WebAssemblyModule::imports(
-        &JsValue::undefined(),
-        &[module],
-        &mut context,
-    );
+    let result = WebAssemblyModule::imports(&JsValue::undefined(), &[module], &mut context);
 
     assert!(result.is_err() || result.is_ok());
 }
@@ -361,7 +372,8 @@ fn test_webassembly_module_custom_sections() {
         &JsValue::from(js_string!("Module")),
         &[wasm_bytes_to_js(&wasm_bytes, &mut context)],
         &mut context,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Test WebAssembly.Module.customSections
     let result = WebAssemblyModule::custom_sections(
@@ -396,7 +408,10 @@ fn test_webassembly_instantiate_promise() {
     // Test WebAssembly.instantiate with bytes
     let result = WebAssembly::instantiate(
         &JsValue::undefined(),
-        &[wasm_bytes_to_js(&wasm_bytes, &mut context), JsValue::undefined()],
+        &[
+            wasm_bytes_to_js(&wasm_bytes, &mut context),
+            JsValue::undefined(),
+        ],
         &mut context,
     );
 
@@ -437,8 +452,12 @@ fn test_webassembly_memory_64bit_support() {
 
     // Create memory descriptor with i64 index type (WebAssembly 3.0 feature)
     let descriptor_obj = crate::object::JsObject::with_object_proto(context.intrinsics());
-    descriptor_obj.set(js_string!("initial"), JsValue::new(1), true, &mut context).unwrap();
-    descriptor_obj.set(js_string!("index"), js_string!("i64"), true, &mut context).unwrap();
+    descriptor_obj
+        .set(js_string!("initial"), JsValue::new(1), true, &mut context)
+        .unwrap();
+    descriptor_obj
+        .set(js_string!("index"), js_string!("i64"), true, &mut context)
+        .unwrap();
 
     // Test WebAssembly.Memory with 64-bit addressing
     let result = WebAssemblyMemory::constructor(
@@ -456,8 +475,17 @@ fn test_webassembly_table_externref_support() {
 
     // Create table descriptor with externref (WebAssembly 3.0 feature)
     let descriptor_obj = crate::object::JsObject::with_object_proto(context.intrinsics());
-    descriptor_obj.set(js_string!("element"), js_string!("externref"), true, &mut context).unwrap();
-    descriptor_obj.set(js_string!("initial"), JsValue::new(1), true, &mut context).unwrap();
+    descriptor_obj
+        .set(
+            js_string!("element"),
+            js_string!("externref"),
+            true,
+            &mut context,
+        )
+        .unwrap();
+    descriptor_obj
+        .set(js_string!("initial"), JsValue::new(1), true, &mut context)
+        .unwrap();
 
     // Test WebAssembly.Table with externref
     let result = WebAssemblyTable::constructor(
@@ -475,8 +503,17 @@ fn test_webassembly_global_v128_support() {
 
     // Create global descriptor with v128 (SIMD support)
     let descriptor_obj = crate::object::JsObject::with_object_proto(context.intrinsics());
-    descriptor_obj.set(js_string!("value"), js_string!("v128"), true, &mut context).unwrap();
-    descriptor_obj.set(js_string!("mutable"), JsValue::new(true), true, &mut context).unwrap();
+    descriptor_obj
+        .set(js_string!("value"), js_string!("v128"), true, &mut context)
+        .unwrap();
+    descriptor_obj
+        .set(
+            js_string!("mutable"),
+            JsValue::new(true),
+            true,
+            &mut context,
+        )
+        .unwrap();
 
     // Test WebAssembly.Global with v128
     let result = WebAssemblyGlobal::constructor(
@@ -495,11 +532,8 @@ fn test_webassembly_error_handling() {
     // Test various error conditions
 
     // Invalid module argument to WebAssembly.Module.exports
-    let result = WebAssemblyModule::exports(
-        &JsValue::undefined(),
-        &[JsValue::new(42)],
-        &mut context,
-    );
+    let result =
+        WebAssemblyModule::exports(&JsValue::undefined(), &[JsValue::new(42)], &mut context);
     assert!(result.is_err());
 
     // Invalid descriptor to WebAssembly.Memory
@@ -521,17 +555,18 @@ fn test_webassembly_error_handling() {
 
 #[test]
 fn test_webassembly_data_structures() {
-    use super::module::WebAssemblyModuleData;
+    use super::global::{GlobalDescriptor, ValueType, WebAssemblyGlobalData};
     use super::instance::WebAssemblyInstanceData;
-    use super::memory::{WebAssemblyMemoryData, MemoryDescriptor, IndexType};
-    use super::table::{WebAssemblyTableData, TableDescriptor, ElementType};
-    use super::global::{WebAssemblyGlobalData, GlobalDescriptor, ValueType};
+    use super::memory::{IndexType, MemoryDescriptor, WebAssemblyMemoryData};
+    use super::module::WebAssemblyModuleData;
+    use super::table::{ElementType, TableDescriptor, WebAssemblyTableData};
 
     // Test data structure creation and access
     let module_data = WebAssemblyModuleData::new("test_module".to_string());
     assert_eq!(module_data.module_id(), "test_module");
 
-    let instance_data = WebAssemblyInstanceData::new("test_instance".to_string(), "test_store".to_string());
+    let instance_data =
+        WebAssemblyInstanceData::new("test_instance".to_string(), "test_store".to_string());
     assert_eq!(instance_data.instance_id(), "test_instance");
     assert_eq!(instance_data.store_id(), "test_store");
 
@@ -565,11 +600,7 @@ fn test_webassembly_not_callable() {
     let mut context = Context::default();
 
     // Test that WebAssembly object is not callable
-    let result = WebAssembly::not_callable(
-        &JsValue::undefined(),
-        &[],
-        &mut context,
-    );
+    let result = WebAssembly::not_callable(&JsValue::undefined(), &[], &mut context);
 
     assert!(result.is_err());
 }

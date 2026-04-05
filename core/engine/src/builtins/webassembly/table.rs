@@ -4,17 +4,19 @@
 //! the W3C WebAssembly JavaScript API specification
 //! https://webassembly.github.io/spec/js-api/#tables
 
+use super::runtime::WebAssemblyRuntime;
 use crate::{
-    builtins::{BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder},
+    Context, JsArgs, JsData, JsNativeError, JsResult, JsString,
+    builtins::{BuiltInBuilder, BuiltInConstructor, BuiltInObject, IntrinsicObject},
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
-    object::{internal_methods::get_prototype_from_constructor, JsObject},
+    js_string,
+    object::{JsObject, internal_methods::get_prototype_from_constructor},
+    property::Attribute,
+    realm::Realm,
     string::StaticJsStrings,
     value::JsValue,
-    Context, JsArgs, JsData, JsNativeError, JsResult, js_string,
-    JsString, realm::Realm, property::Attribute
 };
 use boa_gc::{Finalize, Trace};
-use super::runtime::WebAssemblyRuntime;
 
 /// JavaScript `WebAssembly.Table` builtin implementation.
 #[derive(Debug, Copy, Clone)]
@@ -90,8 +92,7 @@ impl WebAssemblyTable {
         context: &mut Context,
     ) -> JsResult<TableDescriptor> {
         let desc_obj = descriptor.as_object().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Table descriptor must be an object")
+            JsNativeError::typ().with_message("WebAssembly.Table descriptor must be an object")
         })?;
 
         // Get element type (required)
@@ -100,13 +101,16 @@ impl WebAssemblyTable {
         let element_type = match element_str.to_std_string_escaped().as_str() {
             "anyfunc" | "funcref" => ElementType::FuncRef,
             "externref" => ElementType::ExternRef,
-            _ => return Err(JsNativeError::typ()
-                .with_message("WebAssembly.Table element must be 'funcref' or 'externref'")
-                .into())
+            _ => {
+                return Err(JsNativeError::typ()
+                    .with_message("WebAssembly.Table element must be 'funcref' or 'externref'")
+                    .into());
+            }
         };
 
         // Get initial size (required)
-        let initial = desc_obj.get(js_string!("initial"), context)?
+        let initial = desc_obj
+            .get(js_string!("initial"), context)?
             .to_u32(context)?;
 
         // Get maximum size (optional)
@@ -168,11 +172,7 @@ impl WebAssemblyTable {
             ElementType::ExternRef => wasmtime::RefType::EXTERNREF,
         };
 
-        let table_type = wasmtime::TableType::new(
-            ref_type,
-            descriptor.initial,
-            descriptor.maximum,
-        );
+        let table_type = wasmtime::TableType::new(ref_type, descriptor.initial, descriptor.maximum);
 
         // Create initial value for the table
         let init_ref = match descriptor.element {
@@ -182,13 +182,17 @@ impl WebAssemblyTable {
 
         // Create the table in wasmtime
         let table_id = runtime.create_table(table_type, init_ref).map_err(|err| {
-            JsNativeError::typ()
-                .with_message(format!("WebAssembly.Table creation failed: {}", err))
+            JsNativeError::typ().with_message(format!("WebAssembly.Table creation failed: {}", err))
         })?;
 
         // Create the JavaScript Table object
         let proto = get_prototype_from_constructor(
-            &context.intrinsics().constructors().webassembly_table().constructor().into(),
+            &context
+                .intrinsics()
+                .constructors()
+                .webassembly_table()
+                .constructor()
+                .into(),
             StandardConstructors::webassembly_table,
             context,
         )?;
@@ -205,20 +209,17 @@ impl WebAssemblyTable {
     /// `get WebAssembly.Table.prototype.length`
     ///
     /// Returns the current size of the table.
-    fn length(
-        this: &JsValue,
-        _args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
+    fn length(this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let table_obj = this.as_object().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Table.length called on non-object")
+            JsNativeError::typ().with_message("WebAssembly.Table.length called on non-object")
         })?;
 
-        let table_data = table_obj.downcast_ref::<WebAssemblyTableData>().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Table.length called on non-Table object")
-        })?;
+        let table_data = table_obj
+            .downcast_ref::<WebAssemblyTableData>()
+            .ok_or_else(|| {
+                JsNativeError::typ()
+                    .with_message("WebAssembly.Table.length called on non-Table object")
+            })?;
 
         // For now, return the initial size
         // TODO: Implement actual table size tracking
@@ -228,20 +229,17 @@ impl WebAssemblyTable {
     /// `WebAssembly.Table.prototype.get(index)`
     ///
     /// Returns the element stored at the given index.
-    fn get(
-        this: &JsValue,
-        args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
+    fn get(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let table_obj = this.as_object().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Table.get called on non-object")
+            JsNativeError::typ().with_message("WebAssembly.Table.get called on non-object")
         })?;
 
-        let table_data = table_obj.downcast_ref::<WebAssemblyTableData>().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Table.get called on non-Table object")
-        })?;
+        let table_data = table_obj
+            .downcast_ref::<WebAssemblyTableData>()
+            .ok_or_else(|| {
+                JsNativeError::typ()
+                    .with_message("WebAssembly.Table.get called on non-Table object")
+            })?;
 
         let index = args.get_or_undefined(0).to_u32(context)?;
 
@@ -263,20 +261,17 @@ impl WebAssemblyTable {
     /// `WebAssembly.Table.prototype.set(index, value)`
     ///
     /// Sets the element at the given index to the given value.
-    fn set(
-        this: &JsValue,
-        args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
+    fn set(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let table_obj = this.as_object().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Table.set called on non-object")
+            JsNativeError::typ().with_message("WebAssembly.Table.set called on non-object")
         })?;
 
-        let table_data = table_obj.downcast_ref::<WebAssemblyTableData>().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Table.set called on non-Table object")
-        })?;
+        let table_data = table_obj
+            .downcast_ref::<WebAssemblyTableData>()
+            .ok_or_else(|| {
+                JsNativeError::typ()
+                    .with_message("WebAssembly.Table.set called on non-Table object")
+            })?;
 
         let index = args.get_or_undefined(0).to_u32(context)?;
         let value = args.get_or_undefined(1);
@@ -310,20 +305,17 @@ impl WebAssemblyTable {
     /// `WebAssembly.Table.prototype.grow(delta, value?)`
     ///
     /// Increases the size of the table by delta elements.
-    fn grow(
-        this: &JsValue,
-        args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
+    fn grow(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let table_obj = this.as_object().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Table.grow called on non-object")
+            JsNativeError::typ().with_message("WebAssembly.Table.grow called on non-object")
         })?;
 
-        let table_data = table_obj.downcast_ref::<WebAssemblyTableData>().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Table.grow called on non-Table object")
-        })?;
+        let table_data = table_obj
+            .downcast_ref::<WebAssemblyTableData>()
+            .ok_or_else(|| {
+                JsNativeError::typ()
+                    .with_message("WebAssembly.Table.grow called on non-Table object")
+            })?;
 
         let delta = args.get_or_undefined(0).to_u32(context)?;
         let _value = args.get_or_undefined(1);
@@ -346,7 +338,10 @@ pub struct WebAssemblyTableData {
 
 impl WebAssemblyTableData {
     pub fn new(table_id: String, descriptor: TableDescriptor) -> Self {
-        Self { table_id, descriptor }
+        Self {
+            table_id,
+            descriptor,
+        }
     }
 
     pub fn table_id(&self) -> &str {

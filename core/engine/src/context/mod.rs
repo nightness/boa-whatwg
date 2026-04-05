@@ -455,7 +455,6 @@ impl Context {
         self.instructions_remaining
     }
 
-
     /// Returns the currently active realm.
     #[inline]
     #[must_use]

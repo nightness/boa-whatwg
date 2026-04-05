@@ -8,7 +8,8 @@ use boa_engine::{Context, Source};
 fn test_worker_script_execution_simple() {
     let mut context = Context::default();
 
-    let result = context.eval(Source::from_bytes(r#"
+    let result = context.eval(Source::from_bytes(
+        r#"
         // Test creating a worker with a simple script
         (function() {
             try {
@@ -29,7 +30,8 @@ fn test_worker_script_execution_simple() {
                 return false;
             }
         })()
-    "#));
+    "#,
+    ));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap().to_boolean(), true);
@@ -40,7 +42,8 @@ fn test_worker_script_execution_simple() {
 fn test_module_worker_execution() {
     let mut context = Context::default();
 
-    let result = context.eval(Source::from_bytes(r#"
+    let result = context.eval(Source::from_bytes(
+        r#"
         // Test module worker with ES6 syntax
         (function() {
             try {
@@ -55,7 +58,8 @@ fn test_module_worker_execution() {
                 return false;
             }
         })()
-    "#));
+    "#,
+    ));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap().to_boolean(), true);
@@ -66,7 +70,8 @@ fn test_module_worker_execution() {
 fn test_classic_worker_global_scope() {
     let mut context = Context::default();
 
-    let result = context.eval(Source::from_bytes(r#"
+    let result = context.eval(Source::from_bytes(
+        r#"
         // Test classic worker that uses global scope
         (function() {
             try {
@@ -80,7 +85,8 @@ fn test_classic_worker_global_scope() {
                 return false;
             }
         })()
-    "#));
+    "#,
+    ));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap().to_boolean(), true);
@@ -126,7 +132,8 @@ fn test_shared_worker_connections() {
 fn test_worker_termination() {
     let mut context = Context::default();
 
-    let result = context.eval(Source::from_bytes(r#"
+    let result = context.eval(Source::from_bytes(
+        r#"
         // Test worker termination
         (function() {
             try {
@@ -144,7 +151,8 @@ fn test_worker_termination() {
                 return false;
             }
         })()
-    "#));
+    "#,
+    ));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap().to_boolean(), true);
@@ -155,7 +163,8 @@ fn test_worker_termination() {
 fn test_broadcast_channel_messaging() {
     let mut context = Context::default();
 
-    let result = context.eval(Source::from_bytes(r#"
+    let result = context.eval(Source::from_bytes(
+        r#"
         // Test BroadcastChannel messaging
         (function() {
             try {
@@ -185,7 +194,8 @@ fn test_broadcast_channel_messaging() {
                 return false;
             }
         })()
-    "#));
+    "#,
+    ));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap().to_boolean(), true);
@@ -196,7 +206,8 @@ fn test_broadcast_channel_messaging() {
 fn test_worker_error_handling() {
     let mut context = Context::default();
 
-    let result = context.eval(Source::from_bytes(r#"
+    let result = context.eval(Source::from_bytes(
+        r#"
         // Test worker error handling
         (function() {
             try {
@@ -224,7 +235,8 @@ fn test_worker_error_handling() {
                 return false;
             }
         })()
-    "#));
+    "#,
+    ));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap().to_boolean(), true);
@@ -235,7 +247,8 @@ fn test_worker_error_handling() {
 fn test_worker_options() {
     let mut context = Context::default();
 
-    let result = context.eval(Source::from_bytes(r#"
+    let result = context.eval(Source::from_bytes(
+        r#"
         // Test WorkerOptions parameter handling
         (function() {
             try {
@@ -265,7 +278,8 @@ fn test_worker_options() {
                 return false;
             }
         })()
-    "#));
+    "#,
+    ));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap().to_boolean(), true);
@@ -311,7 +325,8 @@ fn test_multiple_workers() {
 fn test_shared_worker_naming() {
     let mut context = Context::default();
 
-    let result = context.eval(Source::from_bytes(r#"
+    let result = context.eval(Source::from_bytes(
+        r#"
         // Test SharedWorker name parameter
         (function() {
             try {
@@ -334,7 +349,8 @@ fn test_shared_worker_naming() {
                 return false;
             }
         })()
-    "#));
+    "#,
+    ));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap().to_boolean(), true);

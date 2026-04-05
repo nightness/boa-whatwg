@@ -376,7 +376,7 @@ impl BuiltInConstructor for BuiltInFunctionObject {
         args: &[JsValue],
         context: &mut Context,
     ) -> JsResult<JsValue> {
-    // Normal operation: no debug prints or file IO in production code.
+        // Normal operation: no debug prints or file IO in production code.
         let active_function = context
             .active_function_object()
             .unwrap_or_else(|| context.intrinsics().constructors().function().constructor());
@@ -400,7 +400,7 @@ impl BuiltInFunctionObject {
         generator: bool,
         context: &mut Context,
     ) -> JsResult<JsObject> {
-    // No debug prints in production.
+        // No debug prints in production.
         // 1. If newTarget is undefined, set newTarget to constructor.
         let new_target = if new_target.is_undefined() {
             constructor.into()
@@ -520,7 +520,8 @@ impl BuiltInFunctionObject {
                         if (prev >= b'a' && prev <= b'z')
                             || (prev >= b'A' && prev <= b'Z')
                             || (prev >= b'0' && prev <= b'9')
-                            || prev == b'_' || prev == b'$'
+                            || prev == b'_'
+                            || prev == b'$'
                         {
                             continue;
                         }
@@ -528,7 +529,13 @@ impl BuiltInFunctionObject {
 
                     // look ahead skipping whitespace
                     let mut j = i + nlen;
-                    while j < len && (bytes[j] == b' ' || bytes[j] == b'\t' || bytes[j] == b'\n' || bytes[j] == b'\r' || bytes[j] == b'\x0C') {
+                    while j < len
+                        && (bytes[j] == b' '
+                            || bytes[j] == b'\t'
+                            || bytes[j] == b'\n'
+                            || bytes[j] == b'\r'
+                            || bytes[j] == b'\x0C')
+                    {
                         j += 1;
                     }
 
@@ -644,13 +651,17 @@ impl BuiltInFunctionObject {
             (found_call, found_ref)
         }
 
-    let body_u16: Vec<u16> = body.iter().collect();
-    let (call_in_body, ref_in_body) = scan_super_in_utf16(&body_u16);
+        let body_u16: Vec<u16> = body.iter().collect();
+        let (call_in_body, ref_in_body) = scan_super_in_utf16(&body_u16);
         if call_in_body {
-            return Err(JsNativeError::syntax().with_message("invalid `super` call").into());
+            return Err(JsNativeError::syntax()
+                .with_message("invalid `super` call")
+                .into());
         }
         if ref_in_body {
-            return Err(JsNativeError::syntax().with_message("invalid `super` reference").into());
+            return Err(JsNativeError::syntax()
+                .with_message("invalid `super` reference")
+                .into());
         }
 
         context.host_hooks().ensure_can_compile_strings(
@@ -872,24 +883,30 @@ impl BuiltInFunctionObject {
             }
         }
         full_source.push_str(") {");
-    full_source.push_str(&raw_body_text);
+        full_source.push_str(&raw_body_text);
         full_source.push_str("}\n");
 
         let full_utf16: Vec<u16> = full_source.encode_utf16().collect();
         let mut parser = Parser::new(Source::from_utf16(&full_utf16));
         parser.set_identifier(context.next_parser_identifier());
-    let parser_scope = context.realm().scope().clone();
-    if let Err(_err) = parser.parse_script_with_source(&parser_scope, context.interner_mut()) {
+        let parser_scope = context.realm().scope().clone();
+        if let Err(_err) = parser.parse_script_with_source(&parser_scope, context.interner_mut()) {
             // Map any parse errors to a specific invalid `super` message depending on the
             // raw body text so tests that expect 'invalid `super` call' or
             // 'invalid `super` reference' still pass.
             if raw_body_text.contains("super(") {
-                return Err(JsNativeError::syntax().with_message("invalid `super` call").into());
+                return Err(JsNativeError::syntax()
+                    .with_message("invalid `super` call")
+                    .into());
             }
             if raw_body_text.contains("super.") {
-                return Err(JsNativeError::syntax().with_message("invalid `super` reference").into());
+                return Err(JsNativeError::syntax()
+                    .with_message("invalid `super` reference")
+                    .into());
             }
-            return Err(JsNativeError::syntax().with_message("invalid `super` call").into());
+            return Err(JsNativeError::syntax()
+                .with_message("invalid `super` call")
+                .into());
         }
 
         // TODO: create SourceText : "anonymous(" parameters \n ") {" body_parse "}"

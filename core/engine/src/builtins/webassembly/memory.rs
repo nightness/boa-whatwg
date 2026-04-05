@@ -4,17 +4,19 @@
 //! the W3C WebAssembly JavaScript API specification
 //! https://webassembly.github.io/spec/js-api/#memories
 
+use super::runtime::WebAssemblyRuntime;
 use crate::{
-    builtins::{BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder},
+    Context, JsArgs, JsData, JsNativeError, JsResult, JsString,
+    builtins::{BuiltInBuilder, BuiltInConstructor, BuiltInObject, IntrinsicObject},
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
-    object::{internal_methods::get_prototype_from_constructor, JsObject},
+    js_string,
+    object::{JsObject, internal_methods::get_prototype_from_constructor},
+    property::Attribute,
+    realm::Realm,
     string::StaticJsStrings,
     value::JsValue,
-    Context, JsArgs, JsData, JsNativeError, JsResult, js_string,
-    JsString, realm::Realm, property::Attribute
 };
 use boa_gc::{Finalize, Trace};
-use super::runtime::WebAssemblyRuntime;
 
 /// JavaScript `WebAssembly.Memory` builtin implementation.
 #[derive(Debug, Copy, Clone)]
@@ -88,12 +90,12 @@ impl WebAssemblyMemory {
         context: &mut Context,
     ) -> JsResult<MemoryDescriptor> {
         let desc_obj = descriptor.as_object().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Memory descriptor must be an object")
+            JsNativeError::typ().with_message("WebAssembly.Memory descriptor must be an object")
         })?;
 
         // Get initial pages (required)
-        let initial = desc_obj.get(js_string!("initial"), context)?
+        let initial = desc_obj
+            .get(js_string!("initial"), context)?
             .to_u32(context)? as u64;
 
         // Get maximum pages (optional)
@@ -120,9 +122,11 @@ impl WebAssemblyMemory {
             match index_str.to_std_string_escaped().as_str() {
                 "i32" => IndexType::I32,
                 "i64" => IndexType::I64,
-                _ => return Err(JsNativeError::typ()
-                    .with_message("WebAssembly.Memory index must be 'i32' or 'i64'")
-                    .into())
+                _ => {
+                    return Err(JsNativeError::typ()
+                        .with_message("WebAssembly.Memory index must be 'i32' or 'i64'")
+                        .into());
+                }
             }
         } else {
             IndexType::I32
@@ -143,7 +147,7 @@ impl WebAssemblyMemory {
         // For i32 memories: maximum is 2^16 pages (4 GiB)
         // For i64 memories: maximum is 2^48 pages (theoretical, but practically limited)
         let max_pages = match index {
-            IndexType::I32 => 65536, // 2^16 pages = 4 GiB
+            IndexType::I32 => 65536,      // 2^16 pages = 4 GiB
             IndexType::I64 => 1u64 << 48, // Extremely large but still finite
         };
 
@@ -170,10 +174,7 @@ impl WebAssemblyMemory {
     }
 
     /// Create a WebAssembly.Memory object
-    fn create_memory(
-        descriptor: MemoryDescriptor,
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
+    fn create_memory(descriptor: MemoryDescriptor, context: &mut Context) -> JsResult<JsValue> {
         // Get the WebAssembly runtime
         let runtime = WebAssemblyRuntime::get_or_create(context)?;
 
@@ -191,7 +192,12 @@ impl WebAssemblyMemory {
 
         // Create the JavaScript Memory object
         let proto = get_prototype_from_constructor(
-            &context.intrinsics().constructors().webassembly_memory().constructor().into(),
+            &context
+                .intrinsics()
+                .constructors()
+                .webassembly_memory()
+                .constructor()
+                .into(),
             StandardConstructors::webassembly_memory,
             context,
         )?;
@@ -208,20 +214,17 @@ impl WebAssemblyMemory {
     /// `get WebAssembly.Memory.prototype.buffer`
     ///
     /// Returns an ArrayBuffer whose contents are the memory.
-    fn buffer(
-        this: &JsValue,
-        _args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
+    fn buffer(this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let memory_obj = this.as_object().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Memory.buffer called on non-object")
+            JsNativeError::typ().with_message("WebAssembly.Memory.buffer called on non-object")
         })?;
 
-        let memory_data = memory_obj.downcast_ref::<WebAssemblyMemoryData>().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Memory.buffer called on non-Memory object")
-        })?;
+        let memory_data = memory_obj
+            .downcast_ref::<WebAssemblyMemoryData>()
+            .ok_or_else(|| {
+                JsNativeError::typ()
+                    .with_message("WebAssembly.Memory.buffer called on non-Memory object")
+            })?;
 
         // Get the runtime to access the memory
         let runtime = WebAssemblyRuntime::get_or_create(context)?;
@@ -240,20 +243,17 @@ impl WebAssemblyMemory {
     /// `WebAssembly.Memory.prototype.grow(delta)`
     ///
     /// Increases the size of the memory instance by delta pages.
-    fn grow(
-        this: &JsValue,
-        args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
+    fn grow(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let memory_obj = this.as_object().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Memory.grow called on non-object")
+            JsNativeError::typ().with_message("WebAssembly.Memory.grow called on non-object")
         })?;
 
-        let memory_data = memory_obj.downcast_ref::<WebAssemblyMemoryData>().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Memory.grow called on non-Memory object")
-        })?;
+        let memory_data = memory_obj
+            .downcast_ref::<WebAssemblyMemoryData>()
+            .ok_or_else(|| {
+                JsNativeError::typ()
+                    .with_message("WebAssembly.Memory.grow called on non-Memory object")
+            })?;
 
         let delta = args.get_or_undefined(0).to_u32(context)? as u64;
 
@@ -275,7 +275,10 @@ pub struct WebAssemblyMemoryData {
 
 impl WebAssemblyMemoryData {
     pub fn new(memory_id: String, descriptor: MemoryDescriptor) -> Self {
-        Self { memory_id, descriptor }
+        Self {
+            memory_id,
+            descriptor,
+        }
     }
 
     pub fn memory_id(&self) -> &str {

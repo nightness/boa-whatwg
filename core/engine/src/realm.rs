@@ -123,7 +123,11 @@ impl Realm {
     ///
     /// This is needed for external crates (like thalora-browser-apis) to register
     /// their constructors after extraction from Boa.
-    pub fn register_external_constructor(&self, name: &'static str, constructor: StandardConstructor) {
+    pub fn register_external_constructor(
+        &self,
+        name: &'static str,
+        constructor: StandardConstructor,
+    ) {
         self.inner
             .external_constructors
             .borrow_mut()
@@ -133,11 +137,7 @@ impl Realm {
     /// Get an external constructor registered in this realm.
     #[must_use]
     pub fn get_external_constructor(&self, name: &str) -> Option<StandardConstructor> {
-        self.inner
-            .external_constructors
-            .borrow()
-            .get(name)
-            .cloned()
+        self.inner.external_constructors.borrow().get(name).cloned()
     }
 
     /// Returns an immutable reference to the [`ECMAScript specification`][spec] defined

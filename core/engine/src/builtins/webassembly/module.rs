@@ -4,17 +4,19 @@
 //! the W3C WebAssembly JavaScript API specification
 //! https://webassembly.github.io/spec/js-api/#modules
 
+use super::runtime::WebAssemblyRuntime;
 use crate::{
-    builtins::{BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder},
+    Context, JsArgs, JsData, JsNativeError, JsResult, JsString,
+    builtins::{BuiltInBuilder, BuiltInConstructor, BuiltInObject, IntrinsicObject},
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
-    object::{internal_methods::get_prototype_from_constructor, JsObject, JsArray},
+    js_string,
+    object::{JsArray, JsObject, internal_methods::get_prototype_from_constructor},
+    property::Attribute,
+    realm::Realm,
     string::StaticJsStrings,
     value::JsValue,
-    Context, JsArgs, JsData, JsNativeError, JsResult, js_string,
-    JsString, realm::Realm, property::Attribute
 };
 use boa_gc::{Finalize, Trace};
-use super::runtime::WebAssemblyRuntime;
 
 /// JavaScript `WebAssembly.Module` builtin implementation.
 #[derive(Debug, Copy, Clone)]
@@ -80,13 +82,17 @@ impl WebAssemblyModule {
 
         // Compile the module using wasmtime
         let module_id = runtime.compile_module(bytes).map_err(|err| {
-            JsNativeError::typ()
-                .with_message(format!("WebAssembly compilation failed: {}", err))
+            JsNativeError::typ().with_message(format!("WebAssembly compilation failed: {}", err))
         })?;
 
         // Create the JavaScript Module object
         let proto = get_prototype_from_constructor(
-            &context.intrinsics().constructors().webassembly_module().constructor().into(),
+            &context
+                .intrinsics()
+                .constructors()
+                .webassembly_module()
+                .constructor()
+                .into(),
             StandardConstructors::webassembly_module,
             context,
         )?;
@@ -104,30 +110,26 @@ impl WebAssemblyModule {
     ///
     /// Returns an array containing descriptions of all the declared exports
     /// of the given Module.
-    pub fn exports(
-        _this: &JsValue,
-        args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
+    pub fn exports(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let module_arg = args.get_or_undefined(0);
 
         // Validate that the argument is a WebAssembly.Module
         let module_obj = module_arg.as_object().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Module.exports called with non-object")
+            JsNativeError::typ().with_message("WebAssembly.Module.exports called with non-object")
         })?;
 
-        let module_data = module_obj.downcast_ref::<WebAssemblyModuleData>().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Module.exports called with non-Module object")
-        })?;
+        let module_data = module_obj
+            .downcast_ref::<WebAssemblyModuleData>()
+            .ok_or_else(|| {
+                JsNativeError::typ()
+                    .with_message("WebAssembly.Module.exports called with non-Module object")
+            })?;
 
         // Get the runtime and module
         let runtime = WebAssemblyRuntime::get_or_create(context)?;
-        let module = runtime.get_module(&module_data.module_id).ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("Invalid WebAssembly.Module")
-        })?;
+        let module = runtime
+            .get_module(&module_data.module_id)
+            .ok_or_else(|| JsNativeError::typ().with_message("Invalid WebAssembly.Module"))?;
 
         // Create array of export descriptors
         let exports_array = JsArray::new(context)?;
@@ -135,7 +137,12 @@ impl WebAssemblyModule {
 
         for export in module.exports() {
             let export_descriptor = JsObject::with_object_proto(context.intrinsics());
-            export_descriptor.set(js_string!("name"), js_string!(export.name()), false, context)?;
+            export_descriptor.set(
+                js_string!("name"),
+                js_string!(export.name()),
+                false,
+                context,
+            )?;
 
             let kind = match export.ty() {
                 wasmtime::ExternType::Func(_) => "function",
@@ -156,30 +163,26 @@ impl WebAssemblyModule {
     ///
     /// Returns an array containing descriptions of all the declared imports
     /// of the given Module.
-    pub fn imports(
-        _this: &JsValue,
-        args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
+    pub fn imports(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let module_arg = args.get_or_undefined(0);
 
         // Validate that the argument is a WebAssembly.Module
         let module_obj = module_arg.as_object().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Module.imports called with non-object")
+            JsNativeError::typ().with_message("WebAssembly.Module.imports called with non-object")
         })?;
 
-        let module_data = module_obj.downcast_ref::<WebAssemblyModuleData>().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Module.imports called with non-Module object")
-        })?;
+        let module_data = module_obj
+            .downcast_ref::<WebAssemblyModuleData>()
+            .ok_or_else(|| {
+                JsNativeError::typ()
+                    .with_message("WebAssembly.Module.imports called with non-Module object")
+            })?;
 
         // Get the runtime and module
         let runtime = WebAssemblyRuntime::get_or_create(context)?;
-        let module = runtime.get_module(&module_data.module_id).ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("Invalid WebAssembly.Module")
-        })?;
+        let module = runtime
+            .get_module(&module_data.module_id)
+            .ok_or_else(|| JsNativeError::typ().with_message("Invalid WebAssembly.Module"))?;
 
         // Create array of import descriptors
         let imports_array = JsArray::new(context)?;
@@ -187,8 +190,18 @@ impl WebAssemblyModule {
 
         for import in module.imports() {
             let import_descriptor = JsObject::with_object_proto(context.intrinsics());
-            import_descriptor.set(js_string!("module"), js_string!(import.module()), false, context)?;
-            import_descriptor.set(js_string!("name"), js_string!(import.name()), false, context)?;
+            import_descriptor.set(
+                js_string!("module"),
+                js_string!(import.module()),
+                false,
+                context,
+            )?;
+            import_descriptor.set(
+                js_string!("name"),
+                js_string!(import.name()),
+                false,
+                context,
+            )?;
 
             let kind = match import.ty() {
                 wasmtime::ExternType::Func(_) => "function",
@@ -223,10 +236,12 @@ impl WebAssemblyModule {
                 .with_message("WebAssembly.Module.customSections called with non-object")
         })?;
 
-        let _module_data = module_obj.downcast_ref::<WebAssemblyModuleData>().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Module.customSections called with non-Module object")
-        })?;
+        let _module_data = module_obj
+            .downcast_ref::<WebAssemblyModuleData>()
+            .ok_or_else(|| {
+                JsNativeError::typ()
+                    .with_message("WebAssembly.Module.customSections called with non-Module object")
+            })?;
 
         let _section_name = section_name_arg.to_string(context)?;
 
@@ -269,10 +284,9 @@ fn extract_bytes_from_buffer_source(
                         0x00, 0x61, 0x73, 0x6d, // Magic: '\0asm'
                         0x01, 0x00, 0x00, 0x00, // Version: 1
                         0x01, 0x04, 0x01, 0x60, // Type section: [] -> []
-                        0x00, 0x00,
-                        0x03, 0x02, 0x01, 0x00, // Function section
+                        0x00, 0x00, 0x03, 0x02, 0x01, 0x00, // Function section
                         0x0a, 0x04, 0x01, 0x02, // Code section
-                        0x00, 0x0b              // Function body: nop, end
+                        0x00, 0x0b, // Function body: nop, end
                     ]);
                 }
             }

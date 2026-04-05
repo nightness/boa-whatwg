@@ -4,17 +4,19 @@
 //! the W3C WebAssembly JavaScript API specification
 //! https://webassembly.github.io/spec/js-api/#globals
 
+use super::runtime::WebAssemblyRuntime;
 use crate::{
-    builtins::{BuiltInObject, IntrinsicObject, BuiltInConstructor, BuiltInBuilder},
+    Context, JsArgs, JsData, JsNativeError, JsResult, JsString,
+    builtins::{BuiltInBuilder, BuiltInConstructor, BuiltInObject, IntrinsicObject},
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
-    object::{internal_methods::get_prototype_from_constructor, JsObject},
+    js_string,
+    object::{JsObject, internal_methods::get_prototype_from_constructor},
+    property::Attribute,
+    realm::Realm,
     string::StaticJsStrings,
     value::JsValue,
-    Context, JsArgs, JsData, JsNativeError, JsResult, js_string,
-    JsString, realm::Realm, property::Attribute
 };
 use boa_gc::{Finalize, Trace};
-use super::runtime::WebAssemblyRuntime;
 
 /// JavaScript `WebAssembly.Global` builtin implementation.
 #[derive(Debug, Copy, Clone)]
@@ -90,8 +92,7 @@ impl WebAssemblyGlobal {
         context: &mut Context,
     ) -> JsResult<GlobalDescriptor> {
         let desc_obj = descriptor.as_object().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Global descriptor must be an object")
+            JsNativeError::typ().with_message("WebAssembly.Global descriptor must be an object")
         })?;
 
         // Get value type (required)
@@ -105,9 +106,11 @@ impl WebAssemblyGlobal {
             "v128" => ValueType::V128,
             "externref" => ValueType::ExternRef,
             "funcref" => ValueType::FuncRef,
-            _ => return Err(JsNativeError::typ()
-                .with_message("WebAssembly.Global value must be a valid WebAssembly type")
-                .into())
+            _ => {
+                return Err(JsNativeError::typ()
+                    .with_message("WebAssembly.Global value must be a valid WebAssembly type")
+                    .into());
+            }
         };
 
         // Get mutable flag (optional, defaults to false)
@@ -146,14 +149,21 @@ impl WebAssemblyGlobal {
         );
 
         // Create the global in wasmtime
-        let global_id = runtime.create_global(global_type, wasm_value).map_err(|err| {
-            JsNativeError::typ()
-                .with_message(format!("WebAssembly.Global creation failed: {}", err))
-        })?;
+        let global_id = runtime
+            .create_global(global_type, wasm_value)
+            .map_err(|err| {
+                JsNativeError::typ()
+                    .with_message(format!("WebAssembly.Global creation failed: {}", err))
+            })?;
 
         // Create the JavaScript Global object
         let proto = get_prototype_from_constructor(
-            &context.intrinsics().constructors().webassembly_global().constructor().into(),
+            &context
+                .intrinsics()
+                .constructors()
+                .webassembly_global()
+                .constructor()
+                .into(),
             StandardConstructors::webassembly_global,
             context,
         )?;
@@ -241,20 +251,17 @@ impl WebAssemblyGlobal {
     /// `get/set WebAssembly.Global.prototype.value`
     ///
     /// Returns or sets the value of the global.
-    fn value(
-        this: &JsValue,
-        args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
+    fn value(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let global_obj = this.as_object().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Global.value called on non-object")
+            JsNativeError::typ().with_message("WebAssembly.Global.value called on non-object")
         })?;
 
-        let global_data = global_obj.downcast_ref::<WebAssemblyGlobalData>().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Global.value called on non-Global object")
-        })?;
+        let global_data = global_obj
+            .downcast_ref::<WebAssemblyGlobalData>()
+            .ok_or_else(|| {
+                JsNativeError::typ()
+                    .with_message("WebAssembly.Global.value called on non-Global object")
+            })?;
 
         // If no arguments, this is a getter
         if args.is_empty() {
@@ -299,20 +306,17 @@ impl WebAssemblyGlobal {
     }
 
     /// Setter for WebAssembly.Global.prototype.value
-    fn set_value(
-        this: &JsValue,
-        args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
+    fn set_value(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let global_obj = this.as_object().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Global.value called on non-object")
+            JsNativeError::typ().with_message("WebAssembly.Global.value called on non-object")
         })?;
 
-        let global_data = global_obj.downcast_ref::<WebAssemblyGlobalData>().ok_or_else(|| {
-            JsNativeError::typ()
-                .with_message("WebAssembly.Global.value called on non-Global object")
-        })?;
+        let global_data = global_obj
+            .downcast_ref::<WebAssemblyGlobalData>()
+            .ok_or_else(|| {
+                JsNativeError::typ()
+                    .with_message("WebAssembly.Global.value called on non-Global object")
+            })?;
 
         if !global_data.descriptor().mutable {
             return Err(JsNativeError::typ()
@@ -326,11 +330,8 @@ impl WebAssemblyGlobal {
         let runtime = WebAssemblyRuntime::get_or_create(context)?;
 
         // Convert and validate the new value
-        let wasm_value = Self::js_value_to_wasm_value(
-            new_value,
-            &global_data.descriptor().value_type,
-            context,
-        )?;
+        let wasm_value =
+            Self::js_value_to_wasm_value(new_value, &global_data.descriptor().value_type, context)?;
 
         // TODO: Implement actual global value setting in wasmtime
 
@@ -347,7 +348,10 @@ pub struct WebAssemblyGlobalData {
 
 impl WebAssemblyGlobalData {
     pub fn new(global_id: String, descriptor: GlobalDescriptor) -> Self {
-        Self { global_id, descriptor }
+        Self {
+            global_id,
+            descriptor,
+        }
     }
 
     pub fn global_id(&self) -> &str {

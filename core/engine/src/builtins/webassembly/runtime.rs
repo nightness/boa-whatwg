@@ -3,7 +3,7 @@
 //! This module provides the runtime infrastructure for executing WebAssembly
 //! modules, managing engines, stores, and compiled modules.
 
-use crate::{Context, JsResult, JsNativeError, JsData};
+use crate::{Context, JsData, JsNativeError, JsResult};
 use boa_gc::{Finalize, Trace};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
@@ -93,7 +93,10 @@ impl WebAssemblyRuntime {
         let module = Module::new(&*self.engine, bytes)?;
         let module_id = self.generate_module_id();
 
-        self.modules.lock().unwrap().insert(module_id.clone(), module);
+        self.modules
+            .lock()
+            .unwrap()
+            .insert(module_id.clone(), module);
         Ok(module_id)
     }
 
@@ -116,9 +119,7 @@ impl WebAssemblyRuntime {
     where
         F: FnOnce(&mut Store<()>) -> R,
     {
-        self.stores.lock().unwrap()
-            .get_mut(store_id)
-            .map(f)
+        self.stores.lock().unwrap().get_mut(store_id).map(f)
     }
 
     /// Instantiate a module with imports
@@ -126,10 +127,17 @@ impl WebAssemblyRuntime {
         &self,
         module_id: &str,
         store_id: String,
-        imports: std::collections::HashMap<String, std::collections::HashMap<String, wasmtime::Extern>>,
+        imports: std::collections::HashMap<
+            String,
+            std::collections::HashMap<String, wasmtime::Extern>,
+        >,
     ) -> Result<String, Box<dyn std::error::Error>> {
-        let module = self.get_module(module_id)
-            .ok_or_else(|| Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Module not found")) as Box<dyn std::error::Error>)?;
+        let module = self.get_module(module_id).ok_or_else(|| {
+            Box::new(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "Module not found",
+            )) as Box<dyn std::error::Error>
+        })?;
 
         let instance_id = self.generate_instance_id();
 
@@ -147,23 +155,31 @@ impl WebAssemblyRuntime {
                 } else {
                     return Err(Box::new(std::io::Error::new(
                         std::io::ErrorKind::NotFound,
-                        format!("Import {}.{} not found", module_name, import_name)
+                        format!("Import {}.{} not found", module_name, import_name),
                     )));
                 }
             } else {
                 return Err(Box::new(std::io::Error::new(
                     std::io::ErrorKind::NotFound,
-                    format!("Import module {} not found", module_name)
+                    format!("Import module {} not found", module_name),
                 )));
             }
         }
 
         self.with_store_mut(&store_id, |store| {
             let instance = Instance::new(store, &module, &import_vec)?;
-            self.instances.lock().unwrap().insert(instance_id.clone(), instance);
+            self.instances
+                .lock()
+                .unwrap()
+                .insert(instance_id.clone(), instance);
             Ok(instance_id)
         })
-        .unwrap_or_else(|| Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Store not found")) as Box<dyn std::error::Error>))
+        .unwrap_or_else(|| {
+            Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Store not found",
+            )) as Box<dyn std::error::Error>)
+        })
     }
 
     /// Get an instance by ID
@@ -178,7 +194,10 @@ impl WebAssemblyRuntime {
 
         self.with_store_mut(&store_id, |store| {
             let memory = Memory::new(store, memory_type)?;
-            self.memories.lock().unwrap().insert(memory_id.clone(), memory);
+            self.memories
+                .lock()
+                .unwrap()
+                .insert(memory_id.clone(), memory);
             Ok(memory_id)
         })
         .unwrap_or_else(|| Err(wasmtime::Error::msg("Failed to create store")))
@@ -190,7 +209,11 @@ impl WebAssemblyRuntime {
     }
 
     /// Create a WebAssembly table
-    pub fn create_table(&self, table_type: TableType, init: wasmtime::Ref) -> Result<String, wasmtime::Error> {
+    pub fn create_table(
+        &self,
+        table_type: TableType,
+        init: wasmtime::Ref,
+    ) -> Result<String, wasmtime::Error> {
         let store_id = self.create_store();
         let table_id = self.generate_table_id();
 
@@ -208,13 +231,20 @@ impl WebAssemblyRuntime {
     }
 
     /// Create a WebAssembly global
-    pub fn create_global(&self, global_type: GlobalType, init: wasmtime::Val) -> Result<String, wasmtime::Error> {
+    pub fn create_global(
+        &self,
+        global_type: GlobalType,
+        init: wasmtime::Val,
+    ) -> Result<String, wasmtime::Error> {
         let store_id = self.create_store();
         let global_id = self.generate_global_id();
 
         self.with_store_mut(&store_id, |store| {
             let global = Global::new(store, global_type, init)?;
-            self.globals.lock().unwrap().insert(global_id.clone(), global);
+            self.globals
+                .lock()
+                .unwrap()
+                .insert(global_id.clone(), global);
             Ok(global_id)
         })
         .unwrap_or_else(|| Err(wasmtime::Error::msg("Failed to create store")))

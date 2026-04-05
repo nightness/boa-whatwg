@@ -187,7 +187,11 @@ impl IntrinsicObject for Error {
         #[cfg(feature = "experimental")]
         let builder = builder.static_method(Error::is_error, js_string!("isError"), 1);
 
-        let builder = builder.static_method(Error::capture_stack_trace, js_string!("captureStackTrace"), 2);
+        let builder = builder.static_method(
+            Error::capture_stack_trace,
+            js_string!("captureStackTrace"),
+            2,
+        );
 
         builder.build();
     }
@@ -383,7 +387,7 @@ impl Error {
             target_obj.create_non_enumerable_data_property_or_throw(
                 js_string!("stack"),
                 stack_trace,
-                context
+                context,
             );
         }
 

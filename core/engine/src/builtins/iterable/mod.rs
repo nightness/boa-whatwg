@@ -2,7 +2,7 @@
 
 use crate::{
     Context, JsArgs, JsResult, JsValue,
-    builtins::{BuiltInBuilder, IntrinsicObject, Array},
+    builtins::{Array, BuiltInBuilder, IntrinsicObject},
     context::intrinsics::Intrinsics,
     error::JsNativeError,
     js_string,

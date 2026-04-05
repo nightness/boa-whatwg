@@ -997,11 +997,9 @@ impl JsValue {
     /// See: <https://tc39.es/ecma262/#sec-toobject>
     pub fn to_object(&self, context: &mut Context) -> JsResult<JsObject> {
         match self.variant() {
-            JsVariant::Undefined | JsVariant::Null => {
-                Err(JsNativeError::typ()
+            JsVariant::Undefined | JsVariant::Null => Err(JsNativeError::typ()
                 .with_message("cannot convert 'null' or 'undefined' to object")
-                .into())
-            }
+                .into()),
             JsVariant::Boolean(boolean) => Ok(context
                 .intrinsics()
                 .templates()
@@ -1042,11 +1040,9 @@ impl JsValue {
     pub(crate) fn base_class(&self, context: &Context) -> JsResult<JsObject> {
         let constructors = context.intrinsics().constructors();
         match self.variant() {
-            JsVariant::Undefined | JsVariant::Null => {
-                Err(JsNativeError::typ()
+            JsVariant::Undefined | JsVariant::Null => Err(JsNativeError::typ()
                 .with_message("cannot convert 'null' or 'undefined' to object")
-                .into())
-            }
+                .into()),
             JsVariant::Boolean(_) => Ok(constructors.boolean().prototype()),
             JsVariant::Integer32(_) | JsVariant::Float64(_) => {
                 Ok(constructors.number().prototype())

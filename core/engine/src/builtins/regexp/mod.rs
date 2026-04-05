@@ -26,9 +26,9 @@ use boa_gc::{Finalize, Trace};
 use boa_macros::{js_str, utf16};
 use boa_parser::lexer::regex::RegExpFlags;
 use regress::{Flags, Range, Regex};
-use std::str::FromStr;
 use std::cell::RefCell;
 use std::collections::HashSet;
+use std::str::FromStr;
 
 // Thread-local guard to prevent infinite recursion in get_flags
 // When flags getter accesses properties that re-invoke flags, we detect it
@@ -700,9 +700,8 @@ impl RegExp {
         // RECURSION GUARD: Prevent infinite recursion when flag property getters re-invoke flags
         // This can happen with Proxy objects or objects with custom getters
         let obj_addr = object.as_ref() as *const _ as usize;
-        let already_in_flags = FLAGS_RECURSION_GUARD.with(|guard| {
-            guard.borrow().contains(&obj_addr)
-        });
+        let already_in_flags =
+            FLAGS_RECURSION_GUARD.with(|guard| guard.borrow().contains(&obj_addr));
 
         if already_in_flags {
             // We're recursively accessing flags - return empty string to break the cycle

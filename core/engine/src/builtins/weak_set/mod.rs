@@ -48,7 +48,6 @@ impl IntrinsicObject for WeakSet {
 
 impl BuiltInObject for WeakSet {
     const NAME: JsString = StaticJsStrings::WEAK_SET;
-
 }
 
 impl BuiltInConstructor for WeakSet {

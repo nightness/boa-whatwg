@@ -2773,7 +2773,6 @@ impl StandardConstructors {
         &self.calendar
     }
 
-
     /// Returns the `WritableStream` constructor.
     ///
     /// More information:

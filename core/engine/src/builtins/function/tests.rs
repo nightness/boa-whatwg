@@ -131,7 +131,7 @@ fn function_prototype_apply_on_object() {
 #[test]
 fn closure_capture_clone() {
     run_test_actions([
-    TestAction::inspect_context(|ctx| {
+        TestAction::inspect_context(|ctx| {
             let string = js_string!("Hello");
             let object = JsObject::with_object_proto(ctx.intrinsics());
             object

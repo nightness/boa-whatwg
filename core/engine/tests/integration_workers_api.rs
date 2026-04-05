@@ -9,7 +9,8 @@ use boa_engine::{Context, Source};
 fn test_worker_basic_functionality() {
     let mut context = Context::default();
 
-    let result = context.eval(Source::from_bytes(r#"
+    let result = context.eval(Source::from_bytes(
+        r#"
         // Test Worker constructor exists
         typeof Worker === 'function' &&
         Worker.length === 1 &&
@@ -28,7 +29,8 @@ fn test_worker_basic_functionality() {
                 return false;
             }
         })()
-    "#));
+    "#,
+    ));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap().to_boolean(), true);
@@ -39,7 +41,8 @@ fn test_worker_basic_functionality() {
 fn test_module_worker_support() {
     let mut context = Context::default();
 
-    let result = context.eval(Source::from_bytes(r#"
+    let result = context.eval(Source::from_bytes(
+        r#"
         // Test module worker creation
         (function() {
             try {
@@ -52,7 +55,8 @@ fn test_module_worker_support() {
                 return false;
             }
         })()
-    "#));
+    "#,
+    ));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap().to_boolean(), true);
@@ -63,7 +67,8 @@ fn test_module_worker_support() {
 fn test_shared_worker_functionality() {
     let mut context = Context::default();
 
-    let result = context.eval(Source::from_bytes(r#"
+    let result = context.eval(Source::from_bytes(
+        r#"
         // Test SharedWorker constructor and port
         (function() {
             try {
@@ -79,7 +84,8 @@ fn test_shared_worker_functionality() {
                 return false;
             }
         })()
-    "#));
+    "#,
+    ));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap().to_boolean(), true);
@@ -90,7 +96,8 @@ fn test_shared_worker_functionality() {
 fn test_broadcast_channel_comprehensive() {
     let mut context = Context::default();
 
-    let result = context.eval(Source::from_bytes(r#"
+    let result = context.eval(Source::from_bytes(
+        r#"
         // Test BroadcastChannel full API
         (function() {
             try {
@@ -138,7 +145,8 @@ fn test_broadcast_channel_comprehensive() {
                 return false;
             }
         })()
-    "#));
+    "#,
+    ));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap().to_boolean(), true);
@@ -150,7 +158,8 @@ fn test_worker_navigator_integration() {
     let mut context = Context::default();
 
     // Test that we can access WorkerNavigator constructor
-    let result = context.eval(Source::from_bytes(r#"
+    let result = context.eval(Source::from_bytes(
+        r#"
         // Since we can't easily test inside a worker context in this test setup,
         // we'll test that the WorkerNavigator constructor exists and can be used
         (function() {
@@ -163,7 +172,8 @@ fn test_worker_navigator_integration() {
                 return false;
             }
         })()
-    "#));
+    "#,
+    ));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap().to_boolean(), true);
@@ -174,7 +184,8 @@ fn test_worker_navigator_integration() {
 fn test_message_port_functionality() {
     let mut context = Context::default();
 
-    let result = context.eval(Source::from_bytes(r#"
+    let result = context.eval(Source::from_bytes(
+        r#"
         // Test MessageChannel and MessagePort
         (function() {
             try {
@@ -194,7 +205,8 @@ fn test_message_port_functionality() {
                 return false;
             }
         })()
-    "#));
+    "#,
+    ));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap().to_boolean(), true);
@@ -205,7 +217,8 @@ fn test_message_port_functionality() {
 fn test_workers_api_edge_cases() {
     let mut context = Context::default();
 
-    let result = context.eval(Source::from_bytes(r#"
+    let result = context.eval(Source::from_bytes(
+        r#"
         // Test edge cases and error conditions
         (function() {
             try {
@@ -250,7 +263,8 @@ fn test_workers_api_edge_cases() {
                 return false;
             }
         })()
-    "#));
+    "#,
+    ));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap().to_boolean(), true);
@@ -261,7 +275,8 @@ fn test_workers_api_edge_cases() {
 fn test_whatwg_compliance() {
     let mut context = Context::default();
 
-    let result = context.eval(Source::from_bytes(r#"
+    let result = context.eval(Source::from_bytes(
+        r#"
         // Test WHATWG specification compliance details
         (function() {
             try {
@@ -304,7 +319,8 @@ fn test_whatwg_compliance() {
                 return false;
             }
         })()
-    "#));
+    "#,
+    ));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap().to_boolean(), true);
@@ -315,7 +331,8 @@ fn test_whatwg_compliance() {
 fn test_all_constructors_available() {
     let mut context = Context::default();
 
-    let result = context.eval(Source::from_bytes(r#"
+    let result = context.eval(Source::from_bytes(
+        r#"
         // Verify all Workers API constructors are available in global scope
         (function() {
             let constructors = [
@@ -329,7 +346,8 @@ fn test_all_constructors_available() {
                 return typeof globalThis[name] === 'function';
             });
         })()
-    "#));
+    "#,
+    ));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap().to_boolean(), true);

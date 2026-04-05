@@ -15,9 +15,7 @@ use icu_locale::Locale;
 
 use crate::{
     Context, JsArgs, JsData, JsNativeError, JsObject, JsResult, JsString, JsSymbol, JsValue,
-    builtins::{
-        BuiltInBuilder, BuiltInConstructor, BuiltInObject, IntrinsicObject,
-    },
+    builtins::{BuiltInBuilder, BuiltInConstructor, BuiltInObject, IntrinsicObject},
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
     js_string,
     object::{ObjectInitializer, internal_methods::get_prototype_from_constructor},
@@ -126,7 +124,8 @@ impl BuiltInConstructor for RelativeTimeFormat {
             Locale::try_from_str("en-US").unwrap_or_else(|_| Locale::try_from_str("en").unwrap())
         } else {
             requested_locales.into_iter().next().unwrap_or_else(|| {
-                Locale::try_from_str("en-US").unwrap_or_else(|_| Locale::try_from_str("en").unwrap())
+                Locale::try_from_str("en-US")
+                    .unwrap_or_else(|_| Locale::try_from_str("en").unwrap())
             })
         };
 
@@ -135,7 +134,11 @@ impl BuiltInConstructor for RelativeTimeFormat {
         let style = if style_val.is_undefined() {
             Style::Long
         } else {
-            match style_val.to_string(context)?.to_std_string_escaped().as_str() {
+            match style_val
+                .to_string(context)?
+                .to_std_string_escaped()
+                .as_str()
+            {
                 "long" => Style::Long,
                 "short" => Style::Short,
                 "narrow" => Style::Narrow,
@@ -148,7 +151,11 @@ impl BuiltInConstructor for RelativeTimeFormat {
         let numeric = if numeric_val.is_undefined() {
             Numeric::Always
         } else {
-            match numeric_val.to_string(context)?.to_std_string_escaped().as_str() {
+            match numeric_val
+                .to_string(context)?
+                .to_std_string_escaped()
+                .as_str()
+            {
                 "always" => Numeric::Always,
                 "auto" => Numeric::Auto,
                 _ => Numeric::Always,
@@ -178,8 +185,9 @@ impl RelativeTimeFormat {
             .as_ref()
             .and_then(|o| o.downcast_ref::<Self>())
             .ok_or_else(|| {
-                JsNativeError::typ()
-                    .with_message("`format` can only be called on an `Intl.RelativeTimeFormat` object")
+                JsNativeError::typ().with_message(
+                    "`format` can only be called on an `Intl.RelativeTimeFormat` object",
+                )
             })?;
 
         let value = args.get_or_undefined(0).to_number(context)?;
@@ -195,14 +203,19 @@ impl RelativeTimeFormat {
     /// `Intl.RelativeTimeFormat.prototype.formatToParts ( value, unit )`
     ///
     /// Returns an array of objects representing the relative time format in parts.
-    fn format_to_parts(this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    fn format_to_parts(
+        this: &JsValue,
+        args: &[JsValue],
+        context: &mut Context,
+    ) -> JsResult<JsValue> {
         let object = this.as_object();
         let rtf = object
             .as_ref()
             .and_then(|o| o.downcast_ref::<Self>())
             .ok_or_else(|| {
-                JsNativeError::typ()
-                    .with_message("`formatToParts` can only be called on an `Intl.RelativeTimeFormat` object")
+                JsNativeError::typ().with_message(
+                    "`formatToParts` can only be called on an `Intl.RelativeTimeFormat` object",
+                )
             })?;
 
         let value = args.get_or_undefined(0).to_number(context)?;
@@ -254,8 +267,9 @@ impl RelativeTimeFormat {
             .as_ref()
             .and_then(|o| o.downcast_ref::<Self>())
             .ok_or_else(|| {
-                JsNativeError::typ()
-                    .with_message("`resolvedOptions` can only be called on an `Intl.RelativeTimeFormat` object")
+                JsNativeError::typ().with_message(
+                    "`resolvedOptions` can only be called on an `Intl.RelativeTimeFormat` object",
+                )
             })?;
 
         let options = ObjectInitializer::new(context)
@@ -293,7 +307,13 @@ impl RelativeTimeFormat {
 }
 
 /// Helper function to format relative time
-fn format_relative_time(value: f64, unit: &str, _locale: &Locale, style: Style, numeric: Numeric) -> String {
+fn format_relative_time(
+    value: f64,
+    unit: &str,
+    _locale: &Locale,
+    style: Style,
+    numeric: Numeric,
+) -> String {
     let abs_value = value.abs();
     let is_past = value < 0.0;
 
@@ -333,21 +353,75 @@ fn format_relative_time(value: f64, unit: &str, _locale: &Locale, style: Style, 
     // Format based on style
     let unit_display = match style {
         Style::Long => match unit_singular {
-            "year" => if abs_value == 1.0 { "year" } else { "years" },
-            "month" => if abs_value == 1.0 { "month" } else { "months" },
-            "week" => if abs_value == 1.0 { "week" } else { "weeks" },
-            "day" => if abs_value == 1.0 { "day" } else { "days" },
-            "hour" => if abs_value == 1.0 { "hour" } else { "hours" },
-            "minute" => if abs_value == 1.0 { "minute" } else { "minutes" },
-            "second" => if abs_value == 1.0 { "second" } else { "seconds" },
-            "quarter" => if abs_value == 1.0 { "quarter" } else { "quarters" },
+            "year" => {
+                if abs_value == 1.0 {
+                    "year"
+                } else {
+                    "years"
+                }
+            }
+            "month" => {
+                if abs_value == 1.0 {
+                    "month"
+                } else {
+                    "months"
+                }
+            }
+            "week" => {
+                if abs_value == 1.0 {
+                    "week"
+                } else {
+                    "weeks"
+                }
+            }
+            "day" => {
+                if abs_value == 1.0 {
+                    "day"
+                } else {
+                    "days"
+                }
+            }
+            "hour" => {
+                if abs_value == 1.0 {
+                    "hour"
+                } else {
+                    "hours"
+                }
+            }
+            "minute" => {
+                if abs_value == 1.0 {
+                    "minute"
+                } else {
+                    "minutes"
+                }
+            }
+            "second" => {
+                if abs_value == 1.0 {
+                    "second"
+                } else {
+                    "seconds"
+                }
+            }
+            "quarter" => {
+                if abs_value == 1.0 {
+                    "quarter"
+                } else {
+                    "quarters"
+                }
+            }
             u => u,
         },
         Style::Short => match unit_singular {
             "year" => "yr.",
             "month" => "mo.",
             "week" => "wk.",
-            "day" => if abs_value == 1.0 { "day" } else { "days" },
+            "day" => {
+                if abs_value == 1.0 {
+                    "day"
+                } else {
+                    "days"
+                }
+            }
             "hour" => "hr.",
             "minute" => "min.",
             "second" => "sec.",

@@ -7,23 +7,25 @@
 //! This implements the complete WebAssembly interface with real WASM execution
 //! using wasmtime as the backend runtime.
 
-pub(crate) mod module;
+pub(crate) mod global;
 pub(crate) mod instance;
 pub(crate) mod memory;
-pub(crate) mod table;
-pub(crate) mod global;
+pub(crate) mod module;
 pub(crate) mod runtime;
+pub(crate) mod table;
 #[cfg(test)]
 mod tests;
 
 use crate::{
-    builtins::{BuiltInObject, IntrinsicObject, BuiltInBuilder},
+    Context, JsArgs, JsData, JsNativeError, JsResult, JsString,
+    builtins::{BuiltInBuilder, BuiltInObject, IntrinsicObject},
     context::intrinsics::{Intrinsics, StandardConstructor, StandardConstructors},
+    js_string,
     object::JsObject,
+    property::Attribute,
+    realm::Realm,
     string::StaticJsStrings,
     value::JsValue,
-    Context, JsArgs, JsData, JsNativeError, JsResult, JsString, js_string,
-    realm::Realm, property::Attribute
 };
 
 use boa_gc::{Finalize, Trace};
@@ -31,12 +33,12 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use wasmtime::*;
 
-pub use module::WebAssemblyModule;
+pub use global::WebAssemblyGlobal;
 pub use instance::WebAssemblyInstance;
 pub use memory::WebAssemblyMemory;
-pub use table::WebAssemblyTable;
-pub use global::WebAssemblyGlobal;
+pub use module::WebAssemblyModule;
 pub use runtime::WebAssemblyRuntime;
+pub use table::WebAssemblyTable;
 
 /// JavaScript `WebAssembly` global object implementation.
 #[derive(Debug, Copy, Clone)]
@@ -57,7 +59,11 @@ impl IntrinsicObject for WebAssembly {
             .static_method(Self::compile, js_string!("compile"), 1)
             .static_method(Self::instantiate, js_string!("instantiate"), 1)
             .static_method(Self::compile_streaming, js_string!("compileStreaming"), 1)
-            .static_method(Self::instantiate_streaming, js_string!("instantiateStreaming"), 1)
+            .static_method(
+                Self::instantiate_streaming,
+                js_string!("instantiateStreaming"),
+                1,
+            )
             .static_property(
                 js_string!("Module"),
                 WebAssemblyModule::get(realm.intrinsics()),
@@ -111,11 +117,7 @@ impl WebAssembly {
     ///
     /// Validates the given typed array of WebAssembly binary code, returning
     /// whether the bytes form a valid WebAssembly module (true) or not (false).
-    fn validate(
-        _this: &JsValue,
-        args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
+    fn validate(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let bytes = Self::extract_bytes_from_buffer_source(args.get_or_undefined(0), context)?;
 
         // Get the WebAssembly runtime
@@ -135,11 +137,7 @@ impl WebAssembly {
     /// This function is useful if it is necessary to compile a module before
     /// it can be instantiated (otherwise, the WebAssembly.instantiate() function
     /// should be used).
-    fn compile(
-        _this: &JsValue,
-        args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
+    fn compile(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let bytes = Self::extract_bytes_from_buffer_source(args.get_or_undefined(0), context)?;
 
         // Create a Promise for async compilation
@@ -148,9 +146,11 @@ impl WebAssembly {
         // For now, we'll do synchronous compilation and return a resolved promise
         // In a full implementation, this should be truly async
         match WebAssemblyModule::compile_bytes(&bytes, context) {
-            Ok(module_obj) => {
-                crate::builtins::Promise::resolve(&promise_constructor.into(), &[module_obj], context)
-            }
+            Ok(module_obj) => crate::builtins::Promise::resolve(
+                &promise_constructor.into(),
+                &[module_obj],
+                context,
+            ),
             Err(err) => {
                 let error_val = JsValue::from(js_string!(err.to_string()));
                 crate::builtins::Promise::reject(&promise_constructor.into(), &[error_val], context)
@@ -162,11 +162,7 @@ impl WebAssembly {
     /// `WebAssembly.instantiate(bytes, importObject)`
     ///
     /// The primary API for compiling and instantiating WebAssembly code.
-    fn instantiate(
-        _this: &JsValue,
-        args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
+    fn instantiate(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let first_arg = args.get_or_undefined(0);
         let import_object = args.get_or_undefined(1);
 
@@ -177,12 +173,18 @@ impl WebAssembly {
             if module_obj.is::<module::WebAssemblyModuleData>() {
                 // Instantiate from existing module
                 match WebAssemblyInstance::from_module(module_obj.clone(), import_object, context) {
-                    Ok(instance_obj) => {
-                        crate::builtins::Promise::resolve(&promise_constructor.into(), &[instance_obj], context)
-                    }
+                    Ok(instance_obj) => crate::builtins::Promise::resolve(
+                        &promise_constructor.into(),
+                        &[instance_obj],
+                        context,
+                    ),
                     Err(err) => {
                         let error_val = JsValue::from(js_string!(err.to_string()));
-                        crate::builtins::Promise::reject(&promise_constructor.into(), &[error_val], context)
+                        crate::builtins::Promise::reject(
+                            &promise_constructor.into(),
+                            &[error_val],
+                            context,
+                        )
                     }
                 }
             } else {
@@ -245,14 +247,22 @@ impl WebAssembly {
         let module_obj = WebAssemblyModule::compile_bytes(bytes, context)?;
 
         // Then instantiate it
-        match WebAssemblyInstance::from_module(module_obj.as_object().unwrap().clone(), import_object, context) {
+        match WebAssemblyInstance::from_module(
+            module_obj.as_object().unwrap().clone(),
+            import_object,
+            context,
+        ) {
             Ok(instance_obj) => {
                 // Create result object with both module and instance
                 let result_obj = JsObject::with_object_proto(context.intrinsics());
                 result_obj.set(js_string!("module"), module_obj, false, context)?;
                 result_obj.set(js_string!("instance"), instance_obj, false, context)?;
 
-                crate::builtins::Promise::resolve(&promise_constructor.into(), &[result_obj.into()], context)
+                crate::builtins::Promise::resolve(
+                    &promise_constructor.into(),
+                    &[result_obj.into()],
+                    context,
+                )
             }
             Err(err) => {
                 let error_val = JsValue::from(js_string!(err.to_string()));
@@ -277,10 +287,9 @@ impl WebAssembly {
                             0x00, 0x61, 0x73, 0x6d, // Magic: '\0asm'
                             0x01, 0x00, 0x00, 0x00, // Version: 1
                             0x01, 0x04, 0x01, 0x60, // Type section: [] -> []
-                            0x00, 0x00,
-                            0x03, 0x02, 0x01, 0x00, // Function section
+                            0x00, 0x00, 0x03, 0x02, 0x01, 0x00, // Function section
                             0x0a, 0x04, 0x01, 0x02, // Code section
-                            0x00, 0x0b              // Function body: nop, end
+                            0x00, 0x0b, // Function body: nop, end
                         ]);
                     }
                 }
@@ -292,4 +301,3 @@ impl WebAssembly {
             .into())
     }
 }
-

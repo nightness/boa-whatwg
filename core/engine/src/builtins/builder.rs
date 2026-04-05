@@ -292,12 +292,7 @@ impl BuiltInConstructorWithPrototype<'_> {
     }
 
     /// Adds a new method to the constructor's prototype.
-    pub fn method<B>(
-        mut self,
-        function: NativeFunctionPointer,
-        binding: B,
-        length: usize,
-    ) -> Self
+    pub fn method<B>(mut self, function: NativeFunctionPointer, binding: B, length: usize) -> Self
     where
         B: Into<FunctionBinding>,
     {
@@ -531,10 +526,7 @@ impl BuiltInCallable<'_> {
 }
 
 impl<'ctx> BuiltInBuilder<'ctx, OrdinaryObject> {
-    pub fn callable(
-        realm: &'ctx Realm,
-        function: NativeFunctionPointer,
-    ) -> BuiltInCallable<'ctx> {
+    pub fn callable(realm: &'ctx Realm, function: NativeFunctionPointer) -> BuiltInCallable<'ctx> {
         BuiltInCallable {
             realm,
             function,
@@ -596,7 +588,12 @@ impl<'ctx> BuiltInBuilder<'ctx, Callable<Constructor>> {
         // Detect this by checking if the constructor is the Object constructor.
         let is_reusing_object = std::ptr::eq(
             constructor.constructor().as_ref(),
-            realm.intrinsics().constructors().object().constructor().as_ref()
+            realm
+                .intrinsics()
+                .constructors()
+                .object()
+                .constructor()
+                .as_ref(),
         );
 
         let prototype = if is_reusing_object {
