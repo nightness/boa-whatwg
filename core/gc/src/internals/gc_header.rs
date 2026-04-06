@@ -96,7 +96,12 @@ impl GcHeader {
     }
 
     pub(crate) fn dec_ref_count(&self) {
-        self.ref_count.set(self.ref_count.get() - 1);
+        // Guard against underflow — complex pages can trigger ref_count == 0 decrements
+        // in Boa's GC under heavy JS load. Saturate at 0 rather than panic/wrap.
+        let current = self.ref_count.get();
+        if current > 0 {
+            self.ref_count.set(current - 1);
+        }
     }
 
     /// Check if the gc object is rooted.
