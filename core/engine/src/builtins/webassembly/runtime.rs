@@ -129,12 +129,14 @@ impl WebAssemblyRuntime {
         store_id: String,
         imports: HashMap<String, HashMap<String, Extern>>,
     ) -> Result<String, Box<dyn std::error::Error>> {
-        let module = self.get_module(module_id).ok_or_else(|| -> Box<dyn std::error::Error> {
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "Module not found",
-            ))
-        })?;
+        let module = self
+            .get_module(module_id)
+            .ok_or_else(|| -> Box<dyn std::error::Error> {
+                Box::new(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "Module not found",
+                ))
+            })?;
 
         let instance_id = self.generate_instance_id();
 
@@ -206,11 +208,7 @@ impl WebAssemblyRuntime {
     }
 
     /// Create a WebAssembly table
-    pub fn create_table(
-        &self,
-        table_type: TableType,
-        init: Ref,
-    ) -> Result<String, Error> {
+    pub fn create_table(&self, table_type: TableType, init: Ref) -> Result<String, Error> {
         let store_id = self.create_store();
         let table_id = self.generate_table_id();
 
@@ -228,11 +226,7 @@ impl WebAssemblyRuntime {
     }
 
     /// Create a WebAssembly global
-    pub fn create_global(
-        &self,
-        global_type: GlobalType,
-        init: Val,
-    ) -> Result<String, Error> {
+    pub fn create_global(&self, global_type: GlobalType, init: Val) -> Result<String, Error> {
         let store_id = self.create_store();
         let global_id = self.generate_global_id();
 
