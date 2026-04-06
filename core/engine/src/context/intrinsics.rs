@@ -84,12 +84,14 @@ impl Intrinsics {
     /// [spec]: https://tc39.es/ecma262/#sec-createintrinsics
     pub(crate) fn initialize(&self, realm: &crate::realm::Realm) {
         use crate::builtins::{self, IntrinsicObject};
+        use builtins::array::Array;
+        use builtins::object::OrdinaryObject;
 
         builtins::function::BuiltInFunctionObject::init(realm);
-        builtins::object::OrdinaryObject::init(realm);
+        OrdinaryObject::init(realm);
         builtins::math::Math::init(realm);
         builtins::json::Json::init(realm);
-        builtins::array::Array::init(realm);
+        Array::init(realm);
         builtins::proxy::Proxy::init(realm);
         builtins::array_buffer::ArrayBuffer::init(realm);
         builtins::array_buffer::SharedArrayBuffer::init(realm);
@@ -148,7 +150,10 @@ impl Intrinsics {
 
         #[cfg(feature = "intl")]
         {
-            builtins::intl::Intl::init(realm);
+            {
+                use builtins::intl::Intl;
+                Intl::init(realm);
+            }
         }
 
         #[cfg(feature = "temporal")]

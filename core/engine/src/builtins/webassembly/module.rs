@@ -254,16 +254,16 @@ impl WebAssemblyModule {
 
 /// Internal data for WebAssembly.Module instances
 #[derive(Debug, Clone, Trace, Finalize, JsData)]
-pub struct WebAssemblyModuleData {
+pub(crate) struct WebAssemblyModuleData {
     module_id: String,
 }
 
 impl WebAssemblyModuleData {
-    pub fn new(module_id: String) -> Self {
+    pub(crate) fn new(module_id: String) -> Self {
         Self { module_id }
     }
 
-    pub fn module_id(&self) -> &str {
+    pub(crate) fn module_id(&self) -> &str {
         &self.module_id
     }
 }

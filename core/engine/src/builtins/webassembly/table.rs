@@ -331,31 +331,31 @@ impl WebAssemblyTable {
 
 /// Internal data for WebAssembly.Table instances
 #[derive(Debug, Clone, Trace, Finalize, JsData)]
-pub struct WebAssemblyTableData {
+pub(crate) struct WebAssemblyTableData {
     table_id: String,
     descriptor: TableDescriptor,
 }
 
 impl WebAssemblyTableData {
-    pub fn new(table_id: String, descriptor: TableDescriptor) -> Self {
+    pub(crate) fn new(table_id: String, descriptor: TableDescriptor) -> Self {
         Self {
             table_id,
             descriptor,
         }
     }
 
-    pub fn table_id(&self) -> &str {
+    pub(crate) fn table_id(&self) -> &str {
         &self.table_id
     }
 
-    pub fn descriptor(&self) -> &TableDescriptor {
+    pub(crate) fn descriptor(&self) -> &TableDescriptor {
         &self.descriptor
     }
 }
 
 /// WebAssembly table descriptor
 #[derive(Debug, Clone, Trace, Finalize)]
-pub struct TableDescriptor {
+pub(crate) struct TableDescriptor {
     pub element: ElementType,
     pub initial: u32,
     pub maximum: Option<u32>,
@@ -363,7 +363,7 @@ pub struct TableDescriptor {
 
 /// WebAssembly table element type
 #[derive(Debug, Clone, Trace, Finalize)]
-pub enum ElementType {
+pub(crate) enum ElementType {
     FuncRef,
     ExternRef,
 }

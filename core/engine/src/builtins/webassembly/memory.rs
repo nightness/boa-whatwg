@@ -268,31 +268,31 @@ impl WebAssemblyMemory {
 
 /// Internal data for WebAssembly.Memory instances
 #[derive(Debug, Clone, Trace, Finalize, JsData)]
-pub struct WebAssemblyMemoryData {
+pub(crate) struct WebAssemblyMemoryData {
     memory_id: String,
     descriptor: MemoryDescriptor,
 }
 
 impl WebAssemblyMemoryData {
-    pub fn new(memory_id: String, descriptor: MemoryDescriptor) -> Self {
+    pub(crate) fn new(memory_id: String, descriptor: MemoryDescriptor) -> Self {
         Self {
             memory_id,
             descriptor,
         }
     }
 
-    pub fn memory_id(&self) -> &str {
+    pub(crate) fn memory_id(&self) -> &str {
         &self.memory_id
     }
 
-    pub fn descriptor(&self) -> &MemoryDescriptor {
+    pub(crate) fn descriptor(&self) -> &MemoryDescriptor {
         &self.descriptor
     }
 }
 
 /// WebAssembly memory descriptor
 #[derive(Debug, Clone, Trace, Finalize)]
-pub struct MemoryDescriptor {
+pub(crate) struct MemoryDescriptor {
     pub initial: u64,
     pub maximum: Option<u64>,
     pub shared: bool,
@@ -301,7 +301,7 @@ pub struct MemoryDescriptor {
 
 /// WebAssembly memory index type (i32 or i64)
 #[derive(Debug, Clone, Trace, Finalize)]
-pub enum IndexType {
+pub(crate) enum IndexType {
     I32,
     I64,
 }

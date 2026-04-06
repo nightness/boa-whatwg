@@ -30,7 +30,7 @@ pub(crate) struct ConstructorNoProto;
 pub struct OrdinaryFunction;
 
 /// Indicates if the marker is a constructor.
-pub(crate) trait IsConstructor {
+pub trait IsConstructor {
     const IS_CONSTRUCTOR: bool;
 }
 
@@ -59,7 +59,7 @@ pub struct Callable<Kind> {
 pub struct OrdinaryObject;
 
 /// Applies the pending builder data to the object.
-pub(crate) trait ApplyToObject {
+pub trait ApplyToObject {
     fn apply_to(self, object: &JsObject);
 }
 

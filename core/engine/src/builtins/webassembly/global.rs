@@ -341,38 +341,38 @@ impl WebAssemblyGlobal {
 
 /// Internal data for WebAssembly.Global instances
 #[derive(Debug, Clone, Trace, Finalize, JsData)]
-pub struct WebAssemblyGlobalData {
+pub(crate) struct WebAssemblyGlobalData {
     global_id: String,
     descriptor: GlobalDescriptor,
 }
 
 impl WebAssemblyGlobalData {
-    pub fn new(global_id: String, descriptor: GlobalDescriptor) -> Self {
+    pub(crate) fn new(global_id: String, descriptor: GlobalDescriptor) -> Self {
         Self {
             global_id,
             descriptor,
         }
     }
 
-    pub fn global_id(&self) -> &str {
+    pub(crate) fn global_id(&self) -> &str {
         &self.global_id
     }
 
-    pub fn descriptor(&self) -> &GlobalDescriptor {
+    pub(crate) fn descriptor(&self) -> &GlobalDescriptor {
         &self.descriptor
     }
 }
 
 /// WebAssembly global descriptor
 #[derive(Debug, Clone, Trace, Finalize)]
-pub struct GlobalDescriptor {
+pub(crate) struct GlobalDescriptor {
     pub value_type: ValueType,
     pub mutable: bool,
 }
 
 /// WebAssembly value types
 #[derive(Debug, Clone, Trace, Finalize)]
-pub enum ValueType {
+pub(crate) enum ValueType {
     I32,
     I64,
     F32,

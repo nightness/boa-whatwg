@@ -210,24 +210,24 @@ impl WebAssemblyInstance {
 
 /// Internal data for WebAssembly.Instance instances
 #[derive(Debug, Clone, Trace, Finalize, JsData)]
-pub struct WebAssemblyInstanceData {
+pub(crate) struct WebAssemblyInstanceData {
     instance_id: String,
     store_id: String,
 }
 
 impl WebAssemblyInstanceData {
-    pub fn new(instance_id: String, store_id: String) -> Self {
+    pub(crate) fn new(instance_id: String, store_id: String) -> Self {
         Self {
             instance_id,
             store_id,
         }
     }
 
-    pub fn instance_id(&self) -> &str {
+    pub(crate) fn instance_id(&self) -> &str {
         &self.instance_id
     }
 
-    pub fn store_id(&self) -> &str {
+    pub(crate) fn store_id(&self) -> &str {
         &self.store_id
     }
 }

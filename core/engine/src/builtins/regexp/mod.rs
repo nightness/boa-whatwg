@@ -699,7 +699,7 @@ impl RegExp {
 
         // RECURSION GUARD: Prevent infinite recursion when flag property getters re-invoke flags
         // This can happen with Proxy objects or objects with custom getters
-        let obj_addr = object.as_ref() as *const _ as usize;
+        let obj_addr = std::ptr::from_ref(object.as_ref()) as usize;
         let already_in_flags =
             FLAGS_RECURSION_GUARD.with(|guard| guard.borrow().contains(&obj_addr));
 

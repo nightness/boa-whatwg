@@ -29,7 +29,7 @@ use super::options::coerce_options_to_object;
 
 /// The style of relative time format.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum Style {
+pub(crate) enum Style {
     /// Long style (e.g., "in 1 month")
     #[default]
     Long,
@@ -41,7 +41,7 @@ pub enum Style {
 
 /// The numeric option for relative time format.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum Numeric {
+pub(crate) enum Numeric {
     /// Always use numeric value (e.g., "1 day ago")
     #[default]
     Always,

@@ -89,7 +89,7 @@ impl WebAssemblyRuntime {
     }
 
     /// Compile WebAssembly bytes into a module
-    pub fn compile_module(&self, bytes: &[u8]) -> Result<String, wasmtime::Error> {
+    pub fn compile_module(&self, bytes: &[u8]) -> Result<String, Error> {
         let module = Module::new(&*self.engine, bytes)?;
         let module_id = self.generate_module_id();
 
@@ -127,16 +127,13 @@ impl WebAssemblyRuntime {
         &self,
         module_id: &str,
         store_id: String,
-        imports: std::collections::HashMap<
-            String,
-            std::collections::HashMap<String, wasmtime::Extern>,
-        >,
+        imports: HashMap<String, HashMap<String, Extern>>,
     ) -> Result<String, Box<dyn std::error::Error>> {
-        let module = self.get_module(module_id).ok_or_else(|| {
+        let module = self.get_module(module_id).ok_or_else(|| -> Box<dyn std::error::Error> {
             Box::new(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
                 "Module not found",
-            )) as Box<dyn std::error::Error>
+            ))
         })?;
 
         let instance_id = self.generate_instance_id();
@@ -174,11 +171,11 @@ impl WebAssemblyRuntime {
                 .insert(instance_id.clone(), instance);
             Ok(instance_id)
         })
-        .unwrap_or_else(|| {
+        .unwrap_or_else(|| -> Result<String, Box<dyn std::error::Error>> {
             Err(Box::new(std::io::Error::new(
                 std::io::ErrorKind::Other,
                 "Store not found",
-            )) as Box<dyn std::error::Error>)
+            )))
         })
     }
 
@@ -188,7 +185,7 @@ impl WebAssemblyRuntime {
     }
 
     /// Create a WebAssembly memory
-    pub fn create_memory(&self, memory_type: MemoryType) -> Result<String, wasmtime::Error> {
+    pub fn create_memory(&self, memory_type: MemoryType) -> Result<String, Error> {
         let store_id = self.create_store();
         let memory_id = self.generate_memory_id();
 
@@ -200,7 +197,7 @@ impl WebAssemblyRuntime {
                 .insert(memory_id.clone(), memory);
             Ok(memory_id)
         })
-        .unwrap_or_else(|| Err(wasmtime::Error::msg("Failed to create store")))
+        .unwrap_or_else(|| Err(Error::msg("Failed to create store")))
     }
 
     /// Get a memory by ID
@@ -212,8 +209,8 @@ impl WebAssemblyRuntime {
     pub fn create_table(
         &self,
         table_type: TableType,
-        init: wasmtime::Ref,
-    ) -> Result<String, wasmtime::Error> {
+        init: Ref,
+    ) -> Result<String, Error> {
         let store_id = self.create_store();
         let table_id = self.generate_table_id();
 
@@ -222,7 +219,7 @@ impl WebAssemblyRuntime {
             self.tables.lock().unwrap().insert(table_id.clone(), table);
             Ok(table_id)
         })
-        .unwrap_or_else(|| Err(wasmtime::Error::msg("Failed to create store")))
+        .unwrap_or_else(|| Err(Error::msg("Failed to create store")))
     }
 
     /// Get a table by ID
@@ -234,8 +231,8 @@ impl WebAssemblyRuntime {
     pub fn create_global(
         &self,
         global_type: GlobalType,
-        init: wasmtime::Val,
-    ) -> Result<String, wasmtime::Error> {
+        init: Val,
+    ) -> Result<String, Error> {
         let store_id = self.create_store();
         let global_id = self.generate_global_id();
 
@@ -247,7 +244,7 @@ impl WebAssemblyRuntime {
                 .insert(global_id.clone(), global);
             Ok(global_id)
         })
-        .unwrap_or_else(|| Err(wasmtime::Error::msg("Failed to create store")))
+        .unwrap_or_else(|| Err(Error::msg("Failed to create store")))
     }
 
     /// Get a global by ID

@@ -29,7 +29,7 @@ use super::options::coerce_options_to_object;
 
 /// The type of display names.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DisplayNamesType {
+pub(crate) enum DisplayNamesType {
     Language,
     Region,
     Script,
@@ -40,7 +40,7 @@ pub enum DisplayNamesType {
 
 /// The style of display names.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum DisplayNamesStyle {
+pub(crate) enum DisplayNamesStyle {
     /// Long style (e.g., "United States")
     #[default]
     Long,
@@ -52,7 +52,7 @@ pub enum DisplayNamesStyle {
 
 /// The fallback behavior for display names.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum DisplayNamesFallback {
+pub(crate) enum DisplayNamesFallback {
     /// Return the input code if not found
     #[default]
     Code,
