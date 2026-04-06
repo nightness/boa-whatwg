@@ -82,6 +82,7 @@ impl Date {
     }
 
     /// Gets the internal time value for structured cloning
+    #[must_use]
     pub fn get_time_value(&self) -> f64 {
         self.0
     }

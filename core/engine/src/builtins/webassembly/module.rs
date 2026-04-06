@@ -1,8 +1,8 @@
-//! WebAssembly Module implementation for Boa
+//! `WebAssembly` Module implementation for Boa
 //!
 //! Implementation of the WebAssembly.Module interface according to
-//! the W3C WebAssembly JavaScript API specification
-//! https://webassembly.github.io/spec/js-api/#modules
+//! the W3C `WebAssembly` JavaScript API specification
+//! <https://webassembly.github.io/spec/js-api/#modules>
 
 use super::runtime::WebAssemblyRuntime;
 use crate::{
@@ -50,7 +50,7 @@ impl BuiltInConstructor for WebAssemblyModule {
 
     /// `WebAssembly.Module(bytes)`
     ///
-    /// The WebAssembly.Module constructor compiles the given WebAssembly binary
+    /// The WebAssembly.Module constructor compiles the given `WebAssembly` binary
     /// code into a Module object.
     fn constructor(
         new_target: &JsValue,
@@ -75,14 +75,14 @@ impl BuiltInConstructor for WebAssemblyModule {
 }
 
 impl WebAssemblyModule {
-    /// Compile WebAssembly bytes into a Module object
+    /// Compile `WebAssembly` bytes into a Module object
     pub fn compile_bytes(bytes: &[u8], context: &mut Context) -> JsResult<JsValue> {
         // Get the WebAssembly runtime
         let runtime = WebAssemblyRuntime::get_or_create(context)?;
 
         // Compile the module using wasmtime
         let module_id = runtime.compile_module(bytes).map_err(|err| {
-            JsNativeError::typ().with_message(format!("WebAssembly compilation failed: {}", err))
+            JsNativeError::typ().with_message(format!("WebAssembly compilation failed: {err}"))
         })?;
 
         // Create the JavaScript Module object
@@ -133,9 +133,8 @@ impl WebAssemblyModule {
 
         // Create array of export descriptors
         let exports_array = JsArray::new(context)?;
-        let mut index = 0;
 
-        for export in module.exports() {
+        for (index, export) in module.exports().enumerate() {
             let export_descriptor = JsObject::with_object_proto(context.intrinsics());
             export_descriptor.set(
                 js_string!("name"),
@@ -153,7 +152,6 @@ impl WebAssemblyModule {
             export_descriptor.set(js_string!("kind"), js_string!(kind), false, context)?;
 
             exports_array.set(index, export_descriptor, true, context)?;
-            index += 1;
         }
 
         Ok(exports_array.into())
@@ -186,9 +184,8 @@ impl WebAssemblyModule {
 
         // Create array of import descriptors
         let imports_array = JsArray::new(context)?;
-        let mut index = 0;
 
-        for import in module.imports() {
+        for (index, import) in module.imports().enumerate() {
             let import_descriptor = JsObject::with_object_proto(context.intrinsics());
             import_descriptor.set(
                 js_string!("module"),
@@ -212,7 +209,6 @@ impl WebAssemblyModule {
             import_descriptor.set(js_string!("kind"), js_string!(kind), false, context)?;
 
             imports_array.set(index, import_descriptor, true, context)?;
-            index += 1;
         }
 
         Ok(imports_array.into())
@@ -268,28 +264,27 @@ impl WebAssemblyModuleData {
     }
 }
 
-/// Helper function to extract bytes from a BufferSource (ArrayBuffer or TypedArray)
+/// Helper function to extract bytes from a `BufferSource` (`ArrayBuffer` or `TypedArray`)
 fn extract_bytes_from_buffer_source(
     buffer_source: &JsValue,
     context: &mut Context,
 ) -> JsResult<Vec<u8>> {
     if let Some(obj) = buffer_source.as_object() {
         // Check if it's a TypedArray (Uint8Array, etc.)
-        if let Ok(byte_length) = obj.get(js_string!("byteLength"), context) {
-            if let Some(length) = byte_length.as_number() {
-                if length > 0.0 {
-                    // For now, return a minimal valid WASM module for testing
-                    // TODO: Implement proper ArrayBuffer/TypedArray extraction
-                    return Ok(vec![
-                        0x00, 0x61, 0x73, 0x6d, // Magic: '\0asm'
-                        0x01, 0x00, 0x00, 0x00, // Version: 1
-                        0x01, 0x04, 0x01, 0x60, // Type section: [] -> []
-                        0x00, 0x00, 0x03, 0x02, 0x01, 0x00, // Function section
-                        0x0a, 0x04, 0x01, 0x02, // Code section
-                        0x00, 0x0b, // Function body: nop, end
-                    ]);
-                }
-            }
+        if let Ok(byte_length) = obj.get(js_string!("byteLength"), context)
+            && let Some(length) = byte_length.as_number()
+            && length > 0.0
+        {
+            // For now, return a minimal valid WASM module for testing
+            // TODO: Implement proper ArrayBuffer/TypedArray extraction
+            return Ok(vec![
+                0x00, 0x61, 0x73, 0x6d, // Magic: '\0asm'
+                0x01, 0x00, 0x00, 0x00, // Version: 1
+                0x01, 0x04, 0x01, 0x60, // Type section: [] -> []
+                0x00, 0x00, 0x03, 0x02, 0x01, 0x00, // Function section
+                0x0a, 0x04, 0x01, 0x02, // Code section
+                0x00, 0x0b, // Function body: nop, end
+            ]);
         }
     }
 

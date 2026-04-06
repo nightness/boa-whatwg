@@ -140,11 +140,13 @@ impl BuiltInConstructor for DisplayNames {
 
         // Get the locale - use "en-US" as default if none requested
         let locale = if requested_locales.is_empty() {
-            Locale::try_from_str("en-US").unwrap_or_else(|_| Locale::try_from_str("en").unwrap())
+            Locale::try_from_str("en-US")
+                .unwrap_or_else(|_| Locale::try_from_str("en").expect("\"en\" is a valid locale"))
         } else {
             requested_locales.into_iter().next().unwrap_or_else(|| {
-                Locale::try_from_str("en-US")
-                    .unwrap_or_else(|_| Locale::try_from_str("en").unwrap())
+                Locale::try_from_str("en-US").unwrap_or_else(|_| {
+                    Locale::try_from_str("en").expect("\"en\" is a valid locale")
+                })
             })
         };
 
@@ -165,7 +167,7 @@ impl BuiltInConstructor for DisplayNames {
             "dateTimeField" => DisplayNamesType::DateTimeField,
             t => {
                 return Err(JsNativeError::range()
-                    .with_message(format!("invalid type option: {}", t))
+                    .with_message(format!("invalid type option: {t}"))
                     .into());
             }
         };
@@ -180,7 +182,6 @@ impl BuiltInConstructor for DisplayNames {
                 .to_std_string_escaped()
                 .as_str()
             {
-                "long" => DisplayNamesStyle::Long,
                 "short" => DisplayNamesStyle::Short,
                 "narrow" => DisplayNamesStyle::Narrow,
                 _ => DisplayNamesStyle::Long,
@@ -197,7 +198,6 @@ impl BuiltInConstructor for DisplayNames {
                 .to_std_string_escaped()
                 .as_str()
             {
-                "code" => DisplayNamesFallback::Code,
                 "none" => DisplayNamesFallback::None,
                 _ => DisplayNamesFallback::Code,
             }
@@ -363,6 +363,7 @@ fn get_display_name(
     }
 }
 
+#[allow(clippy::disallowed_methods)]
 fn get_language_display_name(code: &str) -> Option<String> {
     // Common language codes
     match code.to_lowercase().as_str() {
@@ -398,6 +399,7 @@ fn get_language_display_name(code: &str) -> Option<String> {
     }
 }
 
+#[allow(clippy::disallowed_methods)]
 fn get_region_display_name(code: &str) -> Option<String> {
     match code.to_uppercase().as_str() {
         "US" => Some("United States".to_string()),
@@ -461,6 +463,7 @@ fn get_script_display_name(code: &str) -> Option<String> {
     }
 }
 
+#[allow(clippy::disallowed_methods)]
 fn get_currency_display_name(code: &str) -> Option<String> {
     match code.to_uppercase().as_str() {
         "USD" => Some("US Dollar".to_string()),

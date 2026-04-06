@@ -1,15 +1,18 @@
-//! WebAssembly runtime management using wasmtime
+//! `WebAssembly` runtime management using wasmtime
 //!
-//! This module provides the runtime infrastructure for executing WebAssembly
+//! This module provides the runtime infrastructure for executing `WebAssembly`
 //! modules, managing engines, stores, and compiled modules.
 
 use crate::{Context, JsData, JsNativeError, JsResult};
 use boa_gc::{Finalize, Trace};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
-use wasmtime::*;
+use wasmtime::{
+    Config, Engine, Error, Extern, Global, GlobalType, Instance, Memory, MemoryType, Module,
+    OptLevel, Ref, Result, Store, Table, TableType, Val,
+};
 
-/// Global WebAssembly runtime manager
+/// Global `WebAssembly` runtime manager
 ///
 /// This provides a singleton runtime that manages the wasmtime Engine,
 /// compiled modules, instances, and stores for the entire Boa context.
@@ -42,12 +45,12 @@ impl std::fmt::Debug for WebAssemblyRuntime {
             .field("memories", &self.memories)
             .field("tables", &self.tables)
             .field("globals", &self.globals)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
 impl WebAssemblyRuntime {
-    /// Create a new WebAssembly runtime with optimized configuration
+    /// Create a new `WebAssembly` runtime with optimized configuration
     fn new() -> Self {
         // Configure wasmtime engine with optimal settings for web compatibility
         let mut config = Config::new();
@@ -78,39 +81,49 @@ impl WebAssemblyRuntime {
         }
     }
 
-    /// Get or create the global WebAssembly runtime
+    /// Get or create the global `WebAssembly` runtime
     pub fn get_or_create(_context: &mut Context) -> JsResult<&'static WebAssemblyRuntime> {
         Ok(RUNTIME.get_or_init(Self::new))
     }
 
     /// Get the wasmtime engine
+    #[must_use]
     pub fn engine(&self) -> &Engine {
         &self.engine
     }
 
-    /// Compile WebAssembly bytes into a module
+    /// Compile `WebAssembly` bytes into a module
     pub fn compile_module(&self, bytes: &[u8]) -> Result<String, Error> {
-        let module = Module::new(&*self.engine, bytes)?;
+        let module = Module::new(&self.engine, bytes)?;
         let module_id = self.generate_module_id();
 
         self.modules
             .lock()
-            .unwrap()
+            .expect("modules lock poisoned")
             .insert(module_id.clone(), module);
         Ok(module_id)
     }
 
     /// Get a compiled module by ID
+    #[must_use]
     pub fn get_module(&self, module_id: &str) -> Option<Module> {
-        self.modules.lock().unwrap().get(module_id).cloned()
+        self.modules
+            .lock()
+            .expect("modules lock poisoned")
+            .get(module_id)
+            .cloned()
     }
 
-    /// Create a new store for WebAssembly execution
+    /// Create a new store for `WebAssembly` execution
+    #[must_use]
     pub fn create_store(&self) -> String {
-        let store = Store::new(&*self.engine, ());
+        let store = Store::new(&self.engine, ());
         let store_id = self.generate_store_id();
 
-        self.stores.lock().unwrap().insert(store_id.clone(), store);
+        self.stores
+            .lock()
+            .expect("stores lock poisoned")
+            .insert(store_id.clone(), store);
         store_id
     }
 
@@ -119,15 +132,19 @@ impl WebAssemblyRuntime {
     where
         F: FnOnce(&mut Store<()>) -> R,
     {
-        self.stores.lock().unwrap().get_mut(store_id).map(f)
+        self.stores
+            .lock()
+            .expect("stores lock poisoned")
+            .get_mut(store_id)
+            .map(f)
     }
 
     /// Instantiate a module with imports
     pub fn instantiate_module(
         &self,
         module_id: &str,
-        store_id: String,
-        imports: HashMap<String, HashMap<String, Extern>>,
+        store_id: &str,
+        imports: &HashMap<String, HashMap<String, Extern>>,
     ) -> Result<String, Box<dyn std::error::Error>> {
         let module = self
             .get_module(module_id)
@@ -154,39 +171,41 @@ impl WebAssemblyRuntime {
                 } else {
                     return Err(Box::new(std::io::Error::new(
                         std::io::ErrorKind::NotFound,
-                        format!("Import {}.{} not found", module_name, import_name),
+                        format!("Import {module_name}.{import_name} not found"),
                     )));
                 }
             } else {
                 return Err(Box::new(std::io::Error::new(
                     std::io::ErrorKind::NotFound,
-                    format!("Import module {} not found", module_name),
+                    format!("Import module {module_name} not found"),
                 )));
             }
         }
 
-        self.with_store_mut(&store_id, |store| {
+        self.with_store_mut(store_id, |store| {
             let instance = Instance::new(store, &module, &import_vec)?;
             self.instances
                 .lock()
-                .unwrap()
+                .expect("instances lock poisoned")
                 .insert(instance_id.clone(), instance);
             Ok(instance_id)
         })
         .unwrap_or_else(|| -> Result<String, Box<dyn std::error::Error>> {
-            Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Store not found",
-            )))
+            Err(Box::new(std::io::Error::other("Store not found")))
         })
     }
 
     /// Get an instance by ID
+    #[must_use]
     pub fn get_instance(&self, instance_id: &str) -> Option<Instance> {
-        self.instances.lock().unwrap().get(instance_id).cloned()
+        self.instances
+            .lock()
+            .expect("instances lock poisoned")
+            .get(instance_id)
+            .copied()
     }
 
-    /// Create a WebAssembly memory
+    /// Create a `WebAssembly` memory
     pub fn create_memory(&self, memory_type: MemoryType) -> Result<String, Error> {
         let store_id = self.create_store();
         let memory_id = self.generate_memory_id();
@@ -195,7 +214,7 @@ impl WebAssemblyRuntime {
             let memory = Memory::new(store, memory_type)?;
             self.memories
                 .lock()
-                .unwrap()
+                .expect("memories lock poisoned")
                 .insert(memory_id.clone(), memory);
             Ok(memory_id)
         })
@@ -203,29 +222,42 @@ impl WebAssemblyRuntime {
     }
 
     /// Get a memory by ID
+    #[must_use]
     pub fn get_memory(&self, memory_id: &str) -> Option<Memory> {
-        self.memories.lock().unwrap().get(memory_id).cloned()
+        self.memories
+            .lock()
+            .expect("memories lock poisoned")
+            .get(memory_id)
+            .copied()
     }
 
-    /// Create a WebAssembly table
+    /// Create a `WebAssembly` table
     pub fn create_table(&self, table_type: TableType, init: Ref) -> Result<String, Error> {
         let store_id = self.create_store();
         let table_id = self.generate_table_id();
 
         self.with_store_mut(&store_id, |store| {
             let table = Table::new(store, table_type, init)?;
-            self.tables.lock().unwrap().insert(table_id.clone(), table);
+            self.tables
+                .lock()
+                .expect("tables lock poisoned")
+                .insert(table_id.clone(), table);
             Ok(table_id)
         })
         .unwrap_or_else(|| Err(Error::msg("Failed to create store")))
     }
 
     /// Get a table by ID
+    #[must_use]
     pub fn get_table(&self, table_id: &str) -> Option<Table> {
-        self.tables.lock().unwrap().get(table_id).cloned()
+        self.tables
+            .lock()
+            .expect("tables lock poisoned")
+            .get(table_id)
+            .copied()
     }
 
-    /// Create a WebAssembly global
+    /// Create a `WebAssembly` global
     pub fn create_global(&self, global_type: GlobalType, init: Val) -> Result<String, Error> {
         let store_id = self.create_store();
         let global_id = self.generate_global_id();
@@ -234,7 +266,7 @@ impl WebAssemblyRuntime {
             let global = Global::new(store, global_type, init)?;
             self.globals
                 .lock()
-                .unwrap()
+                .expect("globals lock poisoned")
                 .insert(global_id.clone(), global);
             Ok(global_id)
         })
@@ -242,8 +274,13 @@ impl WebAssemblyRuntime {
     }
 
     /// Get a global by ID
+    #[must_use]
     pub fn get_global(&self, global_id: &str) -> Option<Global> {
-        self.globals.lock().unwrap().get(global_id).cloned()
+        self.globals
+            .lock()
+            .expect("globals lock poisoned")
+            .get(global_id)
+            .copied()
     }
 
     /// Generate a unique module ID
@@ -277,6 +314,7 @@ impl WebAssemblyRuntime {
     }
 
     /// Generate a unique ID using random number
+    #[allow(clippy::unused_self)]
     fn generate_unique_id(&self) -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
@@ -285,7 +323,7 @@ impl WebAssemblyRuntime {
         let mut hasher = DefaultHasher::new();
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("system time before UNIX epoch")
             .as_nanos()
             .hash(&mut hasher);
         hasher.finish()
@@ -293,11 +331,17 @@ impl WebAssemblyRuntime {
 
     /// Clean up resources (called when context is dropped)
     pub fn cleanup(&self) {
-        self.instances.lock().unwrap().clear();
-        self.modules.lock().unwrap().clear();
-        self.stores.lock().unwrap().clear();
-        self.memories.lock().unwrap().clear();
-        self.tables.lock().unwrap().clear();
-        self.globals.lock().unwrap().clear();
+        self.instances
+            .lock()
+            .expect("instances lock poisoned")
+            .clear();
+        self.modules.lock().expect("modules lock poisoned").clear();
+        self.stores.lock().expect("stores lock poisoned").clear();
+        self.memories
+            .lock()
+            .expect("memories lock poisoned")
+            .clear();
+        self.tables.lock().expect("tables lock poisoned").clear();
+        self.globals.lock().expect("globals lock poisoned").clear();
     }
 }

@@ -365,9 +365,7 @@ impl Error {
     /// This is critical for Google 2025 bot detection which checks Error.prototype.stack.
     pub(crate) fn generate_stack_trace(context: &Context) -> JsValue {
         // Create a realistic stack trace that looks like V8/Chrome
-        let stack_trace = format!(
-            "Error\n    at <anonymous>:1:1\n    at eval (eval at <anonymous>:1:1)\n    at Object.eval (native)\n    at Function.call (native)"
-        );
+        let stack_trace = "Error\n    at <anonymous>:1:1\n    at eval (eval at <anonymous>:1:1)\n    at Object.eval (native)\n    at Function.call (native)".to_string();
         js_string!(stack_trace).into()
     }
 
@@ -375,13 +373,14 @@ impl Error {
     ///
     /// V8/Chrome specific API that Google's 2025 bot detection relies on.
     /// Sets the stack property on the target object.
+    #[allow(clippy::unnecessary_wraps)]
     pub(crate) fn capture_stack_trace(
         _this: &JsValue,
         args: &[JsValue],
         context: &mut Context,
     ) -> JsResult<JsValue> {
         // Get the target object (first argument)
-        if let Some(target_obj) = args.get(0).and_then(|v| v.as_object()) {
+        if let Some(target_obj) = args.first().and_then(JsValue::as_object) {
             // Generate stack trace and set it on the target object
             let stack_trace = Self::generate_stack_trace(context);
             target_obj.create_non_enumerable_data_property_or_throw(

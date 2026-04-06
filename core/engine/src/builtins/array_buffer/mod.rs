@@ -224,6 +224,7 @@ impl ArrayBuffer {
         self.data.as_ref().map_or(0, AlignedVec::len)
     }
 
+    #[must_use]
     pub fn bytes(&self) -> Option<&[u8]> {
         self.data.as_deref()
     }

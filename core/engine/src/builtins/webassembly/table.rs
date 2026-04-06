@@ -1,8 +1,8 @@
-//! WebAssembly Table implementation for Boa
+//! `WebAssembly` Table implementation for Boa
 //!
 //! Implementation of the WebAssembly.Table interface according to
-//! the W3C WebAssembly JavaScript API specification
-//! https://webassembly.github.io/spec/js-api/#tables
+//! the W3C `WebAssembly` JavaScript API specification
+//! <https://webassembly.github.io/spec/js-api/#tables>
 
 use super::runtime::WebAssemblyRuntime;
 use crate::{
@@ -61,7 +61,7 @@ impl BuiltInConstructor for WebAssemblyTable {
     /// `WebAssembly.Table(descriptor, value?)`
     ///
     /// The WebAssembly.Table constructor creates a new Table object
-    /// which is a JavaScript wrapper for a WebAssembly table instance.
+    /// which is a JavaScript wrapper for a `WebAssembly` table instance.
     fn constructor(
         new_target: &JsValue,
         args: &[JsValue],
@@ -86,7 +86,7 @@ impl BuiltInConstructor for WebAssemblyTable {
 }
 
 impl WebAssemblyTable {
-    /// Parse a WebAssembly table descriptor object
+    /// Parse a `WebAssembly` table descriptor object
     fn parse_table_descriptor(
         descriptor: &JsValue,
         context: &mut Context,
@@ -115,25 +115,26 @@ impl WebAssemblyTable {
 
         // Get maximum size (optional)
         let maximum = if let Ok(max_val) = desc_obj.get(js_string!("maximum"), context) {
-            if !max_val.is_undefined() {
-                Some(max_val.to_u32(context)?)
-            } else {
+            if max_val.is_undefined() {
                 None
+            } else {
+                Some(max_val.to_u32(context)?)
             }
         } else {
             None
         };
 
         // Validate size limits
-        if let Some(max) = maximum {
-            if initial > max {
-                return Err(JsNativeError::range()
-                    .with_message("WebAssembly.Table initial size exceeds maximum")
-                    .into());
-            }
+        if let Some(max) = maximum
+            && initial > max
+        {
+            return Err(JsNativeError::range()
+                .with_message("WebAssembly.Table initial size exceeds maximum")
+                .into());
         }
 
         // Theoretical maximum table size (implementation-defined)
+        #[allow(clippy::items_after_statements)]
         const MAX_TABLE_SIZE: u32 = 1_000_000; // 1M elements
 
         if initial > MAX_TABLE_SIZE {
@@ -142,12 +143,12 @@ impl WebAssemblyTable {
                 .into());
         }
 
-        if let Some(max) = maximum {
-            if max > MAX_TABLE_SIZE {
-                return Err(JsNativeError::range()
-                    .with_message("WebAssembly.Table maximum size exceeds implementation limit")
-                    .into());
-            }
+        if let Some(max) = maximum
+            && max > MAX_TABLE_SIZE
+        {
+            return Err(JsNativeError::range()
+                .with_message("WebAssembly.Table maximum size exceeds implementation limit")
+                .into());
         }
 
         Ok(TableDescriptor {
@@ -182,7 +183,7 @@ impl WebAssemblyTable {
 
         // Create the table in wasmtime
         let table_id = runtime.create_table(table_type, init_ref).map_err(|err| {
-            JsNativeError::typ().with_message(format!("WebAssembly.Table creation failed: {}", err))
+            JsNativeError::typ().with_message(format!("WebAssembly.Table creation failed: {err}"))
         })?;
 
         // Create the JavaScript Table object
@@ -353,7 +354,7 @@ impl WebAssemblyTableData {
     }
 }
 
-/// WebAssembly table descriptor
+/// `WebAssembly` table descriptor
 #[derive(Debug, Clone, Trace, Finalize)]
 pub(crate) struct TableDescriptor {
     pub element: ElementType,
@@ -361,7 +362,7 @@ pub(crate) struct TableDescriptor {
     pub maximum: Option<u32>,
 }
 
-/// WebAssembly table element type
+/// `WebAssembly` table element type
 #[derive(Debug, Clone, Trace, Finalize)]
 pub(crate) enum ElementType {
     FuncRef,

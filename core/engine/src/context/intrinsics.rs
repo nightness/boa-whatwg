@@ -82,6 +82,7 @@ impl Intrinsics {
     /// the ECMAScript specification.
     ///
     /// [spec]: https://tc39.es/ecma262/#sec-createintrinsics
+    #[allow(clippy::unused_self)]
     pub(crate) fn initialize(&self, realm: &crate::realm::Realm) {
         use crate::builtins::{self, IntrinsicObject};
         use builtins::array::Array;
@@ -183,6 +184,7 @@ impl StandardConstructor {
     /// Creates a new `StandardConstructor` from the constructor and the prototype.
     ///
     /// Made public for external crates (like thalora-browser-apis) to register their constructors.
+    #[must_use]
     pub fn new(constructor: JsFunction, prototype: JsObject) -> Self {
         Self {
             constructor,
@@ -1777,6 +1779,7 @@ impl StandardConstructors {
     ///  - [CharacterData API reference][spec]
     ///
     /// [spec]: https://dom.spec.whatwg.org/#interface-characterdata
+    #[must_use]
     pub const fn character_data(&self) -> &StandardConstructor {
         &self.character_data
     }
@@ -1787,6 +1790,7 @@ impl StandardConstructors {
     ///  - [Text API reference][spec]
     ///
     /// [spec]: https://dom.spec.whatwg.org/#interface-text
+    #[must_use]
     pub const fn text(&self) -> &StandardConstructor {
         &self.text
     }
@@ -2244,12 +2248,15 @@ impl StandardConstructors {
         &self.validity_state
     }
 
+    #[must_use]
     pub const fn selection(&self) -> &StandardConstructor {
         &self.selection
     }
+    #[must_use]
     pub const fn range(&self) -> &StandardConstructor {
         &self.range
     }
+    #[must_use]
     pub const fn event(&self) -> &StandardConstructor {
         &self.event
     }

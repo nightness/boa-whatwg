@@ -501,6 +501,7 @@ impl BuiltInFunctionObject {
         let raw_body_text = body.to_std_string_escaped();
         // More robust textual checks: allow whitespace between `super` and the following
         // token so inputs like "super ()" or "super  .foo" are also caught.
+        #[allow(clippy::items_after_statements)]
         fn raw_has_super_call_or_ref(s: &str) -> (bool, bool) {
             // Find occurrences of the substring "super" and ensure it's a standalone identifier
             // (not part of another identifier). Then classify whether it's a call (followed by
@@ -517,9 +518,9 @@ impl BuiltInFunctionObject {
                     // ensure previous char is not identifier char (ASCII letter, digit, '_' or '$')
                     if i > 0 {
                         let prev = bytes[i - 1];
-                        if (prev >= b'a' && prev <= b'z')
-                            || (prev >= b'A' && prev <= b'Z')
-                            || (prev >= b'0' && prev <= b'9')
+                        if prev.is_ascii_lowercase()
+                            || prev.is_ascii_uppercase()
+                            || prev.is_ascii_digit()
                             || prev == b'_'
                             || prev == b'$'
                         {
@@ -584,6 +585,7 @@ impl BuiltInFunctionObject {
         // either a '(' (call) or '.' (property access). This avoids false positives
         // when 'super' appears inside other identifiers and works directly on the
         // parser input encoding.
+        #[allow(clippy::items_after_statements)]
         fn scan_super_in_utf16(utf16: &[u16]) -> (bool, bool) {
             // Convert ASCII letters to u16 for comparison
             let s = b"super";
@@ -607,10 +609,10 @@ impl BuiltInFunctionObject {
 
                 // ensure previous code unit is not an identifier char (ASCII letters/digits/_/$)
                 if i > 0 {
-                    let prev = utf16[i - 1] as u32 as u8;
-                    if (prev >= b'a' && prev <= b'z')
-                        || (prev >= b'A' && prev <= b'Z')
-                        || (prev >= b'0' && prev <= b'9')
+                    let prev = u32::from(utf16[i - 1]) as u8;
+                    if prev.is_ascii_lowercase()
+                        || prev.is_ascii_uppercase()
+                        || prev.is_ascii_digit()
                         || prev == b'_'
                         || prev == b'$'
                     {

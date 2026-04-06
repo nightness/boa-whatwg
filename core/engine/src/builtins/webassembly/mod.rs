@@ -1,10 +1,10 @@
-//! WebAssembly JavaScript API implementation for Boa
+//! `WebAssembly` JavaScript API implementation for Boa
 //!
-//! Complete implementation of the WebAssembly JavaScript API according to
-//! the W3C WebAssembly specification 3.0 (2025)
-//! https://webassembly.github.io/spec/js-api/
+//! Complete implementation of the `WebAssembly` JavaScript API according to
+//! the W3C `WebAssembly` specification 3.0 (2025)
+//! <https://webassembly.github.io/spec/js-api>/
 //!
-//! This implements the complete WebAssembly interface with real WASM execution
+//! This implements the complete `WebAssembly` interface with real WASM execution
 //! using wasmtime as the backend runtime.
 
 pub(crate) mod global;
@@ -103,7 +103,7 @@ impl BuiltInObject for WebAssembly {
 }
 
 impl WebAssembly {
-    /// Helper function for WebAssembly object which is not callable
+    /// Helper function for `WebAssembly` object which is not callable
     fn not_callable(
         _this: &JsValue,
         _args: &[JsValue],
@@ -115,8 +115,8 @@ impl WebAssembly {
     }
     /// `WebAssembly.validate(bytes)`
     ///
-    /// Validates the given typed array of WebAssembly binary code, returning
-    /// whether the bytes form a valid WebAssembly module (true) or not (false).
+    /// Validates the given typed array of `WebAssembly` binary code, returning
+    /// whether the bytes form a valid `WebAssembly` module (true) or not (false).
     fn validate(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let bytes = Self::extract_bytes_from_buffer_source(args.get_or_undefined(0), context)?;
 
@@ -125,17 +125,17 @@ impl WebAssembly {
         let engine = runtime.engine();
 
         // Validate the WebAssembly bytes using wasmtime
-        match wasmtime::Module::validate(&engine, &bytes) {
-            Ok(_) => Ok(JsValue::from(true)),
+        match wasmtime::Module::validate(engine, &bytes) {
+            Ok(()) => Ok(JsValue::from(true)),
             Err(_) => Ok(JsValue::from(false)),
         }
     }
 
     /// `WebAssembly.compile(bytes)`
     ///
-    /// Compiles WebAssembly binary code into a WebAssembly.Module object.
+    /// Compiles `WebAssembly` binary code into a WebAssembly.Module object.
     /// This function is useful if it is necessary to compile a module before
-    /// it can be instantiated (otherwise, the WebAssembly.instantiate() function
+    /// it can be instantiated (otherwise, the `WebAssembly.instantiate()` function
     /// should be used).
     fn compile(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let bytes = Self::extract_bytes_from_buffer_source(args.get_or_undefined(0), context)?;
@@ -161,7 +161,7 @@ impl WebAssembly {
     /// `WebAssembly.instantiate(moduleObject, importObject)`
     /// `WebAssembly.instantiate(bytes, importObject)`
     ///
-    /// The primary API for compiling and instantiating WebAssembly code.
+    /// The primary API for compiling and instantiating `WebAssembly` code.
     fn instantiate(_this: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let first_arg = args.get_or_undefined(0);
         let import_object = args.get_or_undefined(1);
@@ -218,7 +218,7 @@ impl WebAssembly {
 
     /// `WebAssembly.instantiateStreaming(source, importObject)`
     ///
-    /// The primary API for compiling and instantiating a WebAssembly module
+    /// The primary API for compiling and instantiating a `WebAssembly` module
     /// directly from a streamed underlying source.
     fn instantiate_streaming(
         _this: &JsValue,
@@ -235,7 +235,7 @@ impl WebAssembly {
         crate::builtins::Promise::reject(&promise_constructor.into(), &[error_val], context)
     }
 
-    /// Helper function to compile and instantiate WebAssembly bytes
+    /// Helper function to compile and instantiate `WebAssembly` bytes
     fn compile_and_instantiate(
         bytes: &[u8],
         import_object: &JsValue,
@@ -248,7 +248,10 @@ impl WebAssembly {
 
         // Then instantiate it
         match WebAssemblyInstance::from_module(
-            module_obj.as_object().unwrap().clone(),
+            module_obj
+                .as_object()
+                .expect("module_obj must be an object")
+                .clone(),
             import_object,
             context,
         ) {
@@ -271,28 +274,27 @@ impl WebAssembly {
         }
     }
 
-    /// Helper function to extract bytes from a BufferSource (ArrayBuffer or TypedArray)
+    /// Helper function to extract bytes from a `BufferSource` (`ArrayBuffer` or `TypedArray`)
     fn extract_bytes_from_buffer_source(
         buffer_source: &JsValue,
         context: &mut Context,
     ) -> JsResult<Vec<u8>> {
         if let Some(obj) = buffer_source.as_object() {
             // Check if it's a TypedArray (Uint8Array, etc.)
-            if let Ok(byte_length) = obj.get(js_string!("byteLength"), context) {
-                if let Some(length) = byte_length.as_number() {
-                    if length > 0.0 {
-                        // For now, return a minimal valid WASM module for testing
-                        // TODO: Implement proper ArrayBuffer/TypedArray extraction
-                        return Ok(vec![
-                            0x00, 0x61, 0x73, 0x6d, // Magic: '\0asm'
-                            0x01, 0x00, 0x00, 0x00, // Version: 1
-                            0x01, 0x04, 0x01, 0x60, // Type section: [] -> []
-                            0x00, 0x00, 0x03, 0x02, 0x01, 0x00, // Function section
-                            0x0a, 0x04, 0x01, 0x02, // Code section
-                            0x00, 0x0b, // Function body: nop, end
-                        ]);
-                    }
-                }
+            if let Ok(byte_length) = obj.get(js_string!("byteLength"), context)
+                && let Some(length) = byte_length.as_number()
+                && length > 0.0
+            {
+                // For now, return a minimal valid WASM module for testing
+                // TODO: Implement proper ArrayBuffer/TypedArray extraction
+                return Ok(vec![
+                    0x00, 0x61, 0x73, 0x6d, // Magic: '\0asm'
+                    0x01, 0x00, 0x00, 0x00, // Version: 1
+                    0x01, 0x04, 0x01, 0x60, // Type section: [] -> []
+                    0x00, 0x00, 0x03, 0x02, 0x01, 0x00, // Function section
+                    0x0a, 0x04, 0x01, 0x02, // Code section
+                    0x00, 0x0b, // Function body: nop, end
+                ]);
             }
         }
 

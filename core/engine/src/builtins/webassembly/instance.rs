@@ -1,8 +1,8 @@
-//! WebAssembly Instance implementation for Boa
+//! `WebAssembly` Instance implementation for Boa
 //!
 //! Implementation of the WebAssembly.Instance interface according to
-//! the W3C WebAssembly JavaScript API specification
-//! https://webassembly.github.io/spec/js-api/#instances
+//! the W3C `WebAssembly` JavaScript API specification
+//! <https://webassembly.github.io/spec/js-api/#instances>
 
 use super::runtime::WebAssemblyRuntime;
 use crate::{
@@ -82,6 +82,7 @@ impl BuiltInConstructor for WebAssemblyInstance {
 
 impl WebAssemblyInstance {
     /// Create an Instance from a Module object
+    #[allow(clippy::needless_pass_by_value)]
     pub fn from_module(
         module_obj: JsObject,
         import_object: &JsValue,
@@ -111,10 +112,10 @@ impl WebAssemblyInstance {
 
         // Instantiate the module
         let instance_id = runtime
-            .instantiate_module(module_data.module_id(), store_id.clone(), imports)
+            .instantiate_module(module_data.module_id(), &store_id, &imports)
             .map_err(|err| {
                 JsNativeError::typ()
-                    .with_message(format!("WebAssembly instantiation failed: {}", err))
+                    .with_message(format!("WebAssembly instantiation failed: {err}"))
             })?;
 
         // Create the JavaScript Instance object
@@ -166,8 +167,8 @@ impl WebAssemblyInstance {
 
         // For now, we'll support modules without imports
         // TODO: Implement full import processing when other WebAssembly APIs are ready
-        let _import_count = module.imports().count();
-        if _import_count > 0 {
+        let import_count = module.imports().count();
+        if import_count > 0 {
             return Err(JsNativeError::typ()
                 .with_message("Modules with imports are not yet fully supported")
                 .into());
@@ -176,7 +177,7 @@ impl WebAssemblyInstance {
         Ok(imports)
     }
 
-    /// Convert a JavaScript value to a wasmtime::Extern based on the import type
+    /// Convert a JavaScript value to a `wasmtime::Extern` based on the import type
     fn js_value_to_extern(
         _value: &JsValue,
         _import_type: &wasmtime::ExternType,

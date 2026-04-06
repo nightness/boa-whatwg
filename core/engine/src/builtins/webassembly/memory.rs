@@ -1,8 +1,8 @@
-//! WebAssembly Memory implementation for Boa
+//! `WebAssembly` Memory implementation for Boa
 //!
 //! Implementation of the WebAssembly.Memory interface according to
-//! the W3C WebAssembly JavaScript API specification
-//! https://webassembly.github.io/spec/js-api/#memories
+//! the W3C `WebAssembly` JavaScript API specification
+//! <https://webassembly.github.io/spec/js-api/#memories>
 
 use super::runtime::WebAssemblyRuntime;
 use crate::{
@@ -59,7 +59,7 @@ impl BuiltInConstructor for WebAssemblyMemory {
     /// `WebAssembly.Memory(descriptor)`
     ///
     /// The WebAssembly.Memory constructor creates a new Memory object
-    /// which is a resizable ArrayBuffer or SharedArrayBuffer whose
+    /// which is a resizable `ArrayBuffer` or `SharedArrayBuffer` whose
     /// contents are the raw bytes of memory instances.
     fn constructor(
         new_target: &JsValue,
@@ -84,7 +84,7 @@ impl BuiltInConstructor for WebAssemblyMemory {
 }
 
 impl WebAssemblyMemory {
-    /// Parse a WebAssembly memory descriptor object
+    /// Parse a `WebAssembly` memory descriptor object
     fn parse_memory_descriptor(
         descriptor: &JsValue,
         context: &mut Context,
@@ -94,16 +94,18 @@ impl WebAssemblyMemory {
         })?;
 
         // Get initial pages (required)
-        let initial = desc_obj
-            .get(js_string!("initial"), context)?
-            .to_u32(context)? as u64;
+        let initial = u64::from(
+            desc_obj
+                .get(js_string!("initial"), context)?
+                .to_u32(context)?,
+        );
 
         // Get maximum pages (optional)
         let maximum = if let Ok(max_val) = desc_obj.get(js_string!("maximum"), context) {
-            if !max_val.is_undefined() {
-                Some(max_val.to_u32(context)? as u64)
-            } else {
+            if max_val.is_undefined() {
                 None
+            } else {
+                Some(u64::from(max_val.to_u32(context)?))
             }
         } else {
             None
@@ -133,15 +135,16 @@ impl WebAssemblyMemory {
         };
 
         // Validate page limits
-        if let Some(max) = maximum {
-            if initial > max {
-                return Err(JsNativeError::range()
-                    .with_message("WebAssembly.Memory initial size exceeds maximum")
-                    .into());
-            }
+        if let Some(max) = maximum
+            && initial > max
+        {
+            return Err(JsNativeError::range()
+                .with_message("WebAssembly.Memory initial size exceeds maximum")
+                .into());
         }
 
         // WebAssembly page size is 65,536 bytes (64 KiB)
+        #[allow(clippy::items_after_statements)]
         const WASM_PAGE_SIZE: u64 = 65536;
 
         // For i32 memories: maximum is 2^16 pages (4 GiB)
@@ -157,12 +160,12 @@ impl WebAssemblyMemory {
                 .into());
         }
 
-        if let Some(max) = maximum {
-            if max > max_pages {
-                return Err(JsNativeError::range()
-                    .with_message("WebAssembly.Memory maximum size exceeds maximum allowed")
-                    .into());
-            }
+        if let Some(max) = maximum
+            && max > max_pages
+        {
+            return Err(JsNativeError::range()
+                .with_message("WebAssembly.Memory maximum size exceeds maximum allowed")
+                .into());
         }
 
         Ok(MemoryDescriptor {
@@ -186,8 +189,7 @@ impl WebAssemblyMemory {
 
         // Create the memory in wasmtime
         let memory_id = runtime.create_memory(memory_type).map_err(|err| {
-            JsNativeError::typ()
-                .with_message(format!("WebAssembly.Memory creation failed: {}", err))
+            JsNativeError::typ().with_message(format!("WebAssembly.Memory creation failed: {err}"))
         })?;
 
         // Create the JavaScript Memory object
@@ -213,7 +215,7 @@ impl WebAssemblyMemory {
 
     /// `get WebAssembly.Memory.prototype.buffer`
     ///
-    /// Returns an ArrayBuffer whose contents are the memory.
+    /// Returns an `ArrayBuffer` whose contents are the memory.
     fn buffer(this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
         let memory_obj = this.as_object().ok_or_else(|| {
             JsNativeError::typ().with_message("WebAssembly.Memory.buffer called on non-object")
@@ -255,7 +257,7 @@ impl WebAssemblyMemory {
                     .with_message("WebAssembly.Memory.grow called on non-Memory object")
             })?;
 
-        let delta = args.get_or_undefined(0).to_u32(context)? as u64;
+        let delta = u64::from(args.get_or_undefined(0).to_u32(context)?);
 
         // Get the runtime to grow the memory
         let runtime = WebAssemblyRuntime::get_or_create(context)?;
@@ -290,7 +292,7 @@ impl WebAssemblyMemoryData {
     }
 }
 
-/// WebAssembly memory descriptor
+/// `WebAssembly` memory descriptor
 #[derive(Debug, Clone, Trace, Finalize)]
 pub(crate) struct MemoryDescriptor {
     pub initial: u64,
@@ -299,7 +301,7 @@ pub(crate) struct MemoryDescriptor {
     pub index: IndexType,
 }
 
-/// WebAssembly memory index type (i32 or i64)
+/// `WebAssembly` memory index type (i32 or i64)
 #[derive(Debug, Clone, Trace, Finalize)]
 pub(crate) enum IndexType {
     I32,

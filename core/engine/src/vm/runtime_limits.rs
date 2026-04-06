@@ -131,7 +131,6 @@ impl RuntimeLimits {
     #[must_use]
     pub fn is_deadline_exceeded(&self) -> bool {
         self.execution_deadline
-            .map(|deadline| Instant::now() >= deadline)
-            .unwrap_or(false)
+            .is_some_and(|deadline| Instant::now() >= deadline)
     }
 }

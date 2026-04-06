@@ -121,11 +121,13 @@ impl BuiltInConstructor for RelativeTimeFormat {
 
         // Get the locale - use "en-US" as default if none requested
         let locale = if requested_locales.is_empty() {
-            Locale::try_from_str("en-US").unwrap_or_else(|_| Locale::try_from_str("en").unwrap())
+            Locale::try_from_str("en-US")
+                .unwrap_or_else(|_| Locale::try_from_str("en").expect("\"en\" is a valid locale"))
         } else {
             requested_locales.into_iter().next().unwrap_or_else(|| {
-                Locale::try_from_str("en-US")
-                    .unwrap_or_else(|_| Locale::try_from_str("en").unwrap())
+                Locale::try_from_str("en-US").unwrap_or_else(|_| {
+                    Locale::try_from_str("en").expect("\"en\" is a valid locale")
+                })
             })
         };
 
@@ -139,7 +141,6 @@ impl BuiltInConstructor for RelativeTimeFormat {
                 .to_std_string_escaped()
                 .as_str()
             {
-                "long" => Style::Long,
                 "short" => Style::Short,
                 "narrow" => Style::Narrow,
                 _ => Style::Long,
@@ -156,7 +157,6 @@ impl BuiltInConstructor for RelativeTimeFormat {
                 .to_std_string_escaped()
                 .as_str()
             {
-                "always" => Numeric::Always,
                 "auto" => Numeric::Auto,
                 _ => Numeric::Always,
             }
@@ -307,6 +307,7 @@ impl RelativeTimeFormat {
 }
 
 /// Helper function to format relative time
+#[allow(clippy::float_cmp)]
 fn format_relative_time(
     value: f64,
     unit: &str,
@@ -445,20 +446,18 @@ fn format_relative_time(
     let value_str = if abs_value.fract() == 0.0 {
         format!("{}", abs_value as i64)
     } else {
-        format!("{}", abs_value)
+        format!("{abs_value}")
     };
 
     if is_past {
         match style {
-            Style::Long => format!("{} {} ago", value_str, unit_display),
-            Style::Short => format!("{} {} ago", value_str, unit_display),
-            Style::Narrow => format!("-{}{}", value_str, unit_display),
+            Style::Long | Style::Short => format!("{value_str} {unit_display} ago"),
+            Style::Narrow => format!("-{value_str}{unit_display}"),
         }
     } else {
         match style {
-            Style::Long => format!("in {} {}", value_str, unit_display),
-            Style::Short => format!("in {} {}", value_str, unit_display),
-            Style::Narrow => format!("+{}{}", value_str, unit_display),
+            Style::Long | Style::Short => format!("in {value_str} {unit_display}"),
+            Style::Narrow => format!("+{value_str}{unit_display}"),
         }
     }
 }

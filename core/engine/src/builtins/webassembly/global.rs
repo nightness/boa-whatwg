@@ -1,8 +1,8 @@
-//! WebAssembly Global implementation for Boa
+//! `WebAssembly` Global implementation for Boa
 //!
 //! Implementation of the WebAssembly.Global interface according to
-//! the W3C WebAssembly JavaScript API specification
-//! https://webassembly.github.io/spec/js-api/#globals
+//! the W3C `WebAssembly` JavaScript API specification
+//! <https://webassembly.github.io/spec/js-api/#globals>
 
 use super::runtime::WebAssemblyRuntime;
 use crate::{
@@ -24,18 +24,18 @@ pub struct WebAssemblyGlobal;
 
 impl IntrinsicObject for WebAssemblyGlobal {
     fn init(realm: &Realm) {
-        let value_getter = BuiltInBuilder::callable(realm, Self::value)
+        let get_value_fn = BuiltInBuilder::callable(realm, Self::value)
             .name(js_string!("get value"))
             .build();
-        let value_setter = BuiltInBuilder::callable(realm, Self::set_value)
+        let set_value_fn = BuiltInBuilder::callable(realm, Self::set_value)
             .name(js_string!("set value"))
             .build();
 
         BuiltInBuilder::from_standard_constructor::<Self>(realm)
             .accessor(
                 js_string!("value"),
-                Some(value_getter),
-                Some(value_setter),
+                Some(get_value_fn),
+                Some(set_value_fn),
                 Attribute::CONFIGURABLE,
             )
             .build();
@@ -61,7 +61,7 @@ impl BuiltInConstructor for WebAssemblyGlobal {
     /// `WebAssembly.Global(descriptor, value?)`
     ///
     /// The WebAssembly.Global constructor creates a new Global object
-    /// which is a JavaScript wrapper for a WebAssembly global instance.
+    /// which is a JavaScript wrapper for a `WebAssembly` global instance.
     fn constructor(
         new_target: &JsValue,
         args: &[JsValue],
@@ -86,7 +86,7 @@ impl BuiltInConstructor for WebAssemblyGlobal {
 }
 
 impl WebAssemblyGlobal {
-    /// Parse a WebAssembly global descriptor object
+    /// Parse a `WebAssembly` global descriptor object
     fn parse_global_descriptor(
         descriptor: &JsValue,
         context: &mut Context,
@@ -153,7 +153,7 @@ impl WebAssemblyGlobal {
             .create_global(global_type, wasm_value)
             .map_err(|err| {
                 JsNativeError::typ()
-                    .with_message(format!("WebAssembly.Global creation failed: {}", err))
+                    .with_message(format!("WebAssembly.Global creation failed: {err}"))
             })?;
 
         // Create the JavaScript Global object
@@ -177,7 +177,7 @@ impl WebAssemblyGlobal {
         Ok(global_obj.into())
     }
 
-    /// Convert ValueType to wasmtime::ValType
+    /// Convert `ValueType` to `wasmtime::ValType`
     fn value_type_to_wasmtime(value_type: &ValueType) -> wasmtime::ValType {
         match value_type {
             ValueType::I32 => wasmtime::ValType::I32,
@@ -190,7 +190,7 @@ impl WebAssemblyGlobal {
         }
     }
 
-    /// Convert JavaScript value to WebAssembly value
+    /// Convert JavaScript value to `WebAssembly` value
     fn js_value_to_wasm_value(
         value: &JsValue,
         value_type: &ValueType,
@@ -271,13 +271,9 @@ impl WebAssemblyGlobal {
             // TODO: Implement actual global value retrieval from wasmtime
             // For now, return default values based on type
             match global_data.descriptor().value_type {
-                ValueType::I32 => Ok(JsValue::new(0)),
-                ValueType::I64 => Ok(JsValue::new(0)), // Should be BigInt
-                ValueType::F32 => Ok(JsValue::new(0.0)),
-                ValueType::F64 => Ok(JsValue::new(0.0)),
-                ValueType::V128 => Ok(JsValue::new(0)), // Should be proper V128 representation
-                ValueType::ExternRef => Ok(JsValue::null()),
-                ValueType::FuncRef => Ok(JsValue::null()),
+                ValueType::I32 | ValueType::I64 | ValueType::V128 => Ok(JsValue::new(0)),
+                ValueType::F32 | ValueType::F64 => Ok(JsValue::new(0.0)),
+                ValueType::ExternRef | ValueType::FuncRef => Ok(JsValue::null()),
             }
         } else {
             // This is a setter
@@ -363,14 +359,14 @@ impl WebAssemblyGlobalData {
     }
 }
 
-/// WebAssembly global descriptor
+/// `WebAssembly` global descriptor
 #[derive(Debug, Clone, Trace, Finalize)]
 pub(crate) struct GlobalDescriptor {
     pub value_type: ValueType,
     pub mutable: bool,
 }
 
-/// WebAssembly value types
+/// `WebAssembly` value types
 #[derive(Debug, Clone, Trace, Finalize)]
 pub(crate) enum ValueType {
     I32,

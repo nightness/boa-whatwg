@@ -198,6 +198,7 @@ impl BuiltInConstructorWithPrototype<'_> {
     ///
     /// Default is `0`.
     #[inline]
+    #[must_use]
     pub const fn length(mut self, length: usize) -> Self {
         self.length = length;
         self
@@ -206,12 +207,14 @@ impl BuiltInConstructorWithPrototype<'_> {
     /// Specify the name of the constructor function.
     ///
     /// Default is `""`
+    #[must_use]
     pub fn name(mut self, name: JsString) -> Self {
         self.name = name;
         self
     }
 
     /// Adds a new static method to the builtin object.
+    #[must_use]
     pub fn static_method<B>(
         mut self,
         function: NativeFunctionPointer,
@@ -242,6 +245,7 @@ impl BuiltInConstructorWithPrototype<'_> {
     }
 
     /// Adds a new static data property to the builtin object.
+    #[must_use]
     pub fn static_property<K, V>(mut self, key: K, value: V, attribute: Attribute) -> Self
     where
         K: Into<PropertyKey>,
@@ -257,6 +261,7 @@ impl BuiltInConstructorWithPrototype<'_> {
     }
 
     /// Adds a new static accessor property to the builtin object.
+    #[must_use]
     pub fn static_accessor<K>(
         mut self,
         key: K,
@@ -292,6 +297,7 @@ impl BuiltInConstructorWithPrototype<'_> {
     }
 
     /// Adds a new method to the constructor's prototype.
+    #[must_use]
     pub fn method<B>(mut self, function: NativeFunctionPointer, binding: B, length: usize) -> Self
     where
         B: Into<FunctionBinding>,
@@ -317,6 +323,7 @@ impl BuiltInConstructorWithPrototype<'_> {
     }
 
     /// Adds a new data property to the constructor's prototype.
+    #[must_use]
     pub fn property<K, V>(mut self, key: K, value: V, attribute: Attribute) -> Self
     where
         K: Into<PropertyKey>,
@@ -332,6 +339,7 @@ impl BuiltInConstructorWithPrototype<'_> {
     }
 
     /// Adds new accessor property to the constructor's prototype.
+    #[must_use]
     pub fn accessor<K>(
         mut self,
         key: K,
@@ -362,6 +370,7 @@ impl BuiltInConstructorWithPrototype<'_> {
     ///
     /// Default is `Object.prototype`.
     #[allow(clippy::missing_const_for_fn)]
+    #[must_use]
     pub fn inherits(mut self, prototype: JsPrototype) -> Self {
         self.inherits = prototype;
         self
@@ -497,6 +506,7 @@ impl BuiltInCallable<'_> {
     ///
     /// Default is `0`.
     #[inline]
+    #[must_use]
     pub const fn length(mut self, length: usize) -> Self {
         self.length = length;
         self
@@ -505,11 +515,13 @@ impl BuiltInCallable<'_> {
     /// Specify the name of the constructor function.
     ///
     /// Default is `""`
+    #[must_use]
     pub fn name(mut self, name: JsString) -> Self {
         self.name = name;
         self
     }
 
+    #[must_use]
     pub fn build(self) -> JsFunction {
         let object = self.realm.intrinsics().templates().function().create(
             NativeFunctionObject {
@@ -578,6 +590,7 @@ impl<'ctx> BuiltInBuilder<'ctx, Callable<Constructor>> {
     ///
     /// This sets the properties ahead of time for optimizations
     /// (less reallocations).
+    #[must_use]
     pub fn from_standard_constructor<SC: BuiltInConstructor>(
         realm: &'ctx Realm,
     ) -> BuiltInConstructorWithPrototype<'ctx> {
@@ -741,6 +754,7 @@ impl<FnTyp> BuiltInBuilder<'_, Callable<FnTyp>> {
 
 impl BuiltInBuilder<'_, OrdinaryObject> {
     /// Build the builtin object.
+    #[must_use]
     pub fn build(self) -> JsObject {
         self.kind.apply_to(&self.object);
 

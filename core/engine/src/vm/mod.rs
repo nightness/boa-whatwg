@@ -609,6 +609,7 @@ impl Context {
     const OPERAND_COLUMN_WIDTH: usize = Self::COLUMN_WIDTH;
     const NUMBER_OF_COLUMNS: usize = 4;
 
+    #[allow(clippy::print_stderr)]
     pub(crate) fn trace_call_frame(&self) {
         let frame = self.vm.frame();
         let msg = if self.vm.frames.is_empty() {
@@ -645,6 +646,7 @@ impl Context {
         );
     }
 
+    #[allow(clippy::print_stderr)]
     fn trace_execute_instruction<F>(
         &mut self,
         f: F,

@@ -190,7 +190,7 @@ impl Call {
             .calling_convention_get_function(argument_count.into());
 
         let Some(object) = func.as_object() else {
-            return Err(Self::handle_not_callable(&func, context));
+            return Err(Self::handle_not_callable(func, context));
         };
 
         object.__call__(argument_count.into()).resolve(context)?;

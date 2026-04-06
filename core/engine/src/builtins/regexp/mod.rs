@@ -57,6 +57,7 @@ pub struct RegExp {
 
 impl RegExp {
     /// Gets the original source for structured cloning
+    #[must_use]
     pub fn get_original_source(&self) -> &JsString {
         &self.original_source
     }
@@ -67,6 +68,7 @@ impl RegExp {
     }
 
     /// Gets the original flags for structured cloning
+    #[must_use]
     pub fn get_original_flags(&self) -> &JsString {
         &self.original_flags
     }
@@ -714,7 +716,9 @@ impl RegExp {
         });
 
         // Ensure we remove from guard on all exit paths
+        #[allow(clippy::items_after_statements)]
         struct GuardRemover(usize);
+        #[allow(clippy::items_after_statements)]
         impl Drop for GuardRemover {
             fn drop(&mut self) {
                 FLAGS_RECURSION_GUARD.with(|guard| {
