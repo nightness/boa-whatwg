@@ -396,6 +396,8 @@ pub struct StandardConstructors {
     file_system_handle: StandardConstructor,
     file_system_file_handle: StandardConstructor,
     file_system_directory_handle: StandardConstructor,
+    file_system_writable_file_stream: StandardConstructor,
+    file_system_sync_access_handle: StandardConstructor,
     lock_manager: StandardConstructor,
     idb_factory: StandardConstructor,
     idb_request: StandardConstructor,
@@ -634,6 +636,8 @@ impl Default for StandardConstructors {
             file_system_handle: StandardConstructor::default(),
             file_system_file_handle: StandardConstructor::default(),
             file_system_directory_handle: StandardConstructor::default(),
+            file_system_writable_file_stream: StandardConstructor::default(),
+            file_system_sync_access_handle: StandardConstructor::default(),
             lock_manager: StandardConstructor::default(),
             idb_factory: StandardConstructor::default(),
             idb_request: StandardConstructor::default(),
@@ -2397,6 +2401,26 @@ impl StandardConstructors {
     #[must_use]
     pub const fn file_system_directory_handle(&self) -> &StandardConstructor {
         &self.file_system_directory_handle
+    }
+
+    /// Returns the `FileSystemWritableFileStream` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG File System API Specification](https://fs.spec.whatwg.org/)
+    #[inline]
+    #[must_use]
+    pub const fn file_system_writable_file_stream(&self) -> &StandardConstructor {
+        &self.file_system_writable_file_stream
+    }
+
+    /// Returns the `FileSystemSyncAccessHandle` constructor.
+    ///
+    /// More information:
+    ///  - [WHATWG File System API Specification](https://fs.spec.whatwg.org/)
+    #[inline]
+    #[must_use]
+    pub const fn file_system_sync_access_handle(&self) -> &StandardConstructor {
+        &self.file_system_sync_access_handle
     }
 
     /// Returns the `LockManager` constructor.
